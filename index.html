@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>加工条件かんたん計算</title>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZJZ9GTWJWN"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-ZJZ9GTWJWN');
+    </script>
+
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -697,6 +707,16 @@
             return val;
         }
 
+        // Google Analytics: successful calculation tracking
+        function trackCalculation(extraParams = {}) {
+            if (typeof gtag === 'function') {
+                gtag('event', 'calculate', {
+                    calc_mode: currentMode,
+                    ...extraParams
+                });
+            }
+        }
+
         // Calculation execution
         function calculate(event) {
             event.preventDefault();
@@ -762,6 +782,12 @@
                     const methodNameText = currentMethod === 'side' ? '側面加工' : '溝加工';
                     document.getElementById('result-sub').textContent = `${selectedMat} / φ${D}mm / ${Z}枚刃 / ${methodNameText}`;
 
+                    trackCalculation({
+                        material: selectedMat,
+                        method: currentMethod,
+                        diameter_mm: D
+                    });
+
                 } else if (currentMode === 'rpm') {
                     const D = getValidatedValue('D');
                     if (D === null) return;
@@ -775,6 +801,7 @@
                     }
 
                     document.getElementById('result-value').textContent = Math.round(N).toLocaleString();
+                    trackCalculation();
 
                 } else if (currentMode === 'feed') {
                     const fz = getValidatedValue('fz');
@@ -791,6 +818,7 @@
                     }
 
                     document.getElementById('result-value').textContent = Math.round(F).toLocaleString();
+                    trackCalculation();
 
                 } else if (currentMode === 'vc') {
                     const D = getValidatedValue('D');
@@ -805,6 +833,7 @@
                     }
 
                     document.getElementById('result-value').textContent = Vc.toFixed(1);
+                    trackCalculation();
 
                 } else if (currentMode === 'fz') {
                     const F = getValidatedValue('F');
@@ -821,6 +850,7 @@
                     }
 
                     document.getElementById('result-value').textContent = fz.toFixed(3);
+                    trackCalculation();
                 }
             } catch (e) {
                 showError('計算処理中にエラーが発生しました。数値を再度ご確認ください。');

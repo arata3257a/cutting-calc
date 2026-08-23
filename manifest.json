@@ -1,0 +1,24 @@
+{
+  "name": "加工条件かんたん計算",
+  "short_name": "加工条件計算",
+  "description": "切削加工（エンドミル）の回転数、送り速度、切削速度、1刃送りを簡単に計算・確認できるPWAツール",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#102a43",
+  "theme_color": "#102a43",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

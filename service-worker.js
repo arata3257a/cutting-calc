@@ -4,6 +4,7 @@ const CRITICAL_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './icon-free.svg',
   './icon-192.png',
   './icon-512.png'
 ];

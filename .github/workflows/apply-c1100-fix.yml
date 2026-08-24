@@ -48,3 +48,4 @@ jobs:
           git add index.html
           git commit -m "Update C1100 DHS340 conditions to official values"
           git push origin c1100-update
+# retrigger 2026-08-25

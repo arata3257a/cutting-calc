@@ -156,13 +156,13 @@
                 </div>
             </div>
 
-            <!-- Data Notice Area for A5052 -->
+            <!-- Data Notice Area for Aluminum -->
             <div id="preset-source-info-a5052" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
-                <p>・参考元：ユニオンツール DLC-ALES 切削条件表</p>
-                <p>・3枚刃・超硬・DLCコートを基準とした参考値です。</p>
-                <p>・表示値は指定工具・加工方法でのメーカー公開条件を基にした参考値です。</p>
-                <p>・工具形状、突出し量、機械剛性、保持状態、切削油、加工状態によって調整してください。</p>
+                <p>・2枚刃：NS TOOL AL3D-2 / AL3D-2DLC 切削条件参考表</p>
+                <p>・3枚刃：ユニオンツール DLC-ALES 切削条件表</p>
+                <p>・4枚刃：サイトウ製作所（ATOM）AES-4 切削条件</p>
+                <p>・刃数によって基準工具メーカーが異なります。工具形状・突出し量・機械剛性・保持状態・切削油などにより調整してください。</p>
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
             </div>
 
@@ -234,73 +234,269 @@
          */
         const presetData = {
             'A5052': {
-                toolName: 'ユニオンツール DLC-ALES',
-                teeth: 3,
-                side: {
-                    1:  { N: 26000, F: 420,  ap: 1.5, ae: 0.1 },
-                    2:  { N: 26000, F: 700,  ap: 3,   ae: 0.2 },
-                    3:  { N: 26000, F: 1200, ap: 4.5, ae: 0.3 },
-                    4:  { N: 26000, F: 1500, ap: 6,   ae: 0.4 },
-                    5:  { N: 23000, F: 1600, ap: 7.5, ae: 0.5 },
-                    6:  { N: 19500, F: 1800, ap: 9,   ae: 0.6 },
-                    8:  { N: 14500, F: 1900, ap: 12,  ae: 0.8 },
-                    10: { N: 11500, F: 2000, ap: 15,  ae: 1.0 },
-                    12: { N: 9700,  F: 2000, ap: 18,  ae: 1.2 }
-                },
-                slot: {
-                    1:  { N: 26000, F: 500,  ap: 1 },
-                    2:  { N: 26000, F: 650,  ap: 2 },
-                    3:  { N: 26000, F: 800,  ap: 3 },
-                    4:  { N: 26000, F: 1000, ap: 4 },
-                    5:  { N: 23000, F: 1000, ap: 5 },
-                    6:  { N: 19500, F: 900,  ap: 6 },
-                    8:  { N: 14500, F: 950,  ap: 8 },
-                    10: { N: 11500, F: 1000, ap: 10 },
-                    12: { N: 9700,  F: 1000, ap: 12 }
+                category: 'アルミ',
+                teethOptions: {
+                    2: {
+                        toolName: 'NS TOOL AL3D-2 / AL3D-2DLC',
+                        sourceName: 'NS TOOL',
+                        sourceScope: 'A2017・A5052・A7075',
+                        side: {
+                            1:{N:20000,F:400,ap:1.5,ae:0.2},
+                            2:{N:20000,F:600,ap:3,ae:0.4},
+                            3:{N:20000,F:900,ap:4.5,ae:0.6},
+                            4:{N:20000,F:1000,ap:6,ae:0.8},
+                            5:{N:20000,F:1200,ap:7.5,ae:1},
+                            6:{N:17500,F:1400,ap:9,ae:1.2},
+                            8:{N:13000,F:1600,ap:12,ae:1.6},
+                            10:{N:10500,F:1700,ap:15,ae:2},
+                            12:{N:8800,F:1700,ap:18,ae:2.4}
+                        },
+                        slot: {
+                            1:{N:20000,F:300,ap:1,ae:1},
+                            2:{N:20000,F:400,ap:2,ae:2},
+                            3:{N:20000,F:600,ap:3,ae:3},
+                            4:{N:19000,F:750,ap:4,ae:4},
+                            5:{N:15500,F:750,ap:5,ae:5},
+                            6:{N:12500,F:750,ap:6,ae:6},
+                            8:{N:9600,F:800,ap:8,ae:8},
+                            10:{N:7600,F:850,ap:10,ae:10},
+                            12:{N:6400,F:900,ap:12,ae:12}
+                        }
+                    },
+                    3: {
+                        toolName: 'ユニオンツール DLC-ALES',
+                        sourceName: 'ユニオンツール',
+                        sourceScope: 'A5052・A7075',
+                        side: {
+                            1:{N:26000,F:420,ap:1.5,ae:0.1},
+                            2:{N:26000,F:700,ap:3,ae:0.2},
+                            3:{N:26000,F:1200,ap:4.5,ae:0.3},
+                            4:{N:26000,F:1500,ap:6,ae:0.4},
+                            5:{N:23000,F:1600,ap:7.5,ae:0.5},
+                            6:{N:19500,F:1800,ap:9,ae:0.6},
+                            8:{N:14500,F:1900,ap:12,ae:0.8},
+                            10:{N:11500,F:2000,ap:15,ae:1},
+                            12:{N:9700,F:2000,ap:18,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:26000,F:500,ap:1,ae:1},
+                            2:{N:26000,F:650,ap:2,ae:2},
+                            3:{N:26000,F:800,ap:3,ae:3},
+                            4:{N:26000,F:1000,ap:4,ae:4},
+                            5:{N:23000,F:1000,ap:5,ae:5},
+                            6:{N:19500,F:900,ap:6,ae:6},
+                            8:{N:14500,F:950,ap:8,ae:8},
+                            10:{N:11500,F:1000,ap:10,ae:10},
+                            12:{N:9700,F:1000,ap:12,ae:12}
+                        }
+                    },
+                    4: {
+                        toolName: 'ATOM AES-4',
+                        sourceName: 'サイトウ製作所（ATOM）',
+                        sourceScope: 'アルミ合金一般',
+                        side: {
+                            1:{N:17500,F:380,ap:2,ae:0.1},
+                            2:{N:8800,F:450,ap:4,ae:0.2},
+                            3:{N:5800,F:500,ap:6,ae:0.3},
+                            4:{N:4400,F:500,ap:8,ae:0.4},
+                            5:{N:3500,F:540,ap:10,ae:0.5},
+                            6:{N:2900,F:540,ap:12,ae:0.6},
+                            8:{N:2200,F:540,ap:16,ae:0.8},
+                            10:{N:1800,F:540,ap:20,ae:1},
+                            12:{N:1500,F:540,ap:24,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:17500,F:240,ap:0.15,ae:1},
+                            2:{N:8800,F:290,ap:0.3,ae:2},
+                            3:{N:5800,F:320,ap:2.25,ae:3},
+                            4:{N:4400,F:320,ap:3,ae:4},
+                            5:{N:3500,F:350,ap:3.75,ae:5},
+                            6:{N:2900,F:350,ap:4.5,ae:6},
+                            8:{N:2200,F:350,ap:6,ae:8},
+                            10:{N:1800,F:350,ap:7.5,ae:10},
+                            12:{N:1500,F:350,ap:9,ae:12}
+                        }
+                    }
                 }
             },
-            'S45C': {
-                toolName: 'ユニオンツール CZS',
-                teeth: 4,
-                side: {
-                    6:  { N: 5000, F: 1600, ap: 9,    ae: 1.2 },
-                    7:  { N: 4200, F: 1500, ap: 10.5, ae: 1.4 },
-                    8:  { N: 3500, F: 1400, ap: 12,   ae: 1.6 },
-                    9:  { N: 2900, F: 1300, ap: 13.5, ae: 1.8 },
-                    10: { N: 2300, F: 1200, ap: 15,   ae: 2.0 },
-                    11: { N: 2050, F: 1150, ap: 16.5, ae: 2.2 },
-                    12: { N: 1850, F: 1100, ap: 18,   ae: 2.4 }
-                },
-                slot: {
-                    6:  { N: 5000, F: 700, ap: 6 },
-                    7:  { N: 4200, F: 700, ap: 7 },
-                    8:  { N: 3500, F: 700, ap: 8 },
-                    9:  { N: 2900, F: 700, ap: 9 },
-                    10: { N: 2300, F: 700, ap: 10 },
-                    11: { N: 2050, F: 670, ap: 11 },
-                    12: { N: 1850, F: 650, ap: 12 }
+            'A7075': {
+                category: 'アルミ',
+                teethOptions: {
+                    2: {
+                        toolName: 'NS TOOL AL3D-2 / AL3D-2DLC',
+                        sourceName: 'NS TOOL',
+                        sourceScope: 'A2017・A5052・A7075',
+                        side: {
+                            1:{N:20000,F:400,ap:1.5,ae:0.2},
+                            2:{N:20000,F:600,ap:3,ae:0.4},
+                            3:{N:20000,F:900,ap:4.5,ae:0.6},
+                            4:{N:20000,F:1000,ap:6,ae:0.8},
+                            5:{N:20000,F:1200,ap:7.5,ae:1},
+                            6:{N:17500,F:1400,ap:9,ae:1.2},
+                            8:{N:13000,F:1600,ap:12,ae:1.6},
+                            10:{N:10500,F:1700,ap:15,ae:2},
+                            12:{N:8800,F:1700,ap:18,ae:2.4}
+                        },
+                        slot: {
+                            1:{N:20000,F:300,ap:1,ae:1},
+                            2:{N:20000,F:400,ap:2,ae:2},
+                            3:{N:20000,F:600,ap:3,ae:3},
+                            4:{N:19000,F:750,ap:4,ae:4},
+                            5:{N:15500,F:750,ap:5,ae:5},
+                            6:{N:12500,F:750,ap:6,ae:6},
+                            8:{N:9600,F:800,ap:8,ae:8},
+                            10:{N:7600,F:850,ap:10,ae:10},
+                            12:{N:6400,F:900,ap:12,ae:12}
+                        }
+                    },
+                    3: {
+                        toolName: 'ユニオンツール DLC-ALES',
+                        sourceName: 'ユニオンツール',
+                        sourceScope: 'A5052・A7075',
+                        side: {
+                            1:{N:26000,F:420,ap:1.5,ae:0.1},
+                            2:{N:26000,F:700,ap:3,ae:0.2},
+                            3:{N:26000,F:1200,ap:4.5,ae:0.3},
+                            4:{N:26000,F:1500,ap:6,ae:0.4},
+                            5:{N:23000,F:1600,ap:7.5,ae:0.5},
+                            6:{N:19500,F:1800,ap:9,ae:0.6},
+                            8:{N:14500,F:1900,ap:12,ae:0.8},
+                            10:{N:11500,F:2000,ap:15,ae:1},
+                            12:{N:9700,F:2000,ap:18,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:26000,F:500,ap:1,ae:1},
+                            2:{N:26000,F:650,ap:2,ae:2},
+                            3:{N:26000,F:800,ap:3,ae:3},
+                            4:{N:26000,F:1000,ap:4,ae:4},
+                            5:{N:23000,F:1000,ap:5,ae:5},
+                            6:{N:19500,F:900,ap:6,ae:6},
+                            8:{N:14500,F:950,ap:8,ae:8},
+                            10:{N:11500,F:1000,ap:10,ae:10},
+                            12:{N:9700,F:1000,ap:12,ae:12}
+                        }
+                    },
+                    4: {
+                        toolName: 'ATOM AES-4',
+                        sourceName: 'サイトウ製作所（ATOM）',
+                        sourceScope: 'アルミ合金一般',
+                        side: {
+                            1:{N:17500,F:380,ap:2,ae:0.1},
+                            2:{N:8800,F:450,ap:4,ae:0.2},
+                            3:{N:5800,F:500,ap:6,ae:0.3},
+                            4:{N:4400,F:500,ap:8,ae:0.4},
+                            5:{N:3500,F:540,ap:10,ae:0.5},
+                            6:{N:2900,F:540,ap:12,ae:0.6},
+                            8:{N:2200,F:540,ap:16,ae:0.8},
+                            10:{N:1800,F:540,ap:20,ae:1},
+                            12:{N:1500,F:540,ap:24,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:17500,F:240,ap:0.15,ae:1},
+                            2:{N:8800,F:290,ap:0.3,ae:2},
+                            3:{N:5800,F:320,ap:2.25,ae:3},
+                            4:{N:4400,F:320,ap:3,ae:4},
+                            5:{N:3500,F:350,ap:3.75,ae:5},
+                            6:{N:2900,F:350,ap:4.5,ae:6},
+                            8:{N:2200,F:350,ap:6,ae:8},
+                            10:{N:1800,F:350,ap:7.5,ae:10},
+                            12:{N:1500,F:350,ap:9,ae:12}
+                        }
+                    }
                 }
             },
-            'SUS304': {
-                toolName: 'ユニオンツール CZS',
-                teeth: 4,
-                side: {
-                    6:  { N: 2800, F: 900,  ap: 18, ae: 0.3 },
-                    7:  { N: 2450, F: 950,  ap: 21, ae: 0.35 },
-                    8:  { N: 2100, F: 950,  ap: 24, ae: 0.4 },
-                    9:  { N: 1700, F: 1000, ap: 27, ae: 0.45 },
-                    10: { N: 1400, F: 1000, ap: 30, ae: 0.5 },
-                    11: { N: 1250, F: 1000, ap: 33, ae: 0.55 },
-                    12: { N: 1150, F: 950,  ap: 36, ae: 0.6 }
-                },
-                slot: {
-                    6:  { N: 2800, F: 200, ap: 3 },
-                    7:  { N: 2450, F: 190, ap: 3.5 },
-                    8:  { N: 2100, F: 180, ap: 4 },
-                    9:  { N: 1700, F: 170, ap: 4.5 },
-                    10: { N: 1400, F: 150, ap: 5 },
-                    11: { N: 1250, F: 140, ap: 5.5 },
-                    12: { N: 1150, F: 130, ap: 6 }
+            'A2017': {
+                category: 'アルミ',
+                teethOptions: {
+                    2: {
+                        toolName: 'NS TOOL AL3D-2 / AL3D-2DLC',
+                        sourceName: 'NS TOOL',
+                        sourceScope: 'A2017・A5052・A7075',
+                        side: {
+                            1:{N:20000,F:400,ap:1.5,ae:0.2},
+                            2:{N:20000,F:600,ap:3,ae:0.4},
+                            3:{N:20000,F:900,ap:4.5,ae:0.6},
+                            4:{N:20000,F:1000,ap:6,ae:0.8},
+                            5:{N:20000,F:1200,ap:7.5,ae:1},
+                            6:{N:17500,F:1400,ap:9,ae:1.2},
+                            8:{N:13000,F:1600,ap:12,ae:1.6},
+                            10:{N:10500,F:1700,ap:15,ae:2},
+                            12:{N:8800,F:1700,ap:18,ae:2.4}
+                        },
+                        slot: {
+                            1:{N:20000,F:300,ap:1,ae:1},
+                            2:{N:20000,F:400,ap:2,ae:2},
+                            3:{N:20000,F:600,ap:3,ae:3},
+                            4:{N:19000,F:750,ap:4,ae:4},
+                            5:{N:15500,F:750,ap:5,ae:5},
+                            6:{N:12500,F:750,ap:6,ae:6},
+                            8:{N:9600,F:800,ap:8,ae:8},
+                            10:{N:7600,F:850,ap:10,ae:10},
+                            12:{N:6400,F:900,ap:12,ae:12}
+                        }
+                    },
+                    3: null,
+                    4: {
+                        toolName: 'ATOM AES-4',
+                        sourceName: 'サイトウ製作所（ATOM）',
+                        sourceScope: 'アルミ合金一般',
+                        side: {
+                            1:{N:17500,F:380,ap:2,ae:0.1},
+                            2:{N:8800,F:450,ap:4,ae:0.2},
+                            3:{N:5800,F:500,ap:6,ae:0.3},
+                            4:{N:4400,F:500,ap:8,ae:0.4},
+                            5:{N:3500,F:540,ap:10,ae:0.5},
+                            6:{N:2900,F:540,ap:12,ae:0.6},
+                            8:{N:2200,F:540,ap:16,ae:0.8},
+                            10:{N:1800,F:540,ap:20,ae:1},
+                            12:{N:1500,F:540,ap:24,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:17500,F:240,ap:0.15,ae:1},
+                            2:{N:8800,F:290,ap:0.3,ae:2},
+                            3:{N:5800,F:320,ap:2.25,ae:3},
+                            4:{N:4400,F:320,ap:3,ae:4},
+                            5:{N:3500,F:350,ap:3.75,ae:5},
+                            6:{N:2900,F:350,ap:4.5,ae:6},
+                            8:{N:2200,F:350,ap:6,ae:8},
+                            10:{N:1800,F:350,ap:7.5,ae:10},
+                            12:{N:1500,F:350,ap:9,ae:12}
+                        }
+                    }
+                }
+            },
+            'A6061': {
+                category: 'アルミ',
+                teethOptions: {
+                    2: null,
+                    3: null,
+                    4: {
+                        toolName: 'ATOM AES-4',
+                        sourceName: 'サイトウ製作所（ATOM）',
+                        sourceScope: 'アルミ合金一般',
+                        side: {
+                            1:{N:17500,F:380,ap:2,ae:0.1},
+                            2:{N:8800,F:450,ap:4,ae:0.2},
+                            3:{N:5800,F:500,ap:6,ae:0.3},
+                            4:{N:4400,F:500,ap:8,ae:0.4},
+                            5:{N:3500,F:540,ap:10,ae:0.5},
+                            6:{N:2900,F:540,ap:12,ae:0.6},
+                            8:{N:2200,F:540,ap:16,ae:0.8},
+                            10:{N:1800,F:540,ap:20,ae:1},
+                            12:{N:1500,F:540,ap:24,ae:1.2}
+                        },
+                        slot: {
+                            1:{N:17500,F:240,ap:0.15,ae:1},
+                            2:{N:8800,F:290,ap:0.3,ae:2},
+                            3:{N:5800,F:320,ap:2.25,ae:3},
+                            4:{N:4400,F:320,ap:3,ae:4},
+                            5:{N:3500,F:350,ap:3.75,ae:5},
+                            6:{N:2900,F:350,ap:4.5,ae:6},
+                            8:{N:2200,F:350,ap:6,ae:8},
+                            10:{N:1800,F:350,ap:7.5,ae:10},
+                            12:{N:1500,F:350,ap:9,ae:12}
+                        }
+                    }
                 }
             }
         };
@@ -324,7 +520,7 @@
                 // Notice banner for tool preset
                 const infoBanner = document.createElement('div');
                 infoBanner.className = 'bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-600 mb-2 text-center font-medium';
-                infoBanner.innerHTML = '前提条件：<span class="font-bold text-slate-800">超硬スクエアエンドミル</span>';
+                infoBanner.innerHTML = '前提条件：<span class="font-bold text-slate-800">超硬スクエアエンドミル</span><br><span class="text-[11px]">メーカー公開条件を基準にした参考値</span>';
                 container.appendChild(infoBanner);
 
                 // Material Selector
@@ -335,9 +531,10 @@
                         被削材を選択
                     </label>
                     <select id="input-material" onchange="onMaterialChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-lg font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors">
-                        <option value="A5052">A5052 (アルミ合金)</option>
-                        <option value="S45C">S45C (炭素鋼)</option>
-                        <option value="SUS304">SUS304 (ステンレス)</option>
+                        <option value="A5052">A5052</option>
+                        <option value="A7075">A7075</option>
+                        <option value="A2017">A2017</option>
+                        <option value="A6061">A6061</option>
                     </select>
                 `;
                 container.appendChild(matWrapper);
@@ -448,82 +645,58 @@
         function renderMaterialSpecificFields() {
             const specContainer = document.getElementById('preset-spec-fields');
             if (!specContainer) return;
-
             specContainer.innerHTML = '';
-            const materialEl = document.getElementById('input-material');
-            const selectedMat = materialEl ? materialEl.value : 'A5052';
 
-            if (selectedMat === 'A5052') {
-                // Pulldown for A5052 Diameter
-                const dWrapper = document.createElement('div');
-                dWrapper.className = 'flex flex-col';
-                dWrapper.innerHTML = `
-                    <label for="input-D" class="text-sm font-bold text-slate-700 mb-1 flex justify-between">
-                        <span>工具径 D</span>
-                        <span class="text-slate-400 font-normal">(mm)</span>
-                    </label>
-                    <select id="input-D" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors">
-                        <option value="1">1 mm</option>
-                        <option value="2">2 mm</option>
-                        <option value="3">3 mm</option>
-                        <option value="4">4 mm</option>
-                        <option value="5">5 mm</option>
-                        <option value="6">6 mm</option>
-                        <option value="8">8 mm</option>
-                        <option value="10" selected>10 mm</option>
-                        <option value="12">12 mm</option>
-                    </select>
-                `;
-                specContainer.appendChild(dWrapper);
+            const zWrapper = document.createElement('div');
+            zWrapper.className = 'flex flex-col';
+            zWrapper.innerHTML = `
+                <label for="input-Z" class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label>
+                <select id="input-Z" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
+                    <option value="2">2枚刃</option>
+                    <option value="3" selected>3枚刃</option>
+                    <option value="4">4枚刃</option>
+                </select>`;
+            specContainer.appendChild(zWrapper);
 
-                // Fixed Teeth Field for A5052
-                const zWrapper = document.createElement('div');
-                zWrapper.className = 'flex flex-col';
-                zWrapper.innerHTML = `
-                    <label class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label>
-                    <div class="bg-slate-200 border-2 border-slate-300 text-slate-700 font-bold rounded-lg p-3 text-lg flex justify-between items-center">
-                        <span>刃数：3枚刃 <span class="text-xs font-normal text-slate-500">(DLC-ALES固定)</span></span>
-                        <span class="text-xs bg-slate-300 text-slate-600 px-2 py-0.5 rounded">固定</span>
-                    </div>
-                    <input type="hidden" id="input-Z" value="3" />
-                `;
-                specContainer.appendChild(zWrapper);
+            const dWrapper = document.createElement('div');
+            dWrapper.className = 'flex flex-col';
+            dWrapper.innerHTML = `
+                <label for="input-D" class="text-sm font-bold text-slate-700 mb-1 flex justify-between">
+                    <span>工具径 D</span><span class="text-slate-400 font-normal">(mm)</span>
+                </label>
+                <select id="input-D" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
+                    <option value="1">1 mm</option>
+                    <option value="2">2 mm</option>
+                    <option value="3">3 mm</option>
+                    <option value="4">4 mm</option>
+                    <option value="5">5 mm</option>
+                    <option value="6">6 mm</option>
+                    <option value="8">8 mm</option>
+                    <option value="10" selected>10 mm</option>
+                    <option value="12">12 mm</option>
+                </select>`;
+            specContainer.appendChild(dWrapper);
 
-            } else if (selectedMat === 'S45C' || selectedMat === 'SUS304') {
-                // Pulldown for S45C / SUS304 Diameter
-                const dWrapper = document.createElement('div');
-                dWrapper.className = 'flex flex-col';
-                dWrapper.innerHTML = `
-                    <label for="input-D" class="text-sm font-bold text-slate-700 mb-1 flex justify-between">
-                        <span>工具径 D</span>
-                        <span class="text-slate-400 font-normal">(mm)</span>
-                    </label>
-                    <select id="input-D" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors">
-                        <option value="6">6 mm</option>
-                        <option value="7">7 mm</option>
-                        <option value="8">8 mm</option>
-                        <option value="9">9 mm</option>
-                        <option value="10" selected>10 mm</option>
-                        <option value="11">11 mm</option>
-                        <option value="12">12 mm</option>
-                    </select>
-                `;
-                specContainer.appendChild(dWrapper);
+            const notice = document.createElement('div');
+            notice.id = 'preset-availability';
+            specContainer.appendChild(notice);
+            updateAvailabilityNotice();
+        }
 
-                // Fixed Teeth Field for S45C / SUS304
-                const zWrapper = document.createElement('div');
-                zWrapper.className = 'flex flex-col';
-                zWrapper.innerHTML = `
-                    <label class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label>
-                    <div class="bg-slate-200 border-2 border-slate-300 text-slate-700 font-bold rounded-lg p-3 text-lg flex justify-between items-center">
-                        <span>刃数：4枚刃 <span class="text-xs font-normal text-slate-500">(CZS固定)</span></span>
-                        <span class="text-xs bg-slate-300 text-slate-600 px-2 py-0.5 rounded">固定</span>
-                    </div>
-                    <input type="hidden" id="input-Z" value="4" />
-                `;
-                specContainer.appendChild(zWrapper);
+        function updateAvailabilityNotice() {
+            const material = document.getElementById('input-material')?.value || 'A5052';
+            const Z = Number(document.getElementById('input-Z')?.value || 3);
+            const box = document.getElementById('preset-availability');
+            if (!box) return;
 
-            }
+            const toolData = presetData[material]?.teethOptions?.[Z];
+            box.className = toolData
+                ? 'bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg p-2.5 text-xs'
+                : 'bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-2.5 text-xs';
+
+            box.textContent = toolData
+                ? `${material} / ${Z}枚刃：使用可能（${toolData.sourceName}基準）`
+                : `${material} / ${Z}枚刃：メーカー公開条件を確認できていません`;
         }
 
         // Switch mode tabs
@@ -594,22 +767,10 @@
                 const materialEl = document.getElementById('input-material');
                 const selectedMat = materialEl ? materialEl.value : 'A5052';
 
-                if (selectedMat === 'A5052') {
-                    sourceInfoA5052.classList.remove('hidden');
-                    sourceInfoS45C.classList.add('hidden');
-                    sourceInfoSUS304.classList.add('hidden');
-                    subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
-                } else if (selectedMat === 'S45C') {
-                    sourceInfoA5052.classList.add('hidden');
-                    sourceInfoS45C.classList.remove('hidden');
-                    sourceInfoSUS304.classList.add('hidden');
-                    subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
-                } else if (selectedMat === 'SUS304') {
-                    sourceInfoA5052.classList.add('hidden');
-                    sourceInfoS45C.classList.add('hidden');
-                    sourceInfoSUS304.classList.remove('hidden');
-                    subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
-                }
+                sourceInfoA5052.classList.remove('hidden');
+                sourceInfoS45C.classList.add('hidden');
+                sourceInfoSUS304.classList.add('hidden');
+                subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
 
             } else {
                 singleDisplay.classList.remove('hidden');
@@ -707,16 +868,6 @@
             return val;
         }
 
-        // Google Analytics: successful calculation tracking
-        function trackCalculation(extraParams = {}) {
-            if (typeof gtag === 'function') {
-                gtag('event', 'calculate', {
-                    calc_mode: currentMode,
-                    ...extraParams
-                });
-            }
-        }
-
         // Calculation execution
         function calculate(event) {
             event.preventDefault();
@@ -724,49 +875,32 @@
 
             try {
                 if (currentMode === 'preset') {
-                    const materialEl = document.getElementById('input-material');
-                    const selectedMat = materialEl ? materialEl.value : 'A5052';
+                    const selectedMat = document.getElementById('input-material')?.value || 'A5052';
+                    const Z = Number(document.getElementById('input-Z')?.value || 3);
+                    const D = Number(document.getElementById('input-D')?.value || 0);
 
-                    const matDataGroup = presetData[selectedMat];
-
-                    if (!matDataGroup) {
+                    const toolData = presetData[selectedMat]?.teethOptions?.[Z];
+                    if (!toolData) {
+                        showError(`${selectedMat} / ${Z}枚刃のメーカー公開条件を確認できていません。`);
                         document.getElementById('preset-res-vc').textContent = '準備中';
                         document.getElementById('preset-res-n').textContent = '準備中';
                         document.getElementById('preset-res-fz').textContent = '準備中';
                         document.getElementById('preset-res-f').textContent = '準備中';
                         document.getElementById('preset-res-ap').textContent = '---';
                         document.getElementById('preset-res-ae').textContent = '---';
-                        document.getElementById('result-sub').textContent = '条件データ準備中（データが設定されていません）';
+                        document.getElementById('result-sub').textContent = '確認できたメーカー条件から順次追加します';
                         return;
                     }
 
-                    const dEl = document.getElementById('input-D');
-                    const D = Number(dEl ? dEl.value : 0);
-
-                    // Choose method group (side / slot)
-                    const methodDataGroup = matDataGroup[currentMethod];
-                    const item = methodDataGroup ? methodDataGroup[D] : null;
-
+                    const item = toolData[currentMethod]?.[D];
                     if (!item) {
                         showError('この工具径の参考条件は現在登録されていません。');
-                        document.getElementById('preset-res-vc').textContent = '未登録';
-                        document.getElementById('preset-res-n').textContent = '未登録';
-                        document.getElementById('preset-res-fz').textContent = '未登録';
-                        document.getElementById('preset-res-f').textContent = '未登録';
-                        document.getElementById('preset-res-ap').textContent = '未登録';
-                        document.getElementById('preset-res-ae').textContent = '未登録';
-                        document.getElementById('result-sub').textContent = '登録されていない工具径です';
                         return;
                     }
 
                     const N = item.N;
                     const F = item.F;
-                    const Z = matDataGroup.teeth; // 3 for A5052, 4 for S45C / SUS304
-
-                    // Calculated Vc = (PI * D * N) / 1000
                     const Vc = (Math.PI * D * N) / 1000;
-
-                    // Calculated fz = F / (Z * N)
                     const fz = F / (Z * N);
 
                     document.getElementById('preset-res-n').textContent = N.toLocaleString();
@@ -774,19 +908,22 @@
                     document.getElementById('preset-res-vc').textContent = Vc.toFixed(1);
                     document.getElementById('preset-res-fz').textContent = fz.toFixed(3);
                     document.getElementById('preset-res-ap').textContent = item.ap;
-
-                    if (currentMethod === 'side' && item.ae !== undefined) {
-                        document.getElementById('preset-res-ae').textContent = item.ae;
-                    }
+                    document.getElementById('preset-res-ae').textContent = item.ae;
 
                     const methodNameText = currentMethod === 'side' ? '側面加工' : '溝加工';
-                    document.getElementById('result-sub').textContent = `${selectedMat} / φ${D}mm / ${Z}枚刃 / ${methodNameText}`;
+                    document.getElementById('result-sub').textContent =
+                        `${selectedMat} / φ${D}mm / ${Z}枚刃 / ${methodNameText} / ${toolData.sourceName}基準`;
 
-                    trackCalculation({
-                        material: selectedMat,
-                        method: currentMethod,
-                        diameter_mm: D
-                    });
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'calculate', {
+                            calc_mode: currentMode,
+                            material: selectedMat,
+                            method: currentMethod,
+                            diameter_mm: D,
+                            teeth: Z,
+                            source: toolData.sourceName
+                        });
+                    }
 
                 } else if (currentMode === 'rpm') {
                     const D = getValidatedValue('D');
@@ -801,7 +938,6 @@
                     }
 
                     document.getElementById('result-value').textContent = Math.round(N).toLocaleString();
-                    trackCalculation();
 
                 } else if (currentMode === 'feed') {
                     const fz = getValidatedValue('fz');
@@ -818,7 +954,6 @@
                     }
 
                     document.getElementById('result-value').textContent = Math.round(F).toLocaleString();
-                    trackCalculation();
 
                 } else if (currentMode === 'vc') {
                     const D = getValidatedValue('D');
@@ -833,7 +968,6 @@
                     }
 
                     document.getElementById('result-value').textContent = Vc.toFixed(1);
-                    trackCalculation();
 
                 } else if (currentMode === 'fz') {
                     const F = getValidatedValue('F');
@@ -850,7 +984,6 @@
                     }
 
                     document.getElementById('result-value').textContent = fz.toFixed(3);
-                    trackCalculation();
                 }
             } catch (e) {
                 showError('計算処理中にエラーが発生しました。数値を再度ご確認ください。');

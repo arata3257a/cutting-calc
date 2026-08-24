@@ -1,4 +1,4 @@
-const CACHE_NAME = 'machining-calc-v4';
+const CACHE_NAME = 'machining-calc-v5';
 
 const CRITICAL_ASSETS = [
   './',
@@ -51,10 +51,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // ページ本体はネットワーク優先
+  // ページ本体はネットワーク優先。最新版を優先し、オフライン時だけキャッシュへフォールバック。
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone();
 

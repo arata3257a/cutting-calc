@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="app-build" content="2026-08-24-copper-v1">
+    <meta name="app-build" content="2026-08-25-copper-v2">
     <title>加工条件かんたん計算</title>
 
     <!-- Google tag (gtag.js) -->
@@ -196,8 +196,9 @@
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
                 <p>・対象材：C1100（タフピッチ銅）</p>
                 <p>・2枚刃：ユニオンツール DLCES2000</p>
-                <p>・3枚刃：NS TOOL DHS340</p>
+                <p>・3枚刃：NS TOOL DHS340（メーカー公開の銅向け参考切削条件）</p>
                 <p>・4枚刃：ユニオンツール DLCES4000</p>
+                <p>・C1100の実加工事例はNS TOOL DHS340Fで公開されています。DHS340の表示値とは区別しています。</p>
                 <p>・4枚刃DLCES4000はメーカー公開表に溝条件がないため、側面加工のみ登録しています。</p>
                 <div class="bg-cyan-950/80 border border-cyan-400/60 p-2 rounded my-1 text-cyan-200">
                     <p class="font-bold text-cyan-300">【クーラント】</p>
@@ -609,18 +610,18 @@
                     3: {
                         toolName: 'NS TOOL DHS340',
                         sourceName: 'NS TOOL',
-                        sourceScope: '銅（C1100加工事例あり）',
+                        sourceScope: '銅（メーカー公開参考条件。C1100加工事例はDHS340F）',
                         side: {
-                            3: { N: 7000, F: 410, ap: 9,  ae: 0.9 },
-                            4: { N: 5300, F: 470, ap: 12, ae: 1.2 },
-                            5: { N: 4200, F: 490, ap: 15, ae: 1.5 },
-                            6: { N: 3500, F: 490, ap: 18, ae: 1.8 }
+                            3: { N: 7600, F: 450, ap: 9,  ae: 0.9 },
+                            4: { N: 5700, F: 510, ap: 12, ae: 1.2 },
+                            5: { N: 4500, F: 530, ap: 15, ae: 1.5 },
+                            6: { N: 3800, F: 530, ap: 18, ae: 1.8 }
                         },
                         slot: {
-                            3: { N: 6700, F: 270, ap: 3, ae: 3 },
-                            4: { N: 5000, F: 310, ap: 4, ae: 4 },
-                            5: { N: 4000, F: 320, ap: 5, ae: 5 },
-                            6: { N: 3300, F: 320, ap: 6, ae: 6 }
+                            3: { N: 7200, F: 290, ap: 3, ae: 3 },
+                            4: { N: 5400, F: 330, ap: 4, ae: 4 },
+                            5: { N: 4300, F: 340, ap: 5, ae: 5 },
+                            6: { N: 3600, F: 350, ap: 6, ae: 6 }
                         }
                     },
                     4: {

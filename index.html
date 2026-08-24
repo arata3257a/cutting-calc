@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="app-build" content="2026-08-25-copper-v2">
-    <title>加工条件かんたん計算</title>
+    <meta name="app-build" content="2026-08-25-beginner-v1">
+    <title>加工条件かんたん計算｜初心者版</title>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZJZ9GTWJWN"></script>
@@ -15,7 +15,6 @@
         gtag('config', 'G-ZJZ9GTWJWN');
     </script>
 
-    
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#102a43">
@@ -51,7 +50,6 @@
         }
     </script>
     <style>
-        /* Touch device friendly styling */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
@@ -64,16 +62,15 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between antialiased select-none">
 
-    <!-- Header Section -->
     <header class="bg-industry-700 text-white p-4 shadow-md text-center border-b-4 border-industry-orange">
-        <h1 class="text-2xl font-bold tracking-wide">加工条件かんたん計算</h1>
-        <p class="text-xs text-slate-300 mt-1">計算したい項目を選んで数値を入力してください</p>
+        <div class="flex items-center justify-center gap-2">
+            <h1 class="text-2xl font-bold tracking-wide">加工条件かんたん計算</h1>
+            <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">初心者・無料版</span>
+        </div>
+        <p class="text-xs text-slate-300 mt-1">材質・加工方法・刃数・工具径を選ぶだけ</p>
     </header>
 
-    <!-- Main Content -->
     <main class="max-w-md mx-auto w-full px-4 py-6 flex-grow">
-
-        <!-- Tabs for Modes -->
         <div class="grid grid-cols-2 gap-2 mb-6">
             <button id="tab-preset" onclick="selectTab('preset')" class="tab-btn bg-industry-accent text-white font-bold py-3 px-2 rounded-lg text-center shadow transition-colors flex items-center justify-center text-sm sm:text-base col-span-2">
                 ★ 参考スタート条件<br><span class="text-xs font-normal opacity-90">(被削材から自動計算)</span>
@@ -92,41 +89,24 @@
             </button>
         </div>
 
-        <!-- Calculator Form Box -->
         <div class="bg-white rounded-xl shadow-lg p-5 border border-slate-200 mb-6">
-            
-            <!-- Error Banner -->
-            <div id="error-message" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded text-sm mb-4">
-                <!-- Dynamic Error Text -->
-            </div>
-
+            <div id="error-message" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded text-sm mb-4"></div>
             <form id="calc-form" onsubmit="calculate(event)" class="space-y-4">
-
-                <!-- Dynamic Input Fields -->
-                <div id="input-fields" class="space-y-4">
-                    <!-- Javascript will insert dynamic fields here -->
-                </div>
-
-                <!-- Calculate Button -->
+                <div id="input-fields" class="space-y-4"></div>
                 <button type="submit" class="w-full bg-industry-orange hover:bg-orange-700 active:scale-[0.99] text-white font-bold py-4 rounded-xl text-xl shadow-md transition-all duration-150 mt-6 flex items-center justify-center">
                     計算する
                 </button>
             </form>
         </div>
 
-        <!-- Result Display Section -->
         <div id="result-card" class="bg-industry-600 text-white rounded-xl shadow-xl p-6 text-center transition-all duration-200 border-2 border-industry-accent">
             <h2 id="result-title" class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-1">計算結果</h2>
-            
-            <!-- Single Value Display (for Standard Calc Modes) -->
             <div id="single-result" class="flex items-baseline justify-center gap-2 my-2">
                 <span id="result-value" class="text-4xl sm:text-5xl font-black text-yellow-400">---</span>
                 <span id="result-unit" class="text-lg font-bold text-slate-200"></span>
             </div>
 
-            <!-- Multi-Value Display (for Preset Start Conditions Mode) -->
             <div id="multi-result" class="hidden my-3 text-left bg-industry-700/60 rounded-lg p-4 space-y-2.5 border border-slate-500/40">
-                <!-- Method Indicator Badge -->
                 <div class="flex justify-between items-center pb-2 border-b border-slate-600/80">
                     <span class="text-xs text-slate-300 font-medium">加工種類</span>
                     <span id="preset-res-method-badge" class="bg-industry-orange text-white text-xs font-bold px-3 py-1 rounded-full shadow">側面加工</span>
@@ -157,7 +137,6 @@
                 </div>
             </div>
 
-            <!-- Data Notice Area for Aluminum -->
             <div id="preset-source-info-a5052" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
                 <p>・2枚刃：NS TOOL AL3D-2 / AL3D-2DLC 切削条件参考表</p>
@@ -167,7 +146,6 @@
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
             </div>
 
-            <!-- Data Notice Area for S45C -->
             <div id="preset-source-info-s45c" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
                 <p>・参考元：ユニオンツール CZS 切削条件表</p>
@@ -177,21 +155,21 @@
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
             </div>
 
-            <!-- Data Notice Area for SUS304 -->
             <div id="preset-source-info-sus304" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
-                <p>・3枚刃：MISUMI TSC-FMS-HEM3R（SUS303・304等）</p>
+                <p>・3枚刃：NS TOOL MSZ345（SUS304メーカー公開条件）</p>
+                <p>・3枚刃はφ1〜φ12を登録しています。</p>
                 <p>・4枚刃：ユニオンツール CESUS（SUS304）</p>
-                <p>・2枚刃、SUS316、SUS430は条件確認中のため計算しません。</p>
+                <p>・初心者版では条件未確認の刃数は選択肢に表示しません。</p>
                 <div class="bg-cyan-950/80 border border-cyan-400/60 p-2 rounded my-1 text-cyan-200">
-                    <p class="font-bold text-cyan-300">【切削油必須】</p>
-                    <p>SUS304の4枚刃CESUS条件では切削油の使用が必須です。</p>
-                    <p>水溶性または油性切削油を推奨します。</p>
+                    <p class="font-bold text-cyan-300">【切削油】</p>
+                    <p>MSZ345：SUS304には不水溶性切削油を推奨。</p>
+                    <p>CESUS：水溶性または油性切削油を使用してください。</p>
                 </div>
+                <p>・機械剛性、保持状態、突出し量、加工形状に応じて条件を調整してください。</p>
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
             </div>
 
-            <!-- Data Notice Area for Copper -->
             <div id="preset-source-info-copper" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
                 <p>・対象材：C1100（タフピッチ銅）</p>
@@ -211,10 +189,8 @@
 
             <p id="result-sub" class="text-xs text-slate-300 mt-2 border-t border-slate-500/50 pt-2"></p>
         </div>
-
     </main>
 
-    <!-- Footer Notice Section -->
     <footer class="bg-slate-200 border-t border-slate-300 text-slate-600 p-4 text-xs leading-relaxed max-w-md mx-auto w-full">
         <div id="standard-footer-notice" class="space-y-1">
             <p class="font-bold text-slate-700">【ご注意】</p>
@@ -228,7 +204,6 @@
         </div>
     </footer>
 
-    <!-- Service Worker Registration for PWA -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -239,18 +214,10 @@
         }
     </script>
 
-    <!-- Application Script -->
     <script>
-        // Default modes
         let currentMode = 'preset';
-        let currentMethod = 'side'; // 'side' (側面加工) or 'slot' (溝加工)
+        let currentMethod = 'side';
 
-        /*
-         * 設定用データテーブル (参考スタート条件用)
-         * A5052:  ユニオンツール DLC-ALES (3枚刃)
-         * S45C:   ユニオンツール CZS (4枚刃)
-         * SUS304: ユニオンツール CZS (4枚刃)
-         */
         const presetData = {
             'A5052': {
                 category: 'アルミ',
@@ -260,953 +227,160 @@
                         sourceName: 'NS TOOL',
                         sourceScope: 'A2017・A5052・A7075',
                         side: {
-                            1:{N:20000,F:400,ap:1.5,ae:0.2},
-                            2:{N:20000,F:600,ap:3,ae:0.4},
-                            3:{N:20000,F:900,ap:4.5,ae:0.6},
-                            4:{N:20000,F:1000,ap:6,ae:0.8},
-                            5:{N:20000,F:1200,ap:7.5,ae:1},
-                            6:{N:17500,F:1400,ap:9,ae:1.2},
-                            8:{N:13000,F:1600,ap:12,ae:1.6},
-                            10:{N:10500,F:1700,ap:15,ae:2},
-                            12:{N:8800,F:1700,ap:18,ae:2.4}
+                            1:{N:20000,F:400,ap:1.5,ae:0.2},2:{N:20000,F:600,ap:3,ae:0.4},3:{N:20000,F:900,ap:4.5,ae:0.6},4:{N:20000,F:1000,ap:6,ae:0.8},5:{N:20000,F:1200,ap:7.5,ae:1},6:{N:17500,F:1400,ap:9,ae:1.2},8:{N:13000,F:1600,ap:12,ae:1.6},10:{N:10500,F:1700,ap:15,ae:2},12:{N:8800,F:1700,ap:18,ae:2.4}
                         },
                         slot: {
-                            1:{N:20000,F:300,ap:1,ae:1},
-                            2:{N:20000,F:400,ap:2,ae:2},
-                            3:{N:20000,F:600,ap:3,ae:3},
-                            4:{N:19000,F:750,ap:4,ae:4},
-                            5:{N:15500,F:750,ap:5,ae:5},
-                            6:{N:12500,F:750,ap:6,ae:6},
-                            8:{N:9600,F:800,ap:8,ae:8},
-                            10:{N:7600,F:850,ap:10,ae:10},
-                            12:{N:6400,F:900,ap:12,ae:12}
+                            1:{N:20000,F:300,ap:1,ae:1},2:{N:20000,F:400,ap:2,ae:2},3:{N:20000,F:600,ap:3,ae:3},4:{N:19000,F:750,ap:4,ae:4},5:{N:15500,F:750,ap:5,ae:5},6:{N:12500,F:750,ap:6,ae:6},8:{N:9600,F:800,ap:8,ae:8},10:{N:7600,F:850,ap:10,ae:10},12:{N:6400,F:900,ap:12,ae:12}
                         }
                     },
                     3: {
-                        toolName: 'ユニオンツール DLC-ALES',
-                        sourceName: 'ユニオンツール',
-                        sourceScope: 'A5052・A7075',
-                        side: {
-                            1:{N:26000,F:420,ap:1.5,ae:0.1},
-                            2:{N:26000,F:700,ap:3,ae:0.2},
-                            3:{N:26000,F:1200,ap:4.5,ae:0.3},
-                            4:{N:26000,F:1500,ap:6,ae:0.4},
-                            5:{N:23000,F:1600,ap:7.5,ae:0.5},
-                            6:{N:19500,F:1800,ap:9,ae:0.6},
-                            8:{N:14500,F:1900,ap:12,ae:0.8},
-                            10:{N:11500,F:2000,ap:15,ae:1},
-                            12:{N:9700,F:2000,ap:18,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:26000,F:500,ap:1,ae:1},
-                            2:{N:26000,F:650,ap:2,ae:2},
-                            3:{N:26000,F:800,ap:3,ae:3},
-                            4:{N:26000,F:1000,ap:4,ae:4},
-                            5:{N:23000,F:1000,ap:5,ae:5},
-                            6:{N:19500,F:900,ap:6,ae:6},
-                            8:{N:14500,F:950,ap:8,ae:8},
-                            10:{N:11500,F:1000,ap:10,ae:10},
-                            12:{N:9700,F:1000,ap:12,ae:12}
-                        }
+                        toolName: 'ユニオンツール DLC-ALES',sourceName: 'ユニオンツール',sourceScope: 'A5052・A7075',
+                        side: {1:{N:26000,F:420,ap:1.5,ae:0.1},2:{N:26000,F:700,ap:3,ae:0.2},3:{N:26000,F:1200,ap:4.5,ae:0.3},4:{N:26000,F:1500,ap:6,ae:0.4},5:{N:23000,F:1600,ap:7.5,ae:0.5},6:{N:19500,F:1800,ap:9,ae:0.6},8:{N:14500,F:1900,ap:12,ae:0.8},10:{N:11500,F:2000,ap:15,ae:1},12:{N:9700,F:2000,ap:18,ae:1.2}},
+                        slot: {1:{N:26000,F:500,ap:1,ae:1},2:{N:26000,F:650,ap:2,ae:2},3:{N:26000,F:800,ap:3,ae:3},4:{N:26000,F:1000,ap:4,ae:4},5:{N:23000,F:1000,ap:5,ae:5},6:{N:19500,F:900,ap:6,ae:6},8:{N:14500,F:950,ap:8,ae:8},10:{N:11500,F:1000,ap:10,ae:10},12:{N:9700,F:1000,ap:12,ae:12}}
                     },
                     4: {
-                        toolName: 'ATOM AES-4',
-                        sourceName: 'サイトウ製作所（ATOM）',
-                        sourceScope: 'アルミ合金一般',
-                        side: {
-                            1:{N:17500,F:380,ap:2,ae:0.1},
-                            2:{N:8800,F:450,ap:4,ae:0.2},
-                            3:{N:5800,F:500,ap:6,ae:0.3},
-                            4:{N:4400,F:500,ap:8,ae:0.4},
-                            5:{N:3500,F:540,ap:10,ae:0.5},
-                            6:{N:2900,F:540,ap:12,ae:0.6},
-                            8:{N:2200,F:540,ap:16,ae:0.8},
-                            10:{N:1800,F:540,ap:20,ae:1},
-                            12:{N:1500,F:540,ap:24,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:17500,F:240,ap:0.15,ae:1},
-                            2:{N:8800,F:290,ap:0.3,ae:2},
-                            3:{N:5800,F:320,ap:2.25,ae:3},
-                            4:{N:4400,F:320,ap:3,ae:4},
-                            5:{N:3500,F:350,ap:3.75,ae:5},
-                            6:{N:2900,F:350,ap:4.5,ae:6},
-                            8:{N:2200,F:350,ap:6,ae:8},
-                            10:{N:1800,F:350,ap:7.5,ae:10},
-                            12:{N:1500,F:350,ap:9,ae:12}
-                        }
+                        toolName: 'ATOM AES-4',sourceName: 'サイトウ製作所（ATOM）',sourceScope: 'アルミ合金一般',
+                        side: {1:{N:17500,F:380,ap:2,ae:0.1},2:{N:8800,F:450,ap:4,ae:0.2},3:{N:5800,F:500,ap:6,ae:0.3},4:{N:4400,F:500,ap:8,ae:0.4},5:{N:3500,F:540,ap:10,ae:0.5},6:{N:2900,F:540,ap:12,ae:0.6},8:{N:2200,F:540,ap:16,ae:0.8},10:{N:1800,F:540,ap:20,ae:1},12:{N:1500,F:540,ap:24,ae:1.2}},
+                        slot: {1:{N:17500,F:240,ap:0.15,ae:1},2:{N:8800,F:290,ap:0.3,ae:2},3:{N:5800,F:320,ap:2.25,ae:3},4:{N:4400,F:320,ap:3,ae:4},5:{N:3500,F:350,ap:3.75,ae:5},6:{N:2900,F:350,ap:4.5,ae:6},8:{N:2200,F:350,ap:6,ae:8},10:{N:1800,F:350,ap:7.5,ae:10},12:{N:1500,F:350,ap:9,ae:12}}
                     }
                 }
             },
-            'A7075': {
-                category: 'アルミ',
-                teethOptions: {
-                    2: {
-                        toolName: 'NS TOOL AL3D-2 / AL3D-2DLC',
-                        sourceName: 'NS TOOL',
-                        sourceScope: 'A2017・A5052・A7075',
-                        side: {
-                            1:{N:20000,F:400,ap:1.5,ae:0.2},
-                            2:{N:20000,F:600,ap:3,ae:0.4},
-                            3:{N:20000,F:900,ap:4.5,ae:0.6},
-                            4:{N:20000,F:1000,ap:6,ae:0.8},
-                            5:{N:20000,F:1200,ap:7.5,ae:1},
-                            6:{N:17500,F:1400,ap:9,ae:1.2},
-                            8:{N:13000,F:1600,ap:12,ae:1.6},
-                            10:{N:10500,F:1700,ap:15,ae:2},
-                            12:{N:8800,F:1700,ap:18,ae:2.4}
-                        },
-                        slot: {
-                            1:{N:20000,F:300,ap:1,ae:1},
-                            2:{N:20000,F:400,ap:2,ae:2},
-                            3:{N:20000,F:600,ap:3,ae:3},
-                            4:{N:19000,F:750,ap:4,ae:4},
-                            5:{N:15500,F:750,ap:5,ae:5},
-                            6:{N:12500,F:750,ap:6,ae:6},
-                            8:{N:9600,F:800,ap:8,ae:8},
-                            10:{N:7600,F:850,ap:10,ae:10},
-                            12:{N:6400,F:900,ap:12,ae:12}
-                        }
-                    },
-                    3: {
-                        toolName: 'ユニオンツール DLC-ALES',
-                        sourceName: 'ユニオンツール',
-                        sourceScope: 'A5052・A7075',
-                        side: {
-                            1:{N:26000,F:420,ap:1.5,ae:0.1},
-                            2:{N:26000,F:700,ap:3,ae:0.2},
-                            3:{N:26000,F:1200,ap:4.5,ae:0.3},
-                            4:{N:26000,F:1500,ap:6,ae:0.4},
-                            5:{N:23000,F:1600,ap:7.5,ae:0.5},
-                            6:{N:19500,F:1800,ap:9,ae:0.6},
-                            8:{N:14500,F:1900,ap:12,ae:0.8},
-                            10:{N:11500,F:2000,ap:15,ae:1},
-                            12:{N:9700,F:2000,ap:18,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:26000,F:500,ap:1,ae:1},
-                            2:{N:26000,F:650,ap:2,ae:2},
-                            3:{N:26000,F:800,ap:3,ae:3},
-                            4:{N:26000,F:1000,ap:4,ae:4},
-                            5:{N:23000,F:1000,ap:5,ae:5},
-                            6:{N:19500,F:900,ap:6,ae:6},
-                            8:{N:14500,F:950,ap:8,ae:8},
-                            10:{N:11500,F:1000,ap:10,ae:10},
-                            12:{N:9700,F:1000,ap:12,ae:12}
-                        }
-                    },
-                    4: {
-                        toolName: 'ATOM AES-4',
-                        sourceName: 'サイトウ製作所（ATOM）',
-                        sourceScope: 'アルミ合金一般',
-                        side: {
-                            1:{N:17500,F:380,ap:2,ae:0.1},
-                            2:{N:8800,F:450,ap:4,ae:0.2},
-                            3:{N:5800,F:500,ap:6,ae:0.3},
-                            4:{N:4400,F:500,ap:8,ae:0.4},
-                            5:{N:3500,F:540,ap:10,ae:0.5},
-                            6:{N:2900,F:540,ap:12,ae:0.6},
-                            8:{N:2200,F:540,ap:16,ae:0.8},
-                            10:{N:1800,F:540,ap:20,ae:1},
-                            12:{N:1500,F:540,ap:24,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:17500,F:240,ap:0.15,ae:1},
-                            2:{N:8800,F:290,ap:0.3,ae:2},
-                            3:{N:5800,F:320,ap:2.25,ae:3},
-                            4:{N:4400,F:320,ap:3,ae:4},
-                            5:{N:3500,F:350,ap:3.75,ae:5},
-                            6:{N:2900,F:350,ap:4.5,ae:6},
-                            8:{N:2200,F:350,ap:6,ae:8},
-                            10:{N:1800,F:350,ap:7.5,ae:10},
-                            12:{N:1500,F:350,ap:9,ae:12}
-                        }
-                    }
-                }
-            },
-            'A2017': {
-                category: 'アルミ',
-                teethOptions: {
-                    2: {
-                        toolName: 'NS TOOL AL3D-2 / AL3D-2DLC',
-                        sourceName: 'NS TOOL',
-                        sourceScope: 'A2017・A5052・A7075',
-                        side: {
-                            1:{N:20000,F:400,ap:1.5,ae:0.2},
-                            2:{N:20000,F:600,ap:3,ae:0.4},
-                            3:{N:20000,F:900,ap:4.5,ae:0.6},
-                            4:{N:20000,F:1000,ap:6,ae:0.8},
-                            5:{N:20000,F:1200,ap:7.5,ae:1},
-                            6:{N:17500,F:1400,ap:9,ae:1.2},
-                            8:{N:13000,F:1600,ap:12,ae:1.6},
-                            10:{N:10500,F:1700,ap:15,ae:2},
-                            12:{N:8800,F:1700,ap:18,ae:2.4}
-                        },
-                        slot: {
-                            1:{N:20000,F:300,ap:1,ae:1},
-                            2:{N:20000,F:400,ap:2,ae:2},
-                            3:{N:20000,F:600,ap:3,ae:3},
-                            4:{N:19000,F:750,ap:4,ae:4},
-                            5:{N:15500,F:750,ap:5,ae:5},
-                            6:{N:12500,F:750,ap:6,ae:6},
-                            8:{N:9600,F:800,ap:8,ae:8},
-                            10:{N:7600,F:850,ap:10,ae:10},
-                            12:{N:6400,F:900,ap:12,ae:12}
-                        }
-                    },
-                    3: null,
-                    4: {
-                        toolName: 'ATOM AES-4',
-                        sourceName: 'サイトウ製作所（ATOM）',
-                        sourceScope: 'アルミ合金一般',
-                        side: {
-                            1:{N:17500,F:380,ap:2,ae:0.1},
-                            2:{N:8800,F:450,ap:4,ae:0.2},
-                            3:{N:5800,F:500,ap:6,ae:0.3},
-                            4:{N:4400,F:500,ap:8,ae:0.4},
-                            5:{N:3500,F:540,ap:10,ae:0.5},
-                            6:{N:2900,F:540,ap:12,ae:0.6},
-                            8:{N:2200,F:540,ap:16,ae:0.8},
-                            10:{N:1800,F:540,ap:20,ae:1},
-                            12:{N:1500,F:540,ap:24,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:17500,F:240,ap:0.15,ae:1},
-                            2:{N:8800,F:290,ap:0.3,ae:2},
-                            3:{N:5800,F:320,ap:2.25,ae:3},
-                            4:{N:4400,F:320,ap:3,ae:4},
-                            5:{N:3500,F:350,ap:3.75,ae:5},
-                            6:{N:2900,F:350,ap:4.5,ae:6},
-                            8:{N:2200,F:350,ap:6,ae:8},
-                            10:{N:1800,F:350,ap:7.5,ae:10},
-                            12:{N:1500,F:350,ap:9,ae:12}
-                        }
-                    }
-                }
-            },
-            'A6061': {
-                category: 'アルミ',
-                teethOptions: {
-                    2: null,
-                    3: null,
-                    4: {
-                        toolName: 'ATOM AES-4',
-                        sourceName: 'サイトウ製作所（ATOM）',
-                        sourceScope: 'アルミ合金一般',
-                        side: {
-                            1:{N:17500,F:380,ap:2,ae:0.1},
-                            2:{N:8800,F:450,ap:4,ae:0.2},
-                            3:{N:5800,F:500,ap:6,ae:0.3},
-                            4:{N:4400,F:500,ap:8,ae:0.4},
-                            5:{N:3500,F:540,ap:10,ae:0.5},
-                            6:{N:2900,F:540,ap:12,ae:0.6},
-                            8:{N:2200,F:540,ap:16,ae:0.8},
-                            10:{N:1800,F:540,ap:20,ae:1},
-                            12:{N:1500,F:540,ap:24,ae:1.2}
-                        },
-                        slot: {
-                            1:{N:17500,F:240,ap:0.15,ae:1},
-                            2:{N:8800,F:290,ap:0.3,ae:2},
-                            3:{N:5800,F:320,ap:2.25,ae:3},
-                            4:{N:4400,F:320,ap:3,ae:4},
-                            5:{N:3500,F:350,ap:3.75,ae:5},
-                            6:{N:2900,F:350,ap:4.5,ae:6},
-                            8:{N:2200,F:350,ap:6,ae:8},
-                            10:{N:1800,F:350,ap:7.5,ae:10},
-                            12:{N:1500,F:350,ap:9,ae:12}
-                        }
-                    }
-                }
-            },
+            'A7075': {category:'アルミ',teethOptions:{}},
+            'A2017': {category:'アルミ',teethOptions:{}},
+            'A6061': {category:'アルミ',teethOptions:{}},
             'SUS304': {
                 category: 'ステンレス',
                 teethOptions: {
                     2: null,
                     3: {
-                        toolName: 'MISUMI TSC-FMS-HEM3R',
-                        sourceName: 'MISUMI',
-                        sourceScope: 'ステンレス鋼（SUS303・304等）',
+                        toolName: 'NS TOOL MSZ345',
+                        sourceName: 'NS TOOL',
+                        sourceScope: 'SUS304（メーカー公開条件）',
                         side: {
-                            3: { N: 19100, F: 5730, ap: 3, ae: 0.06 },
-                            4: { N: 14320, F: 4300, ap: 4, ae: 0.08 },
-                            5: { N: 11460, F: 3440, ap: 5, ae: 0.1 },
-                            6: { N: 9550, F: 2870, ap: 6, ae: 0.12 },
-                            8: { N: 7160, F: 2150, ap: 8, ae: 0.16 },
-                            10: { N: 5730, F: 1720, ap: 10, ae: 0.2 },
-                            12: { N: 4770, F: 1430, ap: 12, ae: 0.24 }
+                            1:{N:10000,F:200,ap:1.5,ae:0.2},2:{N:5000,F:250,ap:3,ae:0.4},3:{N:3600,F:250,ap:4.5,ae:0.6},4:{N:2800,F:250,ap:6,ae:0.8},5:{N:2200,F:300,ap:7.5,ae:1},6:{N:1800,F:300,ap:9,ae:1.2},7:{N:1600,F:300,ap:10.5,ae:1.4},8:{N:1400,F:300,ap:12,ae:1.6},9:{N:1200,F:300,ap:13.5,ae:1.8},10:{N:1100,F:300,ap:15,ae:2},11:{N:1000,F:280,ap:16.5,ae:2.2},12:{N:900,F:270,ap:18,ae:2.4}
                         },
                         slot: {
-                            3: { N: 9550, F: 770, ap: 0.3, ae: 3 },
-                            4: { N: 7160, F: 880, ap: 0.4, ae: 4 },
-                            5: { N: 5730, F: 980, ap: 0.5, ae: 5 },
-                            6: { N: 4770, F: 950, ap: 0.6, ae: 6 },
-                            8: { N: 3580, F: 900, ap: 0.8, ae: 8 },
-                            10: { N: 2860, F: 690, ap: 1, ae: 10 },
-                            12: { N: 2390, F: 570, ap: 1.2, ae: 12 }
+                            1:{N:10000,F:70,ap:0.25,ae:1},2:{N:5000,F:75,ap:0.5,ae:2},3:{N:3600,F:100,ap:1.5,ae:3},4:{N:2800,F:100,ap:2,ae:4},5:{N:2200,F:120,ap:2.5,ae:5},6:{N:1800,F:120,ap:3,ae:6},7:{N:1600,F:120,ap:3.5,ae:7},8:{N:1400,F:120,ap:4,ae:8},9:{N:1200,F:100,ap:4.5,ae:9},10:{N:1100,F:100,ap:5,ae:10},11:{N:1000,F:100,ap:5.5,ae:11},12:{N:900,F:100,ap:6,ae:12}
                         }
                     },
                     4: {
-                        toolName: 'ユニオンツール CESUS',
-                        sourceName: 'ユニオンツール',
-                        sourceScope: 'SUS304',
-                        side: {
-                            6: { N: 6000, F: 1100, ap: 9, ae: 1.2 },
-                            7: { N: 5000, F: 1025, ap: 10.5, ae: 1.4 },
-                            8: { N: 4300, F: 950, ap: 12, ae: 1.6 },
-                            9: { N: 3700, F: 875, ap: 13.5, ae: 1.8 },
-                            10: { N: 3200, F: 800, ap: 15, ae: 2 },
-                            11: { N: 2900, F: 725, ap: 16.5, ae: 2.2 },
-                            12: { N: 2650, F: 650, ap: 18, ae: 2.4 }
-                        },
-                        slot: {
-                            6: { N: 6000, F: 700, ap: 6, ae: 6 },
-                            7: { N: 5000, F: 625, ap: 7, ae: 7 },
-                            8: { N: 4000, F: 500, ap: 8, ae: 8 },
-                            9: { N: 3150, F: 430, ap: 9, ae: 9 },
-                            10: { N: 2900, F: 400, ap: 10, ae: 10 },
-                            11: { N: 2380, F: 300, ap: 11, ae: 11 },
-                            12: { N: 2420, F: 300, ap: 12, ae: 12 }
-                        }
+                        toolName: 'ユニオンツール CESUS',sourceName: 'ユニオンツール',sourceScope: 'SUS304',
+                        side: {6:{N:6000,F:1100,ap:9,ae:1.2},7:{N:5000,F:1025,ap:10.5,ae:1.4},8:{N:4300,F:950,ap:12,ae:1.6},9:{N:3700,F:875,ap:13.5,ae:1.8},10:{N:3200,F:800,ap:15,ae:2},11:{N:2900,F:725,ap:16.5,ae:2.2},12:{N:2650,F:650,ap:18,ae:2.4}},
+                        slot: {6:{N:6000,F:700,ap:6,ae:6},7:{N:5000,F:625,ap:7,ae:7},8:{N:4000,F:500,ap:8,ae:8},9:{N:3150,F:430,ap:9,ae:9},10:{N:2900,F:400,ap:10,ae:10},11:{N:2380,F:300,ap:11,ae:11},12:{N:2420,F:300,ap:12,ae:12}}
                     }
                 }
             },
-            'SUS316': {
-                category: 'ステンレス',
-                teethOptions: { 2: null, 3: null, 4: null }
-            },
-            'SUS430': {
-                category: 'ステンレス',
-                teethOptions: { 2: null, 3: null, 4: null }
-            },
-
             'C1100': {
                 category: '銅',
                 teethOptions: {
-                    2: {
-                        toolName: 'ユニオンツール DLCES2000',
-                        sourceName: 'ユニオンツール',
-                        sourceScope: '銅 / アルミ合金（C1100加工事例あり）',
-                        side: {
-                            0.5: { N: 32000, F: 120, ap: 0.75, ae: 0.01 },
-                            1:   { N: 18000, F: 180, ap: 1.5,  ae: 0.02 },
-                            1.5: { N: 17500, F: 250, ap: 2.25, ae: 0.15 },
-                            2:   { N: 17000, F: 340, ap: 3,    ae: 0.2 },
-                            3:   { N: 16000, F: 630, ap: 4.5,  ae: 0.3 },
-                            4:   { N: 12000, F: 650, ap: 6,    ae: 0.4 },
-                            5:   { N: 10000, F: 750, ap: 7.5,  ae: 0.5 },
-                            6:   { N: 8000,  F: 800, ap: 9,    ae: 0.6 }
-                        },
-                        slot: {
-                            0.5: { N: 32000, F: 100, ap: 0.025, ae: 0.5 },
-                            1:   { N: 16000, F: 150, ap: 0.05,  ae: 1 },
-                            1.5: { N: 11000, F: 150, ap: 0.15,  ae: 1.5 },
-                            2:   { N: 7500,  F: 150, ap: 0.2,   ae: 2 },
-                            3:   { N: 5000,  F: 170, ap: 0.3,   ae: 3 },
-                            4:   { N: 5000,  F: 200, ap: 0.4,   ae: 4 },
-                            5:   { N: 5000,  F: 250, ap: 0.5,   ae: 5 },
-                            6:   { N: 4500,  F: 250, ap: 0.6,   ae: 6 }
-                        }
-                    },
-                    3: {
-                        toolName: 'NS TOOL DHS340',
-                        sourceName: 'NS TOOL',
-                        sourceScope: '銅（メーカー公開参考条件。C1100加工事例はDHS340F）',
-                        side: {
-                            3: { N: 7600, F: 450, ap: 9,  ae: 0.9 },
-                            4: { N: 5700, F: 510, ap: 12, ae: 1.2 },
-                            5: { N: 4500, F: 530, ap: 15, ae: 1.5 },
-                            6: { N: 3800, F: 530, ap: 18, ae: 1.8 }
-                        },
-                        slot: {
-                            3: { N: 7200, F: 290, ap: 3, ae: 3 },
-                            4: { N: 5400, F: 330, ap: 4, ae: 4 },
-                            5: { N: 4300, F: 340, ap: 5, ae: 5 },
-                            6: { N: 3600, F: 350, ap: 6, ae: 6 }
-                        }
-                    },
-                    4: {
-                        toolName: 'ユニオンツール DLCES4000',
-                        sourceName: 'ユニオンツール',
-                        sourceScope: '銅 / アルミ合金（C1100加工事例あり）',
-                        side: {
-                            3:  { N: 10000, F: 780, ap: 4.5, ae: 0.3 },
-                            4:  { N: 8000,  F: 850, ap: 6,   ae: 0.4 },
-                            6:  { N: 5500,  F: 980, ap: 9,   ae: 0.6 },
-                            8:  { N: 4200,  F: 910, ap: 12,  ae: 0.8 },
-                            10: { N: 3500,  F: 910, ap: 15,  ae: 1.0 }
-                        },
-                        slot: {}
-                    }
+                    2: {toolName:'ユニオンツール DLCES2000',sourceName:'ユニオンツール',sourceScope:'銅 / アルミ合金（C1100加工事例あり）',side:{0.5:{N:32000,F:120,ap:0.75,ae:0.01},1:{N:18000,F:180,ap:1.5,ae:0.02},1.5:{N:17500,F:250,ap:2.25,ae:0.15},2:{N:17000,F:340,ap:3,ae:0.2},3:{N:16000,F:630,ap:4.5,ae:0.3},4:{N:12000,F:650,ap:6,ae:0.4},5:{N:10000,F:750,ap:7.5,ae:0.5},6:{N:8000,F:800,ap:9,ae:0.6}},slot:{0.5:{N:32000,F:100,ap:0.025,ae:0.5},1:{N:16000,F:150,ap:0.05,ae:1},1.5:{N:11000,F:150,ap:0.15,ae:1.5},2:{N:7500,F:150,ap:0.2,ae:2},3:{N:5000,F:170,ap:0.3,ae:3},4:{N:5000,F:200,ap:0.4,ae:4},5:{N:5000,F:250,ap:0.5,ae:5},6:{N:4500,F:250,ap:0.6,ae:6}}},
+                    3: {toolName:'NS TOOL DHS340',sourceName:'NS TOOL',sourceScope:'銅（メーカー公開参考条件。C1100加工事例はDHS340F）',side:{3:{N:7600,F:450,ap:9,ae:0.9},4:{N:5700,F:510,ap:12,ae:1.2},5:{N:4500,F:530,ap:15,ae:1.5},6:{N:3800,F:530,ap:18,ae:1.8}},slot:{3:{N:7200,F:290,ap:3,ae:3},4:{N:5400,F:330,ap:4,ae:4},5:{N:4300,F:340,ap:5,ae:5},6:{N:3600,F:350,ap:6,ae:6}}},
+                    4: {toolName:'ユニオンツール DLCES4000',sourceName:'ユニオンツール',sourceScope:'銅 / アルミ合金（C1100加工事例あり）',side:{3:{N:10000,F:780,ap:4.5,ae:0.3},4:{N:8000,F:850,ap:6,ae:0.4},6:{N:5500,F:980,ap:9,ae:0.6},8:{N:4200,F:910,ap:12,ae:0.8},10:{N:3500,F:910,ap:15,ae:1}},slot:{}}
                 }
             }
         };
 
-        // Field Configurations
+        presetData.A7075.teethOptions = presetData.A5052.teethOptions;
+        presetData.A2017.teethOptions = {2:presetData.A5052.teethOptions[2],3:null,4:presetData.A5052.teethOptions[4]};
+        presetData.A6061.teethOptions = {2:null,3:null,4:presetData.A5052.teethOptions[4]};
+
         const fields = {
-            D: { id: 'input-D', label: '工具径 D', unit: 'mm', placeholder: '例: 10', step: 'any' },
-            Vc: { id: 'input-Vc', label: '切削速度 Vc', unit: 'm/min', placeholder: '例: 200', step: 'any' },
-            N: { id: 'input-N', label: '回転数 N', unit: 'rpm', placeholder: '例: 6000', step: 'any' },
-            fz: { id: 'input-fz', label: '1刃送り fz', unit: 'mm/tooth', placeholder: '例: 0.05', step: 'any' },
-            Z: { id: 'input-Z', label: '刃数 Z', unit: '枚', placeholder: '例: 3', step: '1' },
-            F: { id: 'input-F', label: '送り速度 F', unit: 'mm/min', placeholder: '例: 900', step: 'any' }
+            D:{id:'input-D',label:'工具径 D',unit:'mm',placeholder:'例: 10',step:'any'},
+            Vc:{id:'input-Vc',label:'切削速度 Vc',unit:'m/min',placeholder:'例: 200',step:'any'},
+            N:{id:'input-N',label:'回転数 N',unit:'rpm',placeholder:'例: 6000',step:'any'},
+            fz:{id:'input-fz',label:'1刃送り fz',unit:'mm/tooth',placeholder:'例: 0.05',step:'any'},
+            Z:{id:'input-Z',label:'刃数 Z',unit:'枚',placeholder:'例: 3',step:'1'},
+            F:{id:'input-F',label:'送り速度 F',unit:'mm/min',placeholder:'例: 900',step:'any'}
         };
 
-        // Render inputs based on current mode
         function renderInputs() {
-            const container = document.getElementById('input-fields');
-            container.innerHTML = '';
-            
-            if (currentMode === 'preset') {
-                // Notice banner for tool preset
-                const infoBanner = document.createElement('div');
-                infoBanner.className = 'bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-600 mb-2 text-center font-medium';
-                infoBanner.innerHTML = '前提条件：<span class="font-bold text-slate-800">超硬スクエアエンドミル</span><br><span class="text-[11px]">メーカー公開条件を基準にした参考値</span>';
+            const container=document.getElementById('input-fields');
+            container.innerHTML='';
+            if(currentMode==='preset'){
+                const infoBanner=document.createElement('div');
+                infoBanner.className='bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-600 mb-2 text-center font-medium';
+                infoBanner.innerHTML='前提条件：<span class="font-bold text-slate-800">超硬スクエアエンドミル</span><br><span class="text-[11px]">メーカー公開条件を基準にした参考値</span>';
                 container.appendChild(infoBanner);
 
-                // Material Selector
-                const matWrapper = document.createElement('div');
-                matWrapper.className = 'flex flex-col';
-                matWrapper.innerHTML = `
-                    <label for="input-material" class="text-sm font-bold text-slate-700 mb-1">
-                        被削材を選択
-                    </label>
-                    <select id="input-material" onchange="onMaterialChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-lg font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors">
-                        <optgroup label="アルミ">
-                            <option value="A5052">A5052</option>
-                            <option value="A7075">A7075</option>
-                            <option value="A2017">A2017</option>
-                            <option value="A6061">A6061</option>
-                        </optgroup>
-                        <optgroup label="ステンレス">
-                            <option value="SUS304">SUS304</option>
-                            <option value="SUS316">SUS316（準備中）</option>
-                            <option value="SUS430">SUS430（準備中）</option>
-                        </optgroup>
-                        <optgroup label="銅">
-                            <option value="C1100">C1100（タフピッチ銅）</option>
-                        </optgroup>
-                    </select>
-                `;
+                const matWrapper=document.createElement('div');
+                matWrapper.className='flex flex-col';
+                matWrapper.innerHTML=`<label for="input-material" class="text-sm font-bold text-slate-700 mb-1">被削材を選択</label><select id="input-material" onchange="onMaterialChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-lg font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors"><optgroup label="アルミ"><option value="A5052">A5052</option><option value="A7075">A7075</option><option value="A2017">A2017</option><option value="A6061">A6061</option></optgroup><optgroup label="ステンレス"><option value="SUS304">SUS304</option></optgroup><optgroup label="銅"><option value="C1100">C1100（タフピッチ銅）</option></optgroup></select>`;
                 container.appendChild(matWrapper);
 
-                // Processing Method Selector (Side vs Slot)
-                const methodWrapper = document.createElement('div');
-                methodWrapper.className = 'flex flex-col mt-2';
-                methodWrapper.innerHTML = `
-                    <label class="text-sm font-bold text-slate-700 mb-1">加工方法</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-method-side" onclick="selectMethod('side')" 
-                            class="py-2.5 px-3 rounded-lg font-bold text-center border-2 transition-all text-sm flex items-center justify-center">
-                            側面加工
-                        </button>
-                        <button type="button" id="btn-method-slot" onclick="selectMethod('slot')" 
-                            class="py-2.5 px-3 rounded-lg font-bold text-center border-2 transition-all text-sm flex items-center justify-center">
-                            溝加工
-                        </button>
-                    </div>
-                `;
+                const methodWrapper=document.createElement('div');
+                methodWrapper.className='flex flex-col mt-2';
+                methodWrapper.innerHTML=`<label class="text-sm font-bold text-slate-700 mb-1">加工方法</label><div class="grid grid-cols-2 gap-2"><button type="button" id="btn-method-side" onclick="selectMethod('side')" class="py-2.5 px-3 rounded-lg font-bold text-center border-2 transition-all text-sm flex items-center justify-center">側面加工</button><button type="button" id="btn-method-slot" onclick="selectMethod('slot')" class="py-2.5 px-3 rounded-lg font-bold text-center border-2 transition-all text-sm flex items-center justify-center">溝加工</button></div>`;
                 container.appendChild(methodWrapper);
 
-                // Container for Material Specific Fields (Diameter & Teeth)
-                const specContainer = document.createElement('div');
-                specContainer.id = 'preset-spec-fields';
-                specContainer.className = 'space-y-4 mt-2';
+                const specContainer=document.createElement('div');
+                specContainer.id='preset-spec-fields';
+                specContainer.className='space-y-4 mt-2';
                 container.appendChild(specContainer);
-
                 updateMethodButtonsUI();
                 renderMaterialSpecificFields();
-
             } else {
-                // Regular calculation modes
-                let requiredFields = [];
-                switch(currentMode) {
-                    case 'rpm':
-                        requiredFields = ['D', 'Vc'];
-                        break;
-                    case 'feed':
-                        requiredFields = ['fz', 'Z', 'N'];
-                        break;
-                    case 'vc':
-                        requiredFields = ['D', 'N'];
-                        break;
-                    case 'fz':
-                        requiredFields = ['F', 'Z', 'N'];
-                        break;
-                }
-
-                requiredFields.forEach(key => {
-                    const config = fields[key];
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex flex-col';
-                    
-                    wrapper.innerHTML = `
-                        <label for="${config.id}" class="text-sm font-bold text-slate-700 mb-1 flex justify-between">
-                            <span>${config.label}</span>
-                            <span class="text-slate-400 font-normal">(${config.unit})</span>
-                        </label>
-                        <div class="relative rounded-md shadow-sm">
-                            <input type="number" id="${config.id}" name="${config.id}" step="${config.step}" inputmode="decimal"
-                                placeholder="${config.placeholder}"
-                                class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors" />
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-medium">
-                                ${config.unit}
-                            </div>
-                        </div>
-                    `;
+                let requiredFields=[];
+                switch(currentMode){case'rpm':requiredFields=['D','Vc'];break;case'feed':requiredFields=['fz','Z','N'];break;case'vc':requiredFields=['D','N'];break;case'fz':requiredFields=['F','Z','N'];break;}
+                requiredFields.forEach(key=>{
+                    const config=fields[key];
+                    const wrapper=document.createElement('div');
+                    wrapper.className='flex flex-col';
+                    wrapper.innerHTML=`<label for="${config.id}" class="text-sm font-bold text-slate-700 mb-1 flex justify-between"><span>${config.label}</span><span class="text-slate-400 font-normal">(${config.unit})</span></label><div class="relative rounded-md shadow-sm"><input type="number" id="${config.id}" name="${config.id}" step="${config.step}" inputmode="decimal" placeholder="${config.placeholder}" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors" /><div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-medium">${config.unit}</div></div>`;
                     container.appendChild(wrapper);
                 });
             }
-
-            // Update UI
-            updateResultPlaceholder();
-            hideError();
+            updateResultPlaceholder();hideError();
         }
 
-        // Processing method selection switch
-        function selectMethod(method) {
-            currentMethod = method;
-            updateMethodButtonsUI();
-            if (currentMode === 'preset') {
-                updateDiameterOptions();
-                updateAvailabilityNotice();
-            }
-            updateResultPlaceholder();
-            hideError();
-        }
+        function selectMethod(method){currentMethod=method;updateMethodButtonsUI();if(currentMode==='preset')renderMaterialSpecificFields();updateResultPlaceholder();hideError();}
+        function updateMethodButtonsUI(){const sideBtn=document.getElementById('btn-method-side'),slotBtn=document.getElementById('btn-method-slot');if(!sideBtn||!slotBtn)return;if(currentMethod==='side'){sideBtn.className='py-2.5 px-3 rounded-lg font-bold text-center border-2 border-industry-accent bg-industry-accent text-white shadow-sm text-sm flex items-center justify-center';slotBtn.className='py-2.5 px-3 rounded-lg font-bold text-center border-2 border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 text-sm flex items-center justify-center';}else{sideBtn.className='py-2.5 px-3 rounded-lg font-bold text-center border-2 border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 text-sm flex items-center justify-center';slotBtn.className='py-2.5 px-3 rounded-lg font-bold text-center border-2 border-industry-accent bg-industry-accent text-white shadow-sm text-sm flex items-center justify-center';}}
+        function onMaterialChange(){renderMaterialSpecificFields();updateResultPlaceholder();hideError();}
+        function getAvailableDiameters(material,Z){const toolData=presetData[material]?.teethOptions?.[Z];if(!toolData)return[];return Object.keys(toolData[currentMethod]||{}).map(Number).sort((a,b)=>a-b);}
+        function getAvailableTeeth(material){const opts=presetData[material]?.teethOptions||{};return Object.keys(opts).map(Number).filter(z=>{const t=opts[z];return t&&Object.keys(t[currentMethod]||{}).length>0;}).sort((a,b)=>a-b);}
 
-        function updateMethodButtonsUI() {
-            const sideBtn = document.getElementById('btn-method-side');
-            const slotBtn = document.getElementById('btn-method-slot');
-            if (!sideBtn || !slotBtn) return;
-
-            if (currentMethod === 'side') {
-                sideBtn.className = 'py-2.5 px-3 rounded-lg font-bold text-center border-2 border-industry-accent bg-industry-accent text-white shadow-sm text-sm flex items-center justify-center';
-                slotBtn.className = 'py-2.5 px-3 rounded-lg font-bold text-center border-2 border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 text-sm flex items-center justify-center';
-            } else {
-                sideBtn.className = 'py-2.5 px-3 rounded-lg font-bold text-center border-2 border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 text-sm flex items-center justify-center';
-                slotBtn.className = 'py-2.5 px-3 rounded-lg font-bold text-center border-2 border-industry-accent bg-industry-accent text-white shadow-sm text-sm flex items-center justify-center';
-            }
-        }
-
-        // Handles changes when material dropdown is selected
-        function onMaterialChange() {
-            renderMaterialSpecificFields();
-            updateResultPlaceholder();
-            hideError();
-        }
-
-        // Render tool diameter and teeth fields depending on chosen material
-        function getAvailableDiameters(material, Z) {
-            const toolData = presetData[material]?.teethOptions?.[Z];
-            if (!toolData) return [];
-            return Object.keys(toolData[currentMethod] || {})
-                .map(Number)
-                .sort((a, b) => a - b);
-        }
-
-        function renderMaterialSpecificFields() {
-            const specContainer = document.getElementById('preset-spec-fields');
-            if (!specContainer) return;
-            specContainer.innerHTML = '';
-
-            const material = document.getElementById('input-material')?.value || 'A5052';
-
-            const zWrapper = document.createElement('div');
-            zWrapper.className = 'flex flex-col';
-            zWrapper.innerHTML = `
-                <label for="input-Z" class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label>
-                <select id="input-Z" onchange="onTeethChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
-                    <option value="2">2枚刃</option>
-                    <option value="3" selected>3枚刃</option>
-                    <option value="4">4枚刃</option>
-                </select>`;
+        function renderMaterialSpecificFields(){
+            const specContainer=document.getElementById('preset-spec-fields');if(!specContainer)return;specContainer.innerHTML='';
+            const material=document.getElementById('input-material')?.value||'A5052';
+            const availableTeeth=getAvailableTeeth(material);
+            const zWrapper=document.createElement('div');zWrapper.className='flex flex-col';
+            const zOptions=availableTeeth.map(z=>`<option value="${z}" ${z===3?'selected':''}>${z}枚刃</option>`).join('');
+            zWrapper.innerHTML=`<label for="input-Z" class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label><select id="input-Z" onchange="onTeethChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">${zOptions}</select>`;
             specContainer.appendChild(zWrapper);
-
-            const dWrapper = document.createElement('div');
-            dWrapper.className = 'flex flex-col';
-            dWrapper.innerHTML = `
-                <label for="input-D" class="text-sm font-bold text-slate-700 mb-1 flex justify-between">
-                    <span>工具径 D</span><span class="text-slate-400 font-normal">(mm)</span>
-                </label>
-                <select id="input-D" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
-                </select>`;
-            specContainer.appendChild(dWrapper);
-
-            const notice = document.createElement('div');
-            notice.id = 'preset-availability';
-            specContainer.appendChild(notice);
-
-            updateDiameterOptions();
-            updateAvailabilityNotice();
+            if(availableTeeth.length&&!availableTeeth.includes(Number(document.getElementById('input-Z').value)))document.getElementById('input-Z').value=String(availableTeeth[0]);
+            const dWrapper=document.createElement('div');dWrapper.className='flex flex-col';dWrapper.innerHTML=`<label for="input-D" class="text-sm font-bold text-slate-700 mb-1 flex justify-between"><span>工具径 D</span><span class="text-slate-400 font-normal">(mm)</span></label><select id="input-D" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none"></select>`;specContainer.appendChild(dWrapper);
+            const notice=document.createElement('div');notice.id='preset-availability';specContainer.appendChild(notice);updateDiameterOptions();updateAvailabilityNotice();
         }
+        function onTeethChange(){updateDiameterOptions();updateAvailabilityNotice();updateResultPlaceholder();hideError();}
+        function updateDiameterOptions(){const material=document.getElementById('input-material')?.value||'A5052';const Z=Number(document.getElementById('input-Z')?.value||3);const dEl=document.getElementById('input-D');if(!dEl)return;const ds=getAvailableDiameters(material,Z);dEl.innerHTML='';if(ds.length===0){const opt=document.createElement('option');opt.value='';opt.textContent='条件確認中';dEl.appendChild(opt);dEl.disabled=true;return;}dEl.disabled=false;ds.forEach(d=>{const opt=document.createElement('option');opt.value=d;opt.textContent=`${d} mm`;if(d===10)opt.selected=true;dEl.appendChild(opt);});if(!dEl.value&&ds.length)dEl.value=String(ds[0]);}
+        function updateAvailabilityNotice(){const material=document.getElementById('input-material')?.value||'A5052';const Z=Number(document.getElementById('input-Z')?.value||3);const box=document.getElementById('preset-availability');if(!box)return;const toolData=presetData[material]?.teethOptions?.[Z];const methodData=toolData?.[currentMethod];const usable=toolData&&methodData&&Object.keys(methodData).length>0;box.className=usable?'bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg p-2.5 text-xs':'bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-2.5 text-xs';const methodText=currentMethod==='side'?'側面加工':'溝加工';box.textContent=usable?`${material} / ${Z}枚刃 / ${methodText}：使用可能（${toolData.sourceName}基準）`:`${material} / ${Z}枚刃 / ${methodText}：メーカー公開条件を確認できていません`;}
 
-        function onTeethChange() {
-            updateDiameterOptions();
-            updateAvailabilityNotice();
-            updateResultPlaceholder();
-            hideError();
-        }
+        function selectTab(mode){currentMode=mode;document.querySelectorAll('.tab-btn').forEach(btn=>{btn.classList.remove('bg-industry-accent','text-white','active');btn.classList.add('bg-white','text-slate-700');});const activeTab=document.getElementById(`tab-${mode}`);activeTab.classList.remove('bg-white','text-slate-700');activeTab.classList.add('bg-industry-accent','text-white','active');if(mode==='preset'){document.getElementById('standard-footer-notice').classList.add('hidden');document.getElementById('preset-footer-notice').classList.remove('hidden');}else{document.getElementById('standard-footer-notice').classList.remove('hidden');document.getElementById('preset-footer-notice').classList.add('hidden');}renderInputs();}
 
-        function updateDiameterOptions() {
-            const material = document.getElementById('input-material')?.value || 'A5052';
-            const Z = Number(document.getElementById('input-Z')?.value || 3);
-            const dEl = document.getElementById('input-D');
-            if (!dEl) return;
-
-            const ds = getAvailableDiameters(material, Z);
-            dEl.innerHTML = '';
-
-            if (ds.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.textContent = '条件確認中';
-                dEl.appendChild(opt);
-                dEl.disabled = true;
-                return;
-            }
-
-            dEl.disabled = false;
-            ds.forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d;
-                opt.textContent = `${d} mm`;
-                if (d === 10) opt.selected = true;
-                dEl.appendChild(opt);
-            });
-
-            if (!dEl.value && ds.length) dEl.value = String(ds[0]);
-        }
-
-        function updateAvailabilityNotice() {
-            const material = document.getElementById('input-material')?.value || 'A5052';
-            const Z = Number(document.getElementById('input-Z')?.value || 3);
-            const box = document.getElementById('preset-availability');
-            if (!box) return;
-
-            const toolData = presetData[material]?.teethOptions?.[Z];
-            const methodData = toolData?.[currentMethod];
-            const usable = toolData && methodData && Object.keys(methodData).length > 0;
-
-            box.className = usable
-                ? 'bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg p-2.5 text-xs'
-                : 'bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-2.5 text-xs';
-
-            const methodText = currentMethod === 'side' ? '側面加工' : '溝加工';
-            box.textContent = usable
-                ? `${material} / ${Z}枚刃 / ${methodText}：使用可能（${toolData.sourceName}基準）`
-                : `${material} / ${Z}枚刃 / ${methodText}：メーカー公開条件を確認できていません`;
-        }
-
-        // Switch mode tabs
-        function selectTab(mode) {
-            currentMode = mode;
-            
-            // Tab visual styling updates
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-industry-accent', 'text-white', 'active');
-                btn.classList.add('bg-white', 'text-slate-700');
-            });
-
-            const activeTab = document.getElementById(`tab-${mode}`);
-            activeTab.classList.remove('bg-white', 'text-slate-700');
-            activeTab.classList.add('bg-industry-accent', 'text-white', 'active');
-
-            // Toggle Footer Notices
-            if (mode === 'preset') {
-                document.getElementById('standard-footer-notice').classList.add('hidden');
-                document.getElementById('preset-footer-notice').classList.remove('hidden');
-            } else {
-                document.getElementById('standard-footer-notice').classList.remove('hidden');
-                document.getElementById('preset-footer-notice').classList.add('hidden');
-            }
-
-            renderInputs();
-        }
-
-        // Placeholder texts for Result area
-        function updateResultPlaceholder() {
-            const titleEl = document.getElementById('result-title');
-            const unitEl = document.getElementById('result-unit');
-            const valEl = document.getElementById('result-value');
-            const subEl = document.getElementById('result-sub');
-
-            const singleDisplay = document.getElementById('single-result');
-            const multiDisplay = document.getElementById('multi-result');
-            const sourceInfoA5052 = document.getElementById('preset-source-info-a5052');
-            const sourceInfoS45C = document.getElementById('preset-source-info-s45c');
-            const sourceInfoSUS304 = document.getElementById('preset-source-info-sus304');
-            const sourceInfoCopper = document.getElementById('preset-source-info-copper');
-
-            valEl.textContent = '---';
-            
-            if (currentMode === 'preset') {
-                titleEl.textContent = '参考スタート条件';
-                singleDisplay.classList.add('hidden');
-                multiDisplay.classList.remove('hidden');
-
-                // Update method badge display
-                const methodBadge = document.getElementById('preset-res-method-badge');
-                if (currentMethod === 'side') {
-                    methodBadge.textContent = '側面加工';
-                    methodBadge.className = 'bg-industry-orange text-white text-xs font-bold px-3 py-1 rounded-full shadow';
-                    document.getElementById('preset-res-ae-row').classList.remove('hidden');
-                } else {
-                    methodBadge.textContent = '溝加工';
-                    methodBadge.className = 'bg-teal-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow';
-                    document.getElementById('preset-res-ae-row').classList.add('hidden');
-                }
-
-                document.getElementById('preset-res-vc').textContent = '---';
-                document.getElementById('preset-res-n').textContent = '---';
-                document.getElementById('preset-res-fz').textContent = '---';
-                document.getElementById('preset-res-f').textContent = '---';
-                document.getElementById('preset-res-ap').textContent = '---';
-                document.getElementById('preset-res-ae').textContent = '---';
-
-                const materialEl = document.getElementById('input-material');
-                const selectedMat = materialEl ? materialEl.value : 'A5052';
-                const isStainless = selectedMat.startsWith('SUS');
-                const isCopper = selectedMat === 'C1100';
-
-                sourceInfoA5052.classList.add('hidden');
-                sourceInfoS45C.classList.add('hidden');
-                sourceInfoSUS304.classList.add('hidden');
-                sourceInfoCopper.classList.add('hidden');
-
-                if (isCopper) {
-                    sourceInfoCopper.classList.remove('hidden');
-                } else if (isStainless) {
-                    sourceInfoSUS304.classList.remove('hidden');
-                } else {
-                    sourceInfoA5052.classList.remove('hidden');
-                }
-
-                subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
-
-            } else {
-                singleDisplay.classList.remove('hidden');
-                multiDisplay.classList.add('hidden');
-                sourceInfoA5052.classList.add('hidden');
-                sourceInfoS45C.classList.add('hidden');
-                sourceInfoSUS304.classList.add('hidden');
-                sourceInfoCopper.classList.add('hidden');
-
-                switch(currentMode) {
-                    case 'rpm':
-                        titleEl.textContent = '回転数 (N)';
-                        unitEl.textContent = 'rpm';
-                        subEl.textContent = 'N = (1000 × Vc) ÷ (π × D)';
-                        break;
-                    case 'feed':
-                        titleEl.textContent = '送り速度 (F)';
-                        unitEl.textContent = 'mm/min';
-                        subEl.textContent = 'F = fz × Z × N';
-                        break;
-                    case 'vc':
-                        titleEl.textContent = '切削速度 (Vc)';
-                        unitEl.textContent = 'm/min';
-                        subEl.textContent = 'Vc = (π × D × N) ÷ 1000';
-                        break;
-                    case 'fz':
-                        titleEl.textContent = '1刃送り (fz)';
-                        unitEl.textContent = 'mm/tooth';
-                        subEl.textContent = 'fz = F ÷ (Z × N)';
-                        break;
-                }
+        function updateResultPlaceholder(){
+            const titleEl=document.getElementById('result-title'),unitEl=document.getElementById('result-unit'),valEl=document.getElementById('result-value'),subEl=document.getElementById('result-sub');
+            const singleDisplay=document.getElementById('single-result'),multiDisplay=document.getElementById('multi-result'),sourceInfoA5052=document.getElementById('preset-source-info-a5052'),sourceInfoS45C=document.getElementById('preset-source-info-s45c'),sourceInfoSUS304=document.getElementById('preset-source-info-sus304'),sourceInfoCopper=document.getElementById('preset-source-info-copper');valEl.textContent='---';
+            if(currentMode==='preset'){
+                titleEl.textContent='参考スタート条件';singleDisplay.classList.add('hidden');multiDisplay.classList.remove('hidden');const methodBadge=document.getElementById('preset-res-method-badge');if(currentMethod==='side'){methodBadge.textContent='側面加工';methodBadge.className='bg-industry-orange text-white text-xs font-bold px-3 py-1 rounded-full shadow';document.getElementById('preset-res-ae-row').classList.remove('hidden');}else{methodBadge.textContent='溝加工';methodBadge.className='bg-teal-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow';document.getElementById('preset-res-ae-row').classList.add('hidden');}
+                ['vc','n','fz','f','ap','ae'].forEach(k=>document.getElementById(`preset-res-${k}`).textContent='---');const selectedMat=document.getElementById('input-material')?.value||'A5052';const isStainless=selectedMat.startsWith('SUS'),isCopper=selectedMat==='C1100';sourceInfoA5052.classList.add('hidden');sourceInfoS45C.classList.add('hidden');sourceInfoSUS304.classList.add('hidden');sourceInfoCopper.classList.add('hidden');if(isCopper)sourceInfoCopper.classList.remove('hidden');else if(isStainless)sourceInfoSUS304.classList.remove('hidden');else sourceInfoA5052.classList.remove('hidden');subEl.textContent='「計算する」ボタンを押すと参考条件を表示します';
+            }else{
+                singleDisplay.classList.remove('hidden');multiDisplay.classList.add('hidden');sourceInfoA5052.classList.add('hidden');sourceInfoS45C.classList.add('hidden');sourceInfoSUS304.classList.add('hidden');sourceInfoCopper.classList.add('hidden');switch(currentMode){case'rpm':titleEl.textContent='回転数 (N)';unitEl.textContent='rpm';subEl.textContent='N = (1000 × Vc) ÷ (π × D)';break;case'feed':titleEl.textContent='送り速度 (F)';unitEl.textContent='mm/min';subEl.textContent='F = fz × Z × N';break;case'vc':titleEl.textContent='切削速度 (Vc)';unitEl.textContent='m/min';subEl.textContent='Vc = (π × D × N) ÷ 1000';break;case'fz':titleEl.textContent='1刃送り (fz)';unitEl.textContent='mm/tooth';subEl.textContent='fz = F ÷ (Z × N)';break;}
             }
         }
 
-        // Error display helpers
-        function showError(msg) {
-            const errBox = document.getElementById('error-message');
-            errBox.textContent = msg;
-            errBox.classList.remove('hidden');
-        }
+        function showError(msg){const errBox=document.getElementById('error-message');errBox.textContent=msg;errBox.classList.remove('hidden');}
+        function hideError(){document.getElementById('error-message').classList.add('hidden');}
+        function getValidatedValue(key){const config=fields[key],input=document.getElementById(config.id);if(!input)return null;const valStr=input.value.trim();if(valStr===''){showError(`「${config.label}」を入力してください。`);input.focus();return null;}const val=Number(valStr);if(isNaN(val)){showError(`「${config.label}」には有効な数値を入力をしてください。`);input.focus();return null;}if(val<=0){showError(`「${config.label}」には0より大きい数値を指定してください。`);input.focus();return null;}if(key==='Z'){if(!Number.isInteger(val)){showError('刃数 (Z) は整数で入力してください。');input.focus();return null;}if(val>200){showError('刃数 (Z) の値が大きすぎます。正しい数値を入力してください。');input.focus();return null;}}if(val>1000000){showError(`「${config.label}」の数値が大きすぎます。確認してください。`);input.focus();return null;}return val;}
 
-        function hideError() {
-            const errBox = document.getElementById('error-message');
-            errBox.classList.add('hidden');
-        }
+        function calculate(event){event.preventDefault();hideError();try{
+            if(currentMode==='preset'){
+                const selectedMat=document.getElementById('input-material')?.value||'A5052';const Z=Number(document.getElementById('input-Z')?.value||3);const D=Number(document.getElementById('input-D')?.value||0);const toolData=presetData[selectedMat]?.teethOptions?.[Z];if(!toolData){showError(`${selectedMat} / ${Z}枚刃のメーカー公開条件を確認できていません。`);return;}const item=toolData[currentMethod]?.[D];if(!item){showError('この工具径の参考条件は現在登録されていません。');return;}const N=item.N,F=item.F,Vc=(Math.PI*D*N)/1000,fz=F/(Z*N);document.getElementById('preset-res-n').textContent=N.toLocaleString();document.getElementById('preset-res-f').textContent=F.toLocaleString();document.getElementById('preset-res-vc').textContent=Vc.toFixed(1);document.getElementById('preset-res-fz').textContent=fz.toFixed(3);document.getElementById('preset-res-ap').textContent=item.ap;document.getElementById('preset-res-ae').textContent=item.ae;const methodNameText=currentMethod==='side'?'側面加工':'溝加工';document.getElementById('result-sub').textContent=`${selectedMat} / φ${D}mm / ${Z}枚刃 / ${methodNameText} / ${toolData.sourceName}基準`;if(typeof gtag==='function')gtag('event','calculate',{calc_mode:currentMode,material:selectedMat,method:currentMethod,diameter_mm:D,teeth:Z,source:toolData.sourceName});
+            }else if(currentMode==='rpm'){const D=getValidatedValue('D');if(D===null)return;const Vc=getValidatedValue('Vc');if(Vc===null)return;const N=(1000*Vc)/(Math.PI*D);if(!isFinite(N)||N<=0){showError('計算結果が異常値になりました。入力値を確認してください。');return;}document.getElementById('result-value').textContent=Math.round(N).toLocaleString();
+            }else if(currentMode==='feed'){const fz=getValidatedValue('fz');if(fz===null)return;const Z=getValidatedValue('Z');if(Z===null)return;const N=getValidatedValue('N');if(N===null)return;const F=fz*Z*N;if(!isFinite(F)||F<=0){showError('計算結果が異常値になりました。入力値を確認してください。');return;}document.getElementById('result-value').textContent=Math.round(F).toLocaleString();
+            }else if(currentMode==='vc'){const D=getValidatedValue('D');if(D===null)return;const N=getValidatedValue('N');if(N===null)return;const Vc=(Math.PI*D*N)/1000;if(!isFinite(Vc)||Vc<=0){showError('計算結果が異常値になりました。入力値を確認してください。');return;}document.getElementById('result-value').textContent=Vc.toFixed(1);
+            }else if(currentMode==='fz'){const F=getValidatedValue('F');if(F===null)return;const Z=getValidatedValue('Z');if(Z===null)return;const N=getValidatedValue('N');if(N===null)return;const fz=F/(Z*N);if(!isFinite(fz)||fz<=0){showError('計算結果が異常値になりました。入力値を確認してください。');return;}document.getElementById('result-value').textContent=fz.toFixed(3);}
+        }catch(e){showError('計算処理中にエラーが発生しました。数値を再度ご確認ください。');}}
 
-        // Validation logic
-        function getValidatedValue(key) {
-            const config = fields[key];
-            const input = document.getElementById(config.id);
-            if (!input) return null;
-
-            const valStr = input.value.trim();
-
-            if (valStr === '') {
-                showError(`「${config.label}」を入力してください。`);
-                input.focus();
-                return null;
-            }
-
-            const val = Number(valStr);
-
-            if (isNaN(val)) {
-                showError(`「${config.label}」には有効な数値を入力をしてください。`);
-                input.focus();
-                return null;
-            }
-
-            if (val <= 0) {
-                showError(`「${config.label}」には0より大きい数値を指定してください。`);
-                input.focus();
-                return null;
-            }
-
-            // Specific check for teeth number Z
-            if (key === 'Z') {
-                if (!Number.isInteger(val)) {
-                    showError('刃数 (Z) は整数で入力してください。');
-                    input.focus();
-                    return null;
-                }
-                if (val > 200) {
-                    showError('刃数 (Z) の値が大きすぎます。正しい数値を入力してください。');
-                    input.focus();
-                    return null;
-                }
-            }
-
-            // Extreme value checks
-            if (val > 1000000) {
-                showError(`「${config.label}」の数値が大きすぎます。確認してください。`);
-                input.focus();
-                return null;
-            }
-
-            return val;
-        }
-
-        // Calculation execution
-        function calculate(event) {
-            event.preventDefault();
-            hideError();
-
-            try {
-                if (currentMode === 'preset') {
-                    const selectedMat = document.getElementById('input-material')?.value || 'A5052';
-                    const Z = Number(document.getElementById('input-Z')?.value || 3);
-                    const dValue = document.getElementById('input-D')?.value;
-                    const D = Number(dValue || 0);
-
-                    const toolData = presetData[selectedMat]?.teethOptions?.[Z];
-                    if (!toolData) {
-                        showError(`${selectedMat} / ${Z}枚刃のメーカー公開条件を確認できていません。`);
-                        document.getElementById('preset-res-vc').textContent = '準備中';
-                        document.getElementById('preset-res-n').textContent = '準備中';
-                        document.getElementById('preset-res-fz').textContent = '準備中';
-                        document.getElementById('preset-res-f').textContent = '準備中';
-                        document.getElementById('preset-res-ap').textContent = '---';
-                        document.getElementById('preset-res-ae').textContent = '---';
-                        document.getElementById('result-sub').textContent = '確認できたメーカー条件から順次追加します';
-                        return;
-                    }
-
-                    const item = toolData[currentMethod]?.[D];
-                    if (!item) {
-                        showError('この工具径の参考条件は現在登録されていません。');
-                        return;
-                    }
-
-                    const N = item.N;
-                    const F = item.F;
-                    const Vc = (Math.PI * D * N) / 1000;
-                    const fz = F / (Z * N);
-
-                    document.getElementById('preset-res-n').textContent = N.toLocaleString();
-                    document.getElementById('preset-res-f').textContent = F.toLocaleString();
-                    document.getElementById('preset-res-vc').textContent = Vc.toFixed(1);
-                    document.getElementById('preset-res-fz').textContent = fz.toFixed(3);
-                    document.getElementById('preset-res-ap').textContent = item.ap;
-                    document.getElementById('preset-res-ae').textContent = item.ae;
-
-                    const methodNameText = currentMethod === 'side' ? '側面加工' : '溝加工';
-                    document.getElementById('result-sub').textContent =
-                        `${selectedMat} / φ${D}mm / ${Z}枚刃 / ${methodNameText} / ${toolData.sourceName}基準`;
-
-                    if (typeof gtag === 'function') {
-                        gtag('event', 'calculate', {
-                            calc_mode: currentMode,
-                            material: selectedMat,
-                            method: currentMethod,
-                            diameter_mm: D,
-                            teeth: Z,
-                            source: toolData.sourceName
-                        });
-                    }
-
-                } else if (currentMode === 'rpm') {
-                    const D = getValidatedValue('D');
-                    if (D === null) return;
-                    const Vc = getValidatedValue('Vc');
-                    if (Vc === null) return;
-
-                    const N = (1000 * Vc) / (Math.PI * D);
-                    if (!isFinite(N) || N <= 0) {
-                        showError('計算結果が異常値になりました。入力値を確認してください。');
-                        return;
-                    }
-
-                    document.getElementById('result-value').textContent = Math.round(N).toLocaleString();
-
-                } else if (currentMode === 'feed') {
-                    const fz = getValidatedValue('fz');
-                    if (fz === null) return;
-                    const Z = getValidatedValue('Z');
-                    if (Z === null) return;
-                    const N = getValidatedValue('N');
-                    if (N === null) return;
-
-                    const F = fz * Z * N;
-                    if (!isFinite(F) || F <= 0) {
-                        showError('計算結果が異常値になりました。入力値を確認してください。');
-                        return;
-                    }
-
-                    document.getElementById('result-value').textContent = Math.round(F).toLocaleString();
-
-                } else if (currentMode === 'vc') {
-                    const D = getValidatedValue('D');
-                    if (D === null) return;
-                    const N = getValidatedValue('N');
-                    if (N === null) return;
-
-                    const Vc = (Math.PI * D * N) / 1000;
-                    if (!isFinite(Vc) || Vc <= 0) {
-                        showError('計算結果が異常値になりました。入力値を確認してください。');
-                        return;
-                    }
-
-                    document.getElementById('result-value').textContent = Vc.toFixed(1);
-
-                } else if (currentMode === 'fz') {
-                    const F = getValidatedValue('F');
-                    if (F === null) return;
-                    const Z = getValidatedValue('Z');
-                    if (Z === null) return;
-                    const N = getValidatedValue('N');
-                    if (N === null) return;
-
-                    const fz = F / (Z * N);
-                    if (!isFinite(fz) || fz <= 0) {
-                        showError('計算結果が異常値になりました。入力値を確認してください。');
-                        return;
-                    }
-
-                    document.getElementById('result-value').textContent = fz.toFixed(3);
-                }
-            } catch (e) {
-                showError('計算処理中にエラーが発生しました。数値を再度ご確認ください。');
-            }
-        }
-
-        // Initialize application on page load
-        window.onload = function() {
-            selectTab('preset');
-        };
+        window.onload=function(){selectTab('preset');};
     </script>
 </body>
 </html>

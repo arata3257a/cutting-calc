@@ -179,12 +179,12 @@
             <!-- Data Notice Area for SUS304 -->
             <div id="preset-source-info-sus304" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
                 <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
-                <p>・参考元：ユニオンツール CZS 切削条件表</p>
-                <p>・対象材：SUS304</p>
-                <p>・4枚刃・超硬・UTCOATを基準としたメーカー公開条件です。</p>
+                <p>・3枚刃：MISUMI TSC-FMS-HEM3R（SUS303・304等）</p>
+                <p>・4枚刃：ユニオンツール CESUS（SUS304）</p>
+                <p>・2枚刃、SUS316、SUS430は条件確認中のため計算しません。</p>
                 <div class="bg-cyan-950/80 border border-cyan-400/60 p-2 rounded my-1 text-cyan-200">
                     <p class="font-bold text-cyan-300">【切削油必須】</p>
-                    <p>SUS304加工では切削油を使用してください。</p>
+                    <p>SUS304の4枚刃CESUS条件では切削油の使用が必須です。</p>
                     <p>水溶性または油性切削油を推奨します。</p>
                 </div>
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
@@ -498,6 +498,66 @@
                         }
                     }
                 }
+            },
+            'SUS304': {
+                category: 'ステンレス',
+                teethOptions: {
+                    2: null,
+                    3: {
+                        toolName: 'MISUMI TSC-FMS-HEM3R',
+                        sourceName: 'MISUMI',
+                        sourceScope: 'ステンレス鋼（SUS303・304等）',
+                        side: {
+                            3: { N: 19100, F: 5730, ap: 3, ae: 0.06 },
+                            4: { N: 14320, F: 4300, ap: 4, ae: 0.08 },
+                            5: { N: 11460, F: 3440, ap: 5, ae: 0.1 },
+                            6: { N: 9550, F: 2870, ap: 6, ae: 0.12 },
+                            8: { N: 7160, F: 2150, ap: 8, ae: 0.16 },
+                            10: { N: 5730, F: 1720, ap: 10, ae: 0.2 },
+                            12: { N: 4770, F: 1430, ap: 12, ae: 0.24 }
+                        },
+                        slot: {
+                            3: { N: 9550, F: 770, ap: 0.3, ae: 3 },
+                            4: { N: 7160, F: 880, ap: 0.4, ae: 4 },
+                            5: { N: 5730, F: 980, ap: 0.5, ae: 5 },
+                            6: { N: 4770, F: 950, ap: 0.6, ae: 6 },
+                            8: { N: 3580, F: 900, ap: 0.8, ae: 8 },
+                            10: { N: 2860, F: 690, ap: 1, ae: 10 },
+                            12: { N: 2390, F: 570, ap: 1.2, ae: 12 }
+                        }
+                    },
+                    4: {
+                        toolName: 'ユニオンツール CESUS',
+                        sourceName: 'ユニオンツール',
+                        sourceScope: 'SUS304',
+                        side: {
+                            6: { N: 6000, F: 1100, ap: 9, ae: 1.2 },
+                            7: { N: 5000, F: 1025, ap: 10.5, ae: 1.4 },
+                            8: { N: 4300, F: 950, ap: 12, ae: 1.6 },
+                            9: { N: 3700, F: 875, ap: 13.5, ae: 1.8 },
+                            10: { N: 3200, F: 800, ap: 15, ae: 2 },
+                            11: { N: 2900, F: 725, ap: 16.5, ae: 2.2 },
+                            12: { N: 2650, F: 650, ap: 18, ae: 2.4 }
+                        },
+                        slot: {
+                            6: { N: 6000, F: 700, ap: 6, ae: 6 },
+                            7: { N: 5000, F: 625, ap: 7, ae: 7 },
+                            8: { N: 4000, F: 500, ap: 8, ae: 8 },
+                            9: { N: 3150, F: 430, ap: 9, ae: 9 },
+                            10: { N: 2900, F: 400, ap: 10, ae: 10 },
+                            11: { N: 2380, F: 300, ap: 11, ae: 11 },
+                            12: { N: 2420, F: 300, ap: 12, ae: 12 }
+                        }
+                    }
+                }
+            },
+            'SUS316': {
+                category: 'ステンレス',
+                teethOptions: { 2: null, 3: null, 4: null }
+            },
+            'SUS430': {
+                category: 'ステンレス',
+                teethOptions: { 2: null, 3: null, 4: null }
             }
         };
 
@@ -531,10 +591,17 @@
                         被削材を選択
                     </label>
                     <select id="input-material" onchange="onMaterialChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-lg font-semibold rounded-lg p-3 text-slate-800 outline-none transition-colors">
-                        <option value="A5052">A5052</option>
-                        <option value="A7075">A7075</option>
-                        <option value="A2017">A2017</option>
-                        <option value="A6061">A6061</option>
+                        <optgroup label="アルミ">
+                            <option value="A5052">A5052</option>
+                            <option value="A7075">A7075</option>
+                            <option value="A2017">A2017</option>
+                            <option value="A6061">A6061</option>
+                        </optgroup>
+                        <optgroup label="ステンレス">
+                            <option value="SUS304">SUS304</option>
+                            <option value="SUS316">SUS316（準備中）</option>
+                            <option value="SUS430">SUS430（準備中）</option>
+                        </optgroup>
                     </select>
                 `;
                 container.appendChild(matWrapper);
@@ -642,16 +709,27 @@
         }
 
         // Render tool diameter and teeth fields depending on chosen material
+        function getAvailableDiameters(material, Z) {
+            const toolData = presetData[material]?.teethOptions?.[Z];
+            if (!toolData) return [];
+
+            const sideDs = Object.keys(toolData.side || {}).map(Number);
+            const slotDs = Object.keys(toolData.slot || {}).map(Number);
+            return [...new Set([...sideDs, ...slotDs])].sort((a, b) => a - b);
+        }
+
         function renderMaterialSpecificFields() {
             const specContainer = document.getElementById('preset-spec-fields');
             if (!specContainer) return;
             specContainer.innerHTML = '';
 
+            const material = document.getElementById('input-material')?.value || 'A5052';
+
             const zWrapper = document.createElement('div');
             zWrapper.className = 'flex flex-col';
             zWrapper.innerHTML = `
                 <label for="input-Z" class="text-sm font-bold text-slate-700 mb-1">刃数 Z</label>
-                <select id="input-Z" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
+                <select id="input-Z" onchange="onTeethChange()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
                     <option value="2">2枚刃</option>
                     <option value="3" selected>3枚刃</option>
                     <option value="4">4枚刃</option>
@@ -665,22 +743,52 @@
                     <span>工具径 D</span><span class="text-slate-400 font-normal">(mm)</span>
                 </label>
                 <select id="input-D" onchange="updateAvailabilityNotice()" class="w-full bg-slate-50 border-2 border-slate-300 focus:border-industry-accent focus:bg-white text-xl font-semibold rounded-lg p-3 text-slate-800 outline-none">
-                    <option value="1">1 mm</option>
-                    <option value="2">2 mm</option>
-                    <option value="3">3 mm</option>
-                    <option value="4">4 mm</option>
-                    <option value="5">5 mm</option>
-                    <option value="6">6 mm</option>
-                    <option value="8">8 mm</option>
-                    <option value="10" selected>10 mm</option>
-                    <option value="12">12 mm</option>
                 </select>`;
             specContainer.appendChild(dWrapper);
 
             const notice = document.createElement('div');
             notice.id = 'preset-availability';
             specContainer.appendChild(notice);
+
+            updateDiameterOptions();
             updateAvailabilityNotice();
+        }
+
+        function onTeethChange() {
+            updateDiameterOptions();
+            updateAvailabilityNotice();
+            updateResultPlaceholder();
+            hideError();
+        }
+
+        function updateDiameterOptions() {
+            const material = document.getElementById('input-material')?.value || 'A5052';
+            const Z = Number(document.getElementById('input-Z')?.value || 3);
+            const dEl = document.getElementById('input-D');
+            if (!dEl) return;
+
+            const ds = getAvailableDiameters(material, Z);
+            dEl.innerHTML = '';
+
+            if (ds.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '条件確認中';
+                dEl.appendChild(opt);
+                dEl.disabled = true;
+                return;
+            }
+
+            dEl.disabled = false;
+            ds.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = `${d} mm`;
+                if (d === 10) opt.selected = true;
+                dEl.appendChild(opt);
+            });
+
+            if (!dEl.value && ds.length) dEl.value = String(ds[0]);
         }
 
         function updateAvailabilityNotice() {
@@ -766,10 +874,18 @@
 
                 const materialEl = document.getElementById('input-material');
                 const selectedMat = materialEl ? materialEl.value : 'A5052';
+                const isStainless = selectedMat.startsWith('SUS');
 
-                sourceInfoA5052.classList.remove('hidden');
-                sourceInfoS45C.classList.add('hidden');
-                sourceInfoSUS304.classList.add('hidden');
+                if (isStainless) {
+                    sourceInfoA5052.classList.add('hidden');
+                    sourceInfoS45C.classList.add('hidden');
+                    sourceInfoSUS304.classList.remove('hidden');
+                } else {
+                    sourceInfoA5052.classList.remove('hidden');
+                    sourceInfoS45C.classList.add('hidden');
+                    sourceInfoSUS304.classList.add('hidden');
+                }
+
                 subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
 
             } else {
@@ -877,7 +993,8 @@
                 if (currentMode === 'preset') {
                     const selectedMat = document.getElementById('input-material')?.value || 'A5052';
                     const Z = Number(document.getElementById('input-Z')?.value || 3);
-                    const D = Number(document.getElementById('input-D')?.value || 0);
+                    const dValue = document.getElementById('input-D')?.value;
+                    const D = Number(dValue || 0);
 
                     const toolData = presetData[selectedMat]?.teethOptions?.[Z];
                     if (!toolData) {

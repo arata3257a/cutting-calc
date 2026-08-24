@@ -1,4 +1,4 @@
-const CACHE_NAME = 'machining-calc-v6';
+const CACHE_NAME = 'machining-calc-v7';
 
 const CRITICAL_ASSETS = [
   './',
@@ -6,7 +6,8 @@ const CRITICAL_ASSETS = [
   './manifest.json',
   './icon-free.svg',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './s45c-addon.js'
 ];
 
 const OPTIONAL_ASSETS = [
@@ -49,21 +50,47 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+async function withS45CAddon(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/html')) return response;
+
+  const html = await response.text();
+  if (html.includes('s45c-addon.js')) {
+    return new Response(html, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  }
+
+  const patched = html.replace(
+    '</body>',
+    '  <script src="s45c-addon.js"></script>\n</body>'
+  );
+
+  return new Response(patched, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // ページ本体はネットワーク優先。最新版を優先し、オフライン時だけキャッシュへフォールバック。
+  // Page: network first, then inject the S45C beginner add-on.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request, { cache: 'no-store' })
-        .then((response) => {
-          const copy = response.clone();
+        .then(async (response) => {
+          const patched = await withS45CAddon(response);
+          const copy = patched.clone();
 
           caches.open(CACHE_NAME).then((cache) => {
             cache.put('./index.html', copy);
           });
 
-          return response;
+          return patched;
         })
         .catch(() =>
           caches.match('./index.html').then(
@@ -75,26 +102,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // その他のファイルはキャッシュ優先
+  // Other files: cache first.
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
       return fetch(request).then((response) => {
-        if (
-          request.method === 'GET' &&
-          response &&
-          response.status === 200
-        ) {
+        if (request.method === 'GET' && response && response.status === 200) {
           const copy = response.clone();
-
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, copy);
           });
         }
-
         return response;
       });
     })

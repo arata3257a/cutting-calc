@@ -1,0 +1,50 @@
+name: Apply C1100 official condition fix
+
+on:
+  push:
+    branches: [c1100-update]
+    paths: ['.github/workflows/apply-c1100-fix.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c1100-update
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          replacements = {
+            "<meta name=\"app-build\" content=\"2026-08-24-copper-v1\">": "<meta name=\"app-build\" content=\"2026-08-25-copper-v2\">",
+            "<p>・3枚刃：NS TOOL DHS340</p>": "<p>・3枚刃：NS TOOL DHS340（メーカー公開の銅向け参考切削条件）</p>",
+            "<p>・4枚刃：ユニオンツール DLCES4000</p>": "<p>・4枚刃：ユニオンツール DLCES4000</p>\n                <p>・C1100の実加工事例はNS TOOL DHS340Fで公開されています。DHS340の表示値とは区別しています。</p>",
+            "sourceScope: '銅（C1100加工事例あり）'": "sourceScope: '銅（メーカー公開参考条件。C1100加工事例はDHS340F）'",
+            "3: { N: 7000, F: 410, ap: 9,  ae: 0.9 }": "3: { N: 7600, F: 450, ap: 9,  ae: 0.9 }",
+            "4: { N: 5300, F: 470, ap: 12, ae: 1.2 }": "4: { N: 5700, F: 510, ap: 12, ae: 1.2 }",
+            "5: { N: 4200, F: 490, ap: 15, ae: 1.5 }": "5: { N: 4500, F: 530, ap: 15, ae: 1.5 }",
+            "6: { N: 3500, F: 490, ap: 18, ae: 1.8 }": "6: { N: 3800, F: 530, ap: 18, ae: 1.8 }",
+            "3: { N: 6700, F: 270, ap: 3, ae: 3 }": "3: { N: 7200, F: 290, ap: 3, ae: 3 }",
+            "4: { N: 5000, F: 310, ap: 4, ae: 4 }": "4: { N: 5400, F: 330, ap: 4, ae: 4 }",
+            "5: { N: 4000, F: 320, ap: 5, ae: 5 }": "5: { N: 4300, F: 340, ap: 5, ae: 5 }",
+            "6: { N: 3300, F: 320, ap: 6, ae: 6 }": "6: { N: 3600, F: 350, ap: 6, ae: 6 }",
+          }
+          for old, new in replacements.items():
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly 1 match, got {count}: {old}')
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update C1100 DHS340 conditions to official values"
+          git push origin c1100-update

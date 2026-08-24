@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="app-build" content="2026-08-24-stainless-v2">
+    <meta name="app-build" content="2026-08-24-copper-v1">
     <title>加工条件かんたん計算</title>
 
     <!-- Google tag (gtag.js) -->
@@ -188,6 +188,23 @@
                     <p>SUS304の4枚刃CESUS条件では切削油の使用が必須です。</p>
                     <p>水溶性または油性切削油を推奨します。</p>
                 </div>
+                <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
+            </div>
+
+            <!-- Data Notice Area for Copper -->
+            <div id="preset-source-info-copper" class="hidden text-left bg-slate-800/60 p-3 rounded text-[11px] leading-tight text-slate-300 space-y-1 my-2 border border-slate-600">
+                <p class="text-yellow-300 font-bold">【参考元条件・前提情報】</p>
+                <p>・対象材：C1100（タフピッチ銅）</p>
+                <p>・2枚刃：ユニオンツール DLCES2000</p>
+                <p>・3枚刃：NS TOOL DHS340</p>
+                <p>・4枚刃：ユニオンツール DLCES4000</p>
+                <p>・4枚刃DLCES4000はメーカー公開表に溝条件がないため、側面加工のみ登録しています。</p>
+                <div class="bg-cyan-950/80 border border-cyan-400/60 p-2 rounded my-1 text-cyan-200">
+                    <p class="font-bold text-cyan-300">【クーラント】</p>
+                    <p>ユニオンツール：銅加工は湿式クーラント推奨。</p>
+                    <p>NS TOOL DHS340：不水溶性切削油推奨。</p>
+                </div>
+                <p>・機械剛性、保持状態、突出し量、加工形状に応じて条件を調整してください。</p>
                 <p>・使用する工具メーカーの推奨条件がある場合は、その条件を優先してください。</p>
             </div>
 
@@ -559,6 +576,67 @@
             'SUS430': {
                 category: 'ステンレス',
                 teethOptions: { 2: null, 3: null, 4: null }
+            },
+
+            'C1100': {
+                category: '銅',
+                teethOptions: {
+                    2: {
+                        toolName: 'ユニオンツール DLCES2000',
+                        sourceName: 'ユニオンツール',
+                        sourceScope: '銅 / アルミ合金（C1100加工事例あり）',
+                        side: {
+                            0.5: { N: 32000, F: 120, ap: 0.75, ae: 0.01 },
+                            1:   { N: 18000, F: 180, ap: 1.5,  ae: 0.02 },
+                            1.5: { N: 17500, F: 250, ap: 2.25, ae: 0.15 },
+                            2:   { N: 17000, F: 340, ap: 3,    ae: 0.2 },
+                            3:   { N: 16000, F: 630, ap: 4.5,  ae: 0.3 },
+                            4:   { N: 12000, F: 650, ap: 6,    ae: 0.4 },
+                            5:   { N: 10000, F: 750, ap: 7.5,  ae: 0.5 },
+                            6:   { N: 8000,  F: 800, ap: 9,    ae: 0.6 }
+                        },
+                        slot: {
+                            0.5: { N: 32000, F: 100, ap: 0.025, ae: 0.5 },
+                            1:   { N: 16000, F: 150, ap: 0.05,  ae: 1 },
+                            1.5: { N: 11000, F: 150, ap: 0.15,  ae: 1.5 },
+                            2:   { N: 7500,  F: 150, ap: 0.2,   ae: 2 },
+                            3:   { N: 5000,  F: 170, ap: 0.3,   ae: 3 },
+                            4:   { N: 5000,  F: 200, ap: 0.4,   ae: 4 },
+                            5:   { N: 5000,  F: 250, ap: 0.5,   ae: 5 },
+                            6:   { N: 4500,  F: 250, ap: 0.6,   ae: 6 }
+                        }
+                    },
+                    3: {
+                        toolName: 'NS TOOL DHS340',
+                        sourceName: 'NS TOOL',
+                        sourceScope: '銅（C1100加工事例あり）',
+                        side: {
+                            3: { N: 7000, F: 410, ap: 9,  ae: 0.9 },
+                            4: { N: 5300, F: 470, ap: 12, ae: 1.2 },
+                            5: { N: 4200, F: 490, ap: 15, ae: 1.5 },
+                            6: { N: 3500, F: 490, ap: 18, ae: 1.8 }
+                        },
+                        slot: {
+                            3: { N: 6700, F: 270, ap: 3, ae: 3 },
+                            4: { N: 5000, F: 310, ap: 4, ae: 4 },
+                            5: { N: 4000, F: 320, ap: 5, ae: 5 },
+                            6: { N: 3300, F: 320, ap: 6, ae: 6 }
+                        }
+                    },
+                    4: {
+                        toolName: 'ユニオンツール DLCES4000',
+                        sourceName: 'ユニオンツール',
+                        sourceScope: '銅 / アルミ合金（C1100加工事例あり）',
+                        side: {
+                            3:  { N: 10000, F: 780, ap: 4.5, ae: 0.3 },
+                            4:  { N: 8000,  F: 850, ap: 6,   ae: 0.4 },
+                            6:  { N: 5500,  F: 980, ap: 9,   ae: 0.6 },
+                            8:  { N: 4200,  F: 910, ap: 12,  ae: 0.8 },
+                            10: { N: 3500,  F: 910, ap: 15,  ae: 1.0 }
+                        },
+                        slot: {}
+                    }
+                }
             }
         };
 
@@ -602,6 +680,9 @@
                             <option value="SUS304">SUS304</option>
                             <option value="SUS316">SUS316（準備中）</option>
                             <option value="SUS430">SUS430（準備中）</option>
+                        </optgroup>
+                        <optgroup label="銅">
+                            <option value="C1100">C1100（タフピッチ銅）</option>
                         </optgroup>
                     </select>
                 `;
@@ -684,6 +765,10 @@
         function selectMethod(method) {
             currentMethod = method;
             updateMethodButtonsUI();
+            if (currentMode === 'preset') {
+                updateDiameterOptions();
+                updateAvailabilityNotice();
+            }
             updateResultPlaceholder();
             hideError();
         }
@@ -713,10 +798,9 @@
         function getAvailableDiameters(material, Z) {
             const toolData = presetData[material]?.teethOptions?.[Z];
             if (!toolData) return [];
-
-            const sideDs = Object.keys(toolData.side || {}).map(Number);
-            const slotDs = Object.keys(toolData.slot || {}).map(Number);
-            return [...new Set([...sideDs, ...slotDs])].sort((a, b) => a - b);
+            return Object.keys(toolData[currentMethod] || {})
+                .map(Number)
+                .sort((a, b) => a - b);
         }
 
         function renderMaterialSpecificFields() {
@@ -799,13 +883,17 @@
             if (!box) return;
 
             const toolData = presetData[material]?.teethOptions?.[Z];
-            box.className = toolData
+            const methodData = toolData?.[currentMethod];
+            const usable = toolData && methodData && Object.keys(methodData).length > 0;
+
+            box.className = usable
                 ? 'bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg p-2.5 text-xs'
                 : 'bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-2.5 text-xs';
 
-            box.textContent = toolData
-                ? `${material} / ${Z}枚刃：使用可能（${toolData.sourceName}基準）`
-                : `${material} / ${Z}枚刃：メーカー公開条件を確認できていません`;
+            const methodText = currentMethod === 'side' ? '側面加工' : '溝加工';
+            box.textContent = usable
+                ? `${material} / ${Z}枚刃 / ${methodText}：使用可能（${toolData.sourceName}基準）`
+                : `${material} / ${Z}枚刃 / ${methodText}：メーカー公開条件を確認できていません`;
         }
 
         // Switch mode tabs
@@ -846,6 +934,7 @@
             const sourceInfoA5052 = document.getElementById('preset-source-info-a5052');
             const sourceInfoS45C = document.getElementById('preset-source-info-s45c');
             const sourceInfoSUS304 = document.getElementById('preset-source-info-sus304');
+            const sourceInfoCopper = document.getElementById('preset-source-info-copper');
 
             valEl.textContent = '---';
             
@@ -876,15 +965,19 @@
                 const materialEl = document.getElementById('input-material');
                 const selectedMat = materialEl ? materialEl.value : 'A5052';
                 const isStainless = selectedMat.startsWith('SUS');
+                const isCopper = selectedMat === 'C1100';
 
-                if (isStainless) {
-                    sourceInfoA5052.classList.add('hidden');
-                    sourceInfoS45C.classList.add('hidden');
+                sourceInfoA5052.classList.add('hidden');
+                sourceInfoS45C.classList.add('hidden');
+                sourceInfoSUS304.classList.add('hidden');
+                sourceInfoCopper.classList.add('hidden');
+
+                if (isCopper) {
+                    sourceInfoCopper.classList.remove('hidden');
+                } else if (isStainless) {
                     sourceInfoSUS304.classList.remove('hidden');
                 } else {
                     sourceInfoA5052.classList.remove('hidden');
-                    sourceInfoS45C.classList.add('hidden');
-                    sourceInfoSUS304.classList.add('hidden');
                 }
 
                 subEl.textContent = '「計算する」ボタンを押すと参考条件を表示します';
@@ -895,6 +988,7 @@
                 sourceInfoA5052.classList.add('hidden');
                 sourceInfoS45C.classList.add('hidden');
                 sourceInfoSUS304.classList.add('hidden');
+                sourceInfoCopper.classList.add('hidden');
 
                 switch(currentMode) {
                     case 'rpm':

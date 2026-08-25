@@ -1,4 +1,4 @@
-const CACHE='machining-pro-v6';
+const CACHE='machining-pro-v7';
 const ASSETS=['./','./index.html','./manifest.json','./icon-pro.svg','./data/cwlb-verified.json'];
 
 self.addEventListener('install',e=>{

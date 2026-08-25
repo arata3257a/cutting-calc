@@ -16,6 +16,18 @@
   },
   "verifiedRows": [
     {
+      "model": "2010-020",
+      "diameterMm": 1,
+      "ballRadiusMm": 0.5,
+      "effectiveLengthMm": 2,
+      "conditions": {
+        "copper_aluminum": {"N": 30000, "F": 2000, "ap": 0.12, "ae": 0.36},
+        "carbon_alloy": {"N": 30000, "F": 1600, "ap": 0.08, "ae": 0.16},
+        "prehard_30_45": {"N": 30000, "F": 1600, "ap": 0.09, "ae": 0.18},
+        "hardened_45_55": {"N": 22000, "F": 1600, "ap": 0.09, "ae": 0.13}
+      }
+    },
+    {
       "model": "040-080",
       "diameterMm": 4,
       "ballRadiusMm": 2,
@@ -37,6 +49,18 @@
         "carbon_alloy": {"N": 18000, "F": 3000, "ap": 0.5, "ae": 1.5},
         "prehard_30_45": {"N": 13750, "F": 2400, "ap": 0.45, "ae": 1.4},
         "hardened_45_55": {"N": 8800, "F": 1800, "ap": 0.42, "ae": 1.2}
+      }
+    },
+    {
+      "model": "2050-150",
+      "diameterMm": 5,
+      "ballRadiusMm": 2.5,
+      "effectiveLengthMm": 15,
+      "conditions": {
+        "copper_aluminum": {"N": 18000, "F": 3000, "ap": 0.5, "ae": 1.5},
+        "carbon_alloy": {"N": 18000, "F": 3000, "ap": 0.5, "ae": 1.5},
+        "prehard_30_45": {"N": 13750, "F": 2400, "ap": 0.45, "ae": 1.4},
+        "hardened_45_55": {"N": 7800, "F": 1300, "ap": 0.34, "ae": 1.0}
       }
     }
   ]

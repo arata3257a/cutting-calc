@@ -1,0 +1,43 @@
+{
+  "series": "CWLB",
+  "toolType": "2-flute long neck ball end mill",
+  "coating": "UTWCOAT",
+  "source": "UNION TOOL CWLB Milling Conditions",
+  "policy": {
+    "displayDiameterStepMm": 1,
+    "noInterpolation": true,
+    "key": ["ballRadiusMm", "effectiveLengthMm", "materialGroup"]
+  },
+  "materialGroups": {
+    "copper_aluminum": "銅 / アルミ合金",
+    "carbon_alloy": "S45C / S50C / SK / SCM（～325HB）",
+    "prehard_30_45": "NAK80 / STAVAX / HPM38（30～45HRC）",
+    "hardened_45_55": "STAVAX / HPM38 / SKD61（45～55HRC）"
+  },
+  "verifiedRows": [
+    {
+      "model": "040-080",
+      "diameterMm": 4,
+      "ballRadiusMm": 2,
+      "effectiveLengthMm": 8,
+      "conditions": {
+        "copper_aluminum": {"N": 24000, "F": 2900, "ap": 0.4, "ae": 1.2},
+        "carbon_alloy": {"N": 24000, "F": 2900, "ap": 0.4, "ae": 1.2},
+        "prehard_30_45": {"N": 18000, "F": 2400, "ap": 0.4, "ae": 1.2},
+        "hardened_45_55": {"N": 11000, "F": 2000, "ap": 0.34, "ae": 1.0}
+      }
+    },
+    {
+      "model": "2050-100",
+      "diameterMm": 5,
+      "ballRadiusMm": 2.5,
+      "effectiveLengthMm": 10,
+      "conditions": {
+        "copper_aluminum": {"N": 18000, "F": 3000, "ap": 0.5, "ae": 1.5},
+        "carbon_alloy": {"N": 18000, "F": 3000, "ap": 0.5, "ae": 1.5},
+        "prehard_30_45": {"N": 13750, "F": 2400, "ap": 0.45, "ae": 1.4},
+        "hardened_45_55": {"N": 8800, "F": 1800, "ap": 0.42, "ae": 1.2}
+      }
+    }
+  ]
+}

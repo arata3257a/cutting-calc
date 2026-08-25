@@ -1,4 +1,4 @@
-const CACHE_NAME = 'machining-calc-v8';
+const CACHE_NAME = 'machining-calc-v9';
 
 const CRITICAL_ASSETS = [
   './',
@@ -21,7 +21,15 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key.startsWith('machining-calc-') && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
 async function withS45CAddon(response) {
@@ -35,6 +43,13 @@ async function withS45CAddon(response) {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const url = new URL(request.url);
+
+  // PRO版は専用Service Workerに任せ、無料版のキャッシュ処理から完全に分離する
+  if (url.origin === self.location.origin && url.pathname.includes('/cutting-calc/pro/')) {
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request, {cache:'no-store'}).then(async response => {
       const patched = await withS45CAddon(response);

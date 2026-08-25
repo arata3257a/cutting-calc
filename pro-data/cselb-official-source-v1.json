@@ -1,0 +1,44 @@
+{
+  "series": "CSELB",
+  "manufacturer": "UNION TOOL",
+  "toolType": "2-flute UTCOAT long neck ball end mill",
+  "source": "https://www.uniontool.co.jp/catalogue/em/cselb.pdf",
+  "policy": {
+    "displayDiameterStepMm": 1,
+    "interpolation": false,
+    "note": "CSELB table is indexed by ball radius/model/effective length. Do not convert a row into a generic square-end diameter condition. Keep geometry and effective length as part of the condition key."
+  },
+  "materialGroups": [
+    {"id":"carbon_alloy_325hb","materials":["S45C","S50C","SK","SCM"],"hardness":"<=325HB"},
+    {"id":"prehardened_30_45hrc","materials":["NAK80","STAVAX","HPM38"],"hardness":"30-45HRC"},
+    {"id":"hardened_45_55hrc","materials":["STAVAX","HPM38","SKD61"],"hardness":"45-55HRC"}
+  ],
+  "verifiedRows": [
+    {
+      "model":"CSELB2014-060","ballRadiusMm":0.7,"effectiveLengthMm":6,
+      "conditions":{
+        "carbon_alloy_325hb":{"rpm":23000,"feedMmMin":1500,"apMm":0.08,"aeMm":0.16},
+        "prehardened_30_45hrc":{"rpm":30000,"feedMmMin":1300,"apMm":0.09,"aeMm":0.18},
+        "hardened_45_55hrc":{"rpm":16000,"feedMmMin":1200,"apMm":0.09,"aeMm":0.13}
+      }
+    },
+    {
+      "model":"CSELB2020-030","ballRadiusMm":1.0,"effectiveLengthMm":3,
+      "conditions":{
+        "carbon_alloy_325hb":{"rpm":30000,"feedMmMin":2000,"apMm":0.21,"aeMm":0.42},
+        "prehardened_30_45hrc":{"rpm":30000,"feedMmMin":2000,"apMm":0.20,"aeMm":0.60},
+        "hardened_45_55hrc":{"rpm":16000,"feedMmMin":1300,"apMm":0.17,"aeMm":0.50}
+      }
+    },
+    {
+      "model":"CSELB2030-400","ballRadiusMm":1.5,"effectiveLengthMm":40,
+      "conditions":{
+        "carbon_alloy_325hb":{"rpm":4500,"feedMmMin":700,"apMm":0.05,"aeMm":0.25},
+        "prehardened_30_45hrc":{"rpm":2700,"feedMmMin":240,"apMm":0.03,"aeMm":0.12},
+        "hardened_45_55hrc":{"rpm":2300,"feedMmMin":210,"apMm":0.02,"aeMm":0.08}
+      }
+    }
+  ],
+  "status":"partial_verified_import",
+  "next":"Import remaining official CSELB rows only after row-by-row verification; then expose integer nominal diameters in UI without interpolation."
+}

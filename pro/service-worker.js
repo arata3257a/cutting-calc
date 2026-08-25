@@ -1,5 +1,5 @@
-const CACHE='machining-pro-v11';
-const ASSETS=['./','./index.html','./manifest.json','./icon-pro.svg','./data/cwlb-verified.json','./cast-iron-addon.js'];
+const CACHE='machining-pro-v12';
+const ASSETS=['./','./index.html','./manifest.json','./icon-pro.svg','./cast-iron-addon.js'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('machining-pro-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 async function withAddon(response){if(!response)return response;const type=response.headers.get('content-type')||'';if(!type.includes('text/html'))return response;let html=await response.text();if(!html.includes('cast-iron-addon.js'))html=html.replace('</body>','<script src="./cast-iron-addon.js"></script></body>');return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});}

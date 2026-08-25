@@ -1,0 +1,18 @@
+{
+  "series": "CWLB",
+  "manufacturer": "UNION TOOL",
+  "tool_type": "2-flute long neck ball end mill",
+  "coating": "UTWCOAT",
+  "policy": {
+    "display_diameter_step_mm": 1,
+    "no_interpolation": true,
+    "cutting_conditions_require_exact_radius_effective_length_material_match": true,
+    "note": "This file currently stores only manufacturer-verified geometry. N/F/ap/ae must not be added until the corresponding official cutting-condition row is verified."
+  },
+  "verified_tools": [
+    {"diameter_mm":1,"ball_radius_mm":0.5,"effective_length_mm":3,"cut_length_mm":0.8,"flutes":2,"model":"CWLB2010-030"},
+    {"diameter_mm":3,"ball_radius_mm":1.5,"effective_length_mm":6,"cut_length_mm":2.4,"flutes":2,"model":"CWLB2030-060-4"},
+    {"diameter_mm":5,"ball_radius_mm":2.5,"effective_length_mm":15,"cut_length_mm":4,"flutes":2,"model":"CWLB2050-150"}
+  ],
+  "status": "geometry_verified_conditions_pending"
+}

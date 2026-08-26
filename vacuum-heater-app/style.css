@@ -19,16 +19,8 @@ button.active{outline:2px solid #93c5fd}
 .tabs{display:flex;gap:8px;margin-bottom:10px}
 .tab{flex:1}
 .grid-wrap{overflow:auto;padding-bottom:4px}
-.heater-grid{
-  display:grid;grid-template-columns:repeat(12,minmax(54px,1fr));gap:3px;
-  min-width:720px;
-}
-.cell{
-  min-height:56px;border-radius:7px;border:1px solid rgba(255,255,255,.23);
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  color:#111827;font-weight:900;cursor:pointer;user-select:none;
-  text-shadow:0 1px 0 rgba(255,255,255,.3);
-}
+.heater-grid{display:grid;grid-template-columns:repeat(12,minmax(54px,1fr));gap:3px;min-width:720px}
+.cell{min-height:56px;border-radius:7px;border:1px solid rgba(255,255,255,.23);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#111827;font-weight:900;cursor:pointer;user-select:none;text-shadow:0 1px 0 rgba(255,255,255,.3)}
 .cell small{font-weight:700;font-size:10px;opacity:.8}
 .legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:8px}
 .bar{height:10px;flex:1;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#34d399,#fde047,#fb923c,#ef4444)}
@@ -41,31 +33,17 @@ canvas{width:100%;max-width:100%;border-radius:10px;background:#0f172a;border:1p
 .selected{outline:3px solid white;outline-offset:-3px}
 .editor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
 .range{width:100%}
-@media (max-width:760px){
- .controls{grid-template-columns:1fr 1fr}
- .stats{grid-template-columns:1fr 1fr}
- .editor{grid-template-columns:1fr 1fr}
-}
-
+@media (max-width:760px){.controls{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.editor{grid-template-columns:1fr 1fr}}
 .temp-gauge-wrap{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center;margin-top:10px}
 .temp-gauge{height:18px;border-radius:999px;background:linear-gradient(90deg,#163a8a,#16a6d9,#35c978,#f0d34a,#ef8a2f,#d93232);border:1px solid rgba(255,255,255,.25);position:relative}
 .temp-gauge-marker{position:absolute;top:-5px;width:2px;height:28px;background:white;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .temp-gauge-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
-
-
-.cell-input{
-  width:42px;
-  padding:3px 2px;
-  border-radius:6px;
-  border:1px solid rgba(15,23,42,.35);
-  background:rgba(255,255,255,.88);
-  color:#111827;
-  font-weight:900;
-  font-size:14px;
-  text-align:center;
-}
-.cell-input:focus{
-  outline:2px solid #fff;
-  outline-offset:1px;
-}
+.cell-input{width:42px;padding:3px 2px;border-radius:6px;border:1px solid rgba(15,23,42,.35);background:rgba(255,255,255,.88);color:#111827;font-weight:900;font-size:14px;text-align:center}
+.cell-input:focus{outline:2px solid #fff;outline-offset:1px}
 .cell-unit{font-size:11px;font-weight:800;margin-left:2px}
+#passwordGate{position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;padding:24px}
+.password-card{width:min(360px,100%);background:#111827;border:1px solid #2a364d;border-radius:16px;padding:24px;text-align:center}
+.password-card h2{font-size:19px;margin:0 0 8px}.password-card p{font-size:13px;color:#94a3b8;margin:0 0 16px}
+#downloadPassword{width:100%;background:#0f172a;color:white;border:1px solid #334155;border-radius:10px;padding:13px;text-align:center;font-size:22px;letter-spacing:8px;margin-bottom:10px}
+#passwordSubmit{width:100%;background:#2563eb;padding:12px}
+#passwordError{min-height:20px;color:#f87171;font-size:12px;margin-top:8px}

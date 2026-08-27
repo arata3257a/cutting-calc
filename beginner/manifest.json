@@ -1,0 +1,30 @@
+{
+  "name": "加工条件かんたん計算｜初心者・無料版",
+  "short_name": "加工計算 無料版",
+  "description": "初心者向けの切削加工（エンドミル）条件計算PWA。材質・加工方法・刃数・工具径からメーカー公開条件を基準に参考スタート条件を確認できます。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#102a43",
+  "theme_color": "#102a43",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-free.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111827" />
+<title>真空成形 ヒーター熱分布</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>真空成形 ヒーター熱分布 v1.3</h1>
+  <div class="sub">150×150 mmクイックレスポンスヒーター × 12列×6段（片面72個）、上・下ヒーター対応。材質・板厚・加熱時間を加味した暫定温度予測と時間再生、上下ヒーター距離の個別設定、温度ゲージ、各ヒーター％の直接編集に対応。シートは常にヒーター中央へ自動配置。</div>
+
+  <div class="panel">
+    <div class="controls">
+      <label>基準温度 ℃<input id="baseTemp" type="number" min="0" max="800" value="400"></label>
+      <label>上ヒーター～シート距離 mm<input id="topDistance" type="number" min="20" max="1000" value="250"></label>
+      <label>下ヒーター～シート距離 mm<input id="bottomDistance" type="number" min="20" max="1000" value="250"></label>
+      <label title="成形するシートの横幅">シート幅 mm<input id="sheetW" type="number" min="100" max="1800" value="1200"></label>
+      <label title="成形するシートの縦幅">シート高さ mm<input id="sheetH" type="number" min="100" max="900" value="750"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label>材質
+        <select id="material">
+          <option value="ABS">ABS</option>
+          <option value="PC">PC</option>
+          <option value="APET">A-PET</option>
+          <option value="PMMAPC">PMMA+PC</option>
+        </select>
+      </label>
+      <label>板厚 mm<input id="thickness" type="number" min="0.1" max="10" step="0.1" value="0.5"></label>
+      <label>加熱時間 sec<input id="heatTime" type="number" min="0" max="90" value="60"></label>
+      <label>初期シート温度 ℃<input id="ambientTemp" type="number" min="0" max="80" value="25"></label>
+      <label>初期雰囲気温度 ℃<input id="airStartTemp" type="number" min="0" max="150" value="25"></label>
+      <label>雰囲気温度 上限 ℃<input id="airMaxTemp" type="number" min="20" max="250" value="90"></label>
+      <label>雰囲気上昇 時定数 sec<input id="airTau" type="number" min="5" max="300" value="60"></label>
+      <label>目標シート温度 ℃<input id="targetTemp" type="number" min="50" max="300" value="160"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label>上ヒーター寄与 %<input id="topWeight" type="number" min="0" max="100" value="50"></label>
+      <label>下ヒーター寄与 %<input id="bottomWeight" type="number" min="0" max="100" value="50"></label>
+      <label>熱の広がり係数
+        <input id="spread" class="range" type="range" min="0.4" max="2.2" value="1.0" step="0.05">
+      </label>
+      <label>シート放射率 ε<input id="emissivity" type="number" min="0.1" max="1.0" step="0.05" value="0.90"></label>
+      <label>表示
+        <select id="displayMode">
+          <option value="relative">相対熱分布</option>
+          <option value="equiv">シート温度予測（放射＋雰囲気）</option>
+        </select>
+      </label>
+    </div>
+    <div id="matInfo" class="sub" style="margin:10px 0 0"></div>
+    <div class="panel" style="margin:12px 0 0;background:#0f172a">
+      <div class="row">
+        <button id="playBtn" class="primary">▶ 加熱シミュレーション</button>
+        <button id="pauseBtn">一時停止</button>
+        <button id="resetBtn">0秒に戻す</button>
+        <label style="min-width:180px;flex:1">再生速度
+          <select id="playSpeed">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <input id="timeSlider" class="range" type="range" min="0" max="90" value="60" step="1">
+        <div class="row" style="justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>0秒</span><b id="currentTimeLabel">60秒</b><span id="maxTimeLabel">90秒</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button id="tabTop" class="tab active">上ヒーター</button>
+      <button id="tabBottom" class="tab">下ヒーター</button>
+      <button id="tabMap" class="tab primary">熱分布</button>
+    </div>
+
+    <div id="heaterView">
+      <div class="row" style="margin-bottom:10px">
+        <button id="presetImage">画像風プリセット</button>
+        <button id="preset100">全て99%</button>
+        <button id="copyToOther">反対面へコピー</button>
+      </div>
+      <div class="grid-wrap"><div id="heaterGrid" class="heater-grid"></div></div>
+      <div class="legend"><span>低</span><div class="bar"></div><span>高</span></div><div class="sub" style="margin-top:8px">各マスをタップすると現在値を自動選択します。そのまま2桁を入力できます（00〜99％）。上・下ヒーターはタブで切替。</div>
+
+      <div class="editor">
+        <label>選択セル %<input id="selectedPct" type="number" min="0" max="100" value="80"></label>
+        <label>設定温度換算 ℃<input id="selectedTemp" type="number" readonly></label>
+        <button id="applyPct" class="primary" style="align-self:end">選択セルに反映</button>
+      </div>
+    </div>
+
+    <div id="mapView" class="hidden">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">ヒーター配列とシート位置（白枠＝シート／常に中央配置）</div>
+      <canvas id="layoutPreview" width="960" height="480"></canvas>
+      <div style="height:10px"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">シート範囲の簡易熱分布</div>
+      <canvas id="heatmap" width="960" height="520"></canvas>
+      <div class="temp-gauge-wrap">
+        <div id="gaugeMin" style="text-align:right;font-size:12px;font-weight:700">25℃</div>
+        <div>
+          <div id="tempGauge" class="temp-gauge" aria-label="温度ゲージ">
+            <div id="targetMarker" class="temp-gauge-marker" title="目標温度"></div>
+          </div>
+          <div class="temp-gauge-labels">
+            <span>低温</span><span id="gaugeTarget">目標 160℃</span><span>高温</span>
+          </div>
+        </div>
+        <div id="gaugeMax" style="font-size:12px;font-weight:700">200℃</div>
+      </div>
+      <div class="stats">
+        <div class="stat">最小温度<b id="minStat">-</b></div>
+        <div class="stat">最大温度<b id="maxStat">-</b></div>
+        <div class="stat">温度差<b id="rangeStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">現在時間<b id="timeStat">-</b></div>
+        <div class="stat">平均温度<b id="avgTempStat">-</b></div>
+        <div class="stat">雰囲気温度<b id="airTempStat">-</b></div>
+        <div class="stat">放射寄与<b id="radStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">目標到達率<b id="targetStat">-</b></div>
+        <div class="stat">過熱域<b id="overheatStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat2">-</b></div>
+        <div class="stat">モデル<b>暫定</b></div>
+      </div>
+      <div class="note">
+        ※ v1.2では、各ヒーター設定・上下距離・材質・板厚に加え、ステファン＝ボルツマン則による放射熱と、時間変化する雰囲気温度からの対流加熱を合成しています。
+        実温度の精度を上げるには、実機のサーモカメラまたは表面温度・炉内温度データで校正してください。放射率、反射板、視野係数、対流係数は機械ごとに変わります。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

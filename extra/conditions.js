@@ -1,0 +1,1 @@
+window.EXTRA_CONDITIONS={version:'0.1',policy:'verified-only',materials:{},notes:['メーカー公開条件を確認できたデータだけを登録する','未確認値・補間値・推測値は使用しない','工具シリーズ・刃数・径・加工方法ごとに分離して管理する']};

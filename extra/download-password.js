@@ -1,7 +1,9 @@
 (()=>{
 'use strict';
 const PASS='1018';
-const DOWNLOAD_SELECTOR='a[download],button[id*="Csv"],button[id*="Backup"],button[data-share],button[data-mail],button[data-copy]';
+const USED_KEY='extra-download-used-v1';
+const PROTECTED_SELECTOR='a[download],button[id*="Csv"],button[id*="Backup"],button[data-share],button[data-mail],button[data-copy]';
+
 function ask(){
   const v=window.prompt('ダウンロード・共有パスワードを入力してください');
   if(v===null)return false;
@@ -9,17 +11,50 @@ function ask(){
   alert('パスワードが違います。');
   return false;
 }
-function isProtected(el){
-  if(!el)return false;
-  if(el.matches?.(DOWNLOAD_SELECTOR))return true;
+
+function kind(el){
+  if(!el)return 'none';
+  if(el.matches?.('a[download],button[id*="Csv"],button[id*="Backup"]'))return 'download';
+  if(el.matches?.('button[data-share]'))return 'share';
+  if(el.matches?.('button[data-mail],button[data-copy]'))return 'other';
   const txt=(el.textContent||'').trim();
-  return /CSV|バックアップ|ダウンロード|共有|メール/.test(txt);
+  if(/CSV|バックアップ|ダウンロード/.test(txt))return 'download';
+  if(/共有/.test(txt))return 'share';
+  if(/メール|コピー/.test(txt))return 'other';
+  return 'none';
 }
+
+function isUsed(){
+  try{return localStorage.getItem(USED_KEY)==='1'}catch{return false}
+}
+
+function markUsed(){
+  try{localStorage.setItem(USED_KEY,'1')}catch{}
+}
+
+function deny(){
+  alert('この端末ではダウンロード済みです。\nダウンロードは1端末につき1回までです。');
+}
+
 document.addEventListener('click',e=>{
   const el=e.target.closest?.('button,a');
-  if(!isProtected(el))return;
-  if(ask())return;
-  e.preventDefault();
-  e.stopImmediatePropagation();
+  if(!el||!el.matches?.(PROTECTED_SELECTOR)&&kind(el)==='none')return;
+  const k=kind(el);
+  if(k==='none')return;
+
+  if((k==='download'||k==='share')&&isUsed()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    deny();
+    return;
+  }
+
+  if(!ask()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return;
+  }
+
+  if(k==='download'||k==='share')markUsed();
 },true);
 })();

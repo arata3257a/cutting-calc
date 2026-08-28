@@ -1,15 +1,1 @@
-{
-  "name": "加工条件かんたん計算 PRO",
-  "short_name": "加工計算 PRO",
-  "description": "メーカー公開条件を基準にした切削条件計算PRO版",
-  "id": "./",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#071525",
-  "theme_color": "#102a43",
-  "orientation": "portrait",
-  "icons": [
-    {"src":"./icon-pro.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
-  ]
-}
+{"name":"切削加工条件計算 PRO","short_name":"加工条件PRO","start_url":"./","scope":"./","display":"browser","background_color":"#30343a","theme_color":"#30343a","orientation":"portrait","icons":[{"src":"../icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"../icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}

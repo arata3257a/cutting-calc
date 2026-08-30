@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const PASS='1018';
+const PASS='1984';
 const UNLOCK='extra-install-unlocked-v1';
 function standalone(){return window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true}
 function installBtn(){return document.getElementById('extraInstallBtn')}

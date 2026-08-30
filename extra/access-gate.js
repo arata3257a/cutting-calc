@@ -1,11 +1,10 @@
 (()=>{
 'use strict';
 const ACCESS_KEY='extra-access-granted-v1';
-const USED_KEY='extra-download-used-v1';
 function get(k){try{return localStorage.getItem(k)}catch{return null}}
 const page=(location.pathname.split('/').pop()||'index.html').toLowerCase();
 if(page==='access.html'||page==='complete.html'||page.startsWith('refresh-'))return;
-if(get(USED_KEY)==='1'||get(ACCESS_KEY)!=='1'){
+if(get(ACCESS_KEY)!=='1'){
   location.replace('./access.html');
 }
 })();

@@ -71,10 +71,12 @@ function assess(){
     addRisk(risks,'watch','切削負荷・発熱',`ae/D=${(aer*100).toFixed(0)}% と径方向の接触割合が大きめです。`,['びびりや発熱が出る場合はaeを小さくする']);
   }
 
-  if(apr>3){
-    addRisk(risks,'high','工具たわみ・刃欠け',`ap/D=${apr.toFixed(1)}倍 と軸方向切込みが大きい条件です。`,['工具の有効刃長を確認する','apを下げて複数回に分ける']);
-  }else if(apr>1.5){
+  if(apr>5){
+    addRisk(risks,'high','工具たわみ・刃欠け',`ap/D=${apr.toFixed(1)}倍 と軸方向の接触長さが非常に大きい条件です。`,['工具の有効刃長を確認する','apを下げて複数回に分ける']);
+  }else if(apr>3.5){
     addRisk(risks,'watch','工具たわみ・びびり',`ap/D=${apr.toFixed(1)}倍 と軸方向の接触長さが大きめです。`,['工具の有効刃長と突出し量を確認する']);
+  }else if(apr>2.5&&ld>4){
+    addRisk(risks,'watch','工具たわみ・びびり','長めの突出しと深めの軸方向切込みが重なっています。',['突出し量を短くする','必要ならapを下げて様子を見る']);
   }
 
   if(ref){

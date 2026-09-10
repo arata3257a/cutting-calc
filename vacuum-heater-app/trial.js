@@ -1,5 +1,5 @@
 const TRIAL_DAYS=14;
-const TRIAL_KEY='vacuum_heater_trial_start_v1';
+const TRIAL_KEY='vacuum_heater_trial_start_v2';
 (function(){
   const DAY=24*60*60*1000;
   const now=Date.now();

@@ -1,42 +1,86 @@
 :root{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  color:#18202a;
-  background:#f4f6f8;
+  color:#18202a;background:#f4f6f8;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
 body{display:flex;flex-direction:column}
-button{font:inherit;border:1px solid #ccd3da;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer}
+button,input,select{font:inherit}
+button{
+  border:1px solid #ccd3da;background:#fff;border-radius:11px;
+  padding:9px 12px;cursor:pointer;color:#18202a
+}
 button:active{transform:scale(.98)}
+button.primary{background:#18202a;color:#fff;border-color:#18202a}
+button.danger{color:#a42424;border-color:#d9b5b5}
+button.wide{width:100%;margin-top:4px}
 header{
   height:60px;display:flex;align-items:center;justify-content:space-between;
-  gap:10px;padding:8px 12px;background:#fff;border-bottom:1px solid #e1e5e9
+  gap:10px;padding:8px 10px;background:#fff;border-bottom:1px solid #e1e5e9
 }
-header strong{display:block;font-size:17px}
-header small{color:#6b7480}
-.header-actions{display:flex;gap:8px}
-main{height:calc(100% - 60px);display:grid;grid-template-columns:78px 1fr;grid-template-rows:1fr auto}
+.brand{min-width:0}
+.brand strong{display:block;font-size:16px;white-space:nowrap}
+.brand small{color:#6b7480}
+.header-actions{display:flex;gap:6px}
+.header-actions button{min-width:42px}
+main{
+  height:calc(100% - 60px);
+  display:grid;grid-template-columns:74px 1fr;grid-template-rows:1fr auto
+}
 .toolbar{
-  grid-row:1 / 3;padding:10px 8px;background:#fff;border-right:1px solid #e1e5e9;
-  display:flex;flex-direction:column;gap:8px
+  grid-row:1 / 3;padding:8px 6px;background:#fff;border-right:1px solid #e1e5e9;
+  display:flex;flex-direction:column;gap:7px;overflow:auto
 }
-.tool{min-height:64px;font-size:27px;padding:6px}
-.tool span{display:block;font-size:12px;margin-top:2px}
+.tool{min-height:58px;font-size:25px;padding:5px}
+.tool span{display:block;font-size:11px;margin-top:2px}
 .tool.active{outline:3px solid #18202a;border-color:#18202a}
-.canvas-wrap{position:relative;min-width:0;min-height:0;background:#fff}
+.workspace{position:relative;min-width:0;min-height:0;overflow:hidden}
+.canvas-wrap{position:absolute;inset:0;background:#fff}
 #cadCanvas{display:block;width:100%;height:100%;touch-action:none}
 #hint{
-  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
-  background:rgba(24,32,42,.86);color:#fff;border-radius:999px;padding:7px 12px;
-  font-size:12px;pointer-events:none;white-space:nowrap
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  background:rgba(24,32,42,.88);color:#fff;border-radius:999px;padding:7px 12px;
+  font-size:12px;pointer-events:none;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis
 }
+.view-controls{
+  position:absolute;top:8px;left:8px;display:flex;gap:5px;
+  background:rgba(255,255,255,.94);padding:5px;border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08)
+}
+.view-controls button{padding:6px 10px}
+.snap-control{
+  position:absolute;top:8px;right:8px;background:rgba(255,255,255,.94);
+  border:1px solid #e1e5e9;border-radius:10px;padding:5px 8px;font-size:12px
+}
+.snap-control select{border:0;background:transparent;font-weight:700}
+.panel{
+  position:absolute;right:8px;top:52px;width:min(330px,calc(100% - 16px));
+  background:#fff;border:1px solid #dfe4e8;border-radius:16px;padding:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14);z-index:3
+}
+.panel.hidden{display:none}
+.panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.icon-btn{border:0;padding:3px 8px;font-size:20px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:#66717d}
+.field input{
+  width:100%;border:1px solid #cfd6dd;border-radius:9px;padding:9px;
+  font-size:16px;background:#fff
+}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
 .bottom-actions{
-  display:flex;gap:8px;padding:8px;background:#fff;border-top:1px solid #e1e5e9;overflow:auto
+  display:flex;gap:7px;padding:8px;background:#fff;border-top:1px solid #e1e5e9;overflow:auto
 }
 .bottom-actions button{white-space:nowrap}
-.danger{color:#a42424}
+@media (max-width:520px){
+  .panel{top:auto;bottom:46px;right:6px;width:calc(100% - 12px);max-height:52%;overflow:auto}
+  .fields{grid-template-columns:1fr 1fr}
+  .brand strong{font-size:14px}
+}
 @media (min-width:800px){
-  main{grid-template-columns:96px 1fr}
-  .toolbar{padding:14px 10px}
-  .tool{min-height:72px}
+  main{grid-template-columns:90px 1fr}
+  .toolbar{padding:12px 8px}
+  .tool{min-height:64px}
 }

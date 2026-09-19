@@ -2162,68 +2162,237 @@ function safeFileBaseName(value){
     .replace(/[. ]+$/g,"") || "2d-cad-drawing";
 }
 
-function defaultDxfFileName(){
+let exportFormat="";
+let exportDirectoryHandle=null;
+let exportFileHandle=null;
+
+function exportExtension(format){
+  return format==="dxf"?".dxf":format==="svg"?".svg":".pdf";
+}
+
+function exportMime(format){
+  return format==="dxf"?"application/dxf":format==="svg"?"image/svg+xml":"application/pdf";
+}
+
+function exportDescription(format){
+  return format==="dxf"?"DXF CADファイル":format==="svg"?"SVG画像ファイル":"PDF図面";
+}
+
+function normalizeExportFileName(value,format){
+  const ext=exportExtension(format);
+  let raw=safeFileBaseName(value);
+  for(const oldExt of [".dxf",".svg",".pdf"]){
+    if(raw.toLowerCase().endsWith(oldExt)) raw=raw.slice(0,-oldExt.length);
+  }
+  return (raw||"2d-cad-drawing")+ext;
+}
+
+function defaultExportFileName(format){
   const base=safeFileBaseName(drawingMeta.drawingNo || drawingMeta.title || "2d-cad-drawing");
-  return base.toLowerCase().endsWith(".dxf")?base:base+".dxf";
+  return normalizeExportFileName(base,format);
 }
 
-function normalizeDxfFileName(value){
-  const raw=safeFileBaseName(value);
-  return raw.toLowerCase().endsWith(".dxf")?raw:raw+".dxf";
+function resetExportLocation(message="未選択"){
+  exportDirectoryHandle=null;
+  exportFileHandle=null;
+  if(qs("exportSaveLocation")) qs("exportSaveLocation").value=message;
 }
 
-async function saveDxfWithLocation(){
-  const fileName=normalizeDxfFileName(qs("dxfFileName")?.value || defaultDxfFileName());
-  if(qs("dxfFileName")) qs("dxfFileName").value=fileName;
-  const content=toDXF();
+function openExportSavePanel(format){
+  exportFormat=format;
+  resetExportLocation();
+  const label=format.toUpperCase();
+  if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=label+"出力";
+  if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName(format);
+  qs("fileSavePanel")?.classList.remove("hidden");
+  setTimeout(()=>qs("exportFileName")?.select(),0);
+}
 
-  if(typeof window.showSaveFilePicker==="function"){
+async function chooseExportLocation(){
+  const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
+  if(qs("exportFileName")) qs("exportFileName").value=fileName;
+
+  if(typeof window.showDirectoryPicker==="function"){
     try{
-      const handle=await window.showSaveFilePicker({
-        suggestedName:fileName,
-        types:[{
-          description:"DXF CADファイル",
-          accept:{"application/dxf":[".dxf"],"text/plain":[".dxf"]}
-        }]
-      });
-      const writable=await handle.createWritable();
-      await writable.write(new Blob([content],{type:"application/dxf"}));
-      await writable.close();
-      qs("dxfSavePanel")?.classList.add("hidden");
-      hint.textContent="DXFを保存しました";
-      return;
+      exportDirectoryHandle=await window.showDirectoryPicker({mode:"readwrite"});
+      exportFileHandle=null;
+      if(qs("exportSaveLocation")) qs("exportSaveLocation").value="フォルダー: "+exportDirectoryHandle.name;
+      return true;
     }catch(err){
-      if(err?.name==="AbortError"){
-        hint.textContent="DXF保存をキャンセルしました";
-        return;
-      }
+      if(err?.name==="AbortError") return false;
     }
   }
 
-  downloadText(fileName,content,"application/dxf");
-  qs("dxfSavePanel")?.classList.add("hidden");
-  hint.textContent="指定したファイル名でDXFをダウンロードしました";
+  if(typeof window.showSaveFilePicker==="function"){
+    try{
+      exportFileHandle=await window.showSaveFilePicker({
+        suggestedName:fileName,
+        types:[{
+          description:exportDescription(exportFormat),
+          accept:{[exportMime(exportFormat)]:[exportExtension(exportFormat)]}
+        }]
+      });
+      exportDirectoryHandle=null;
+      if(qs("exportSaveLocation")) qs("exportSaveLocation").value="保存先を選択済み: "+exportFileHandle.name;
+      return true;
+    }catch(err){
+      if(err?.name==="AbortError") return false;
+    }
+  }
+
+  if(qs("exportSaveLocation")) qs("exportSaveLocation").value="端末の通常のダウンロード先";
+  return true;
 }
+
+function concatByteArrays(parts){
+  const total=parts.reduce((n,p)=>n+p.length,0);
+  const out=new Uint8Array(total);
+  let offset=0;
+  for(const p of parts){out.set(p,offset);offset+=p.length}
+  return out;
+}
+
+function makeJpegPdf(jpegBytes,pixelW,pixelH,pageWpt,pageHpt){
+  const enc=new TextEncoder();
+  const parts=[];
+  const offsets=[0];
+  let length=0;
+  const push=value=>{
+    const bytes=typeof value==="string"?enc.encode(value):value;
+    parts.push(bytes);length+=bytes.length;
+  };
+  const startObj=n=>{offsets[n]=length;push(n+" 0 obj\n")};
+
+  push("%PDF-1.4\n%CAD\n");
+  startObj(1);push("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  startObj(2);push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  startObj(3);push("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+pageWpt.toFixed(2)+" "+pageHpt.toFixed(2)+"] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n");
+  startObj(4);
+  push("<< /Type /XObject /Subtype /Image /Width "+pixelW+" /Height "+pixelH+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+jpegBytes.length+" >>\nstream\n");
+  push(jpegBytes);
+  push("\nendstream\nendobj\n");
+  const content="q\n"+pageWpt.toFixed(2)+" 0 0 "+pageHpt.toFixed(2)+" 0 0 cm\n/Im0 Do\nQ\n";
+  const contentBytes=enc.encode(content);
+  startObj(5);
+  push("<< /Length "+contentBytes.length+" >>\nstream\n");
+  push(contentBytes);
+  push("endstream\nendobj\n");
+
+  const xrefOffset=length;
+  push("xref\n0 6\n0000000000 65535 f \n");
+  for(let i=1;i<=5;i++) push(String(offsets[i]).padStart(10,"0")+" 00000 n \n");
+  push("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"+xrefOffset+"\n%%EOF");
+  return new Blob([concatByteArrays(parts)],{type:"application/pdf"});
+}
+
+async function buildPdfBlob(){
+  const svg=buildSVG();
+  const size=svg.match(/width="([0-9.]+)mm" height="([0-9.]+)mm"/);
+  const mmW=size?Number(size[1]):210;
+  const mmH=size?Number(size[2]):297;
+  const maxPx=4096;
+  const pxPerMm=Math.min(5,maxPx/Math.max(mmW,mmH));
+  const pixelW=Math.max(1,Math.round(mmW*pxPerMm));
+  const pixelH=Math.max(1,Math.round(mmH*pxPerMm));
+  const svgBlob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
+  const url=URL.createObjectURL(svgBlob);
+  try{
+    const img=new Image();
+    await new Promise((resolve,reject)=>{
+      img.onload=resolve;
+      img.onerror=()=>reject(new Error("SVG render failed"));
+      img.src=url;
+    });
+    const canvas=document.createElement("canvas");
+    canvas.width=pixelW;canvas.height=pixelH;
+    const c=canvas.getContext("2d");
+    c.fillStyle="#fff";
+    c.fillRect(0,0,pixelW,pixelH);
+    c.drawImage(img,0,0,pixelW,pixelH);
+    const jpegBlob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.94));
+    if(!jpegBlob) throw new Error("PDF image creation failed");
+    const jpegBytes=new Uint8Array(await jpegBlob.arrayBuffer());
+    return makeJpegPdf(jpegBytes,pixelW,pixelH,mmW*72/25.4,mmH*72/25.4);
+  }finally{
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function buildExportBlob(format){
+  if(format==="dxf") return new Blob([toDXF()],{type:"application/dxf"});
+  if(format==="svg") return new Blob([buildSVG()],{type:"image/svg+xml;charset=utf-8"});
+  if(format==="pdf") return await buildPdfBlob();
+  throw new Error("unknown export format");
+}
+
+function downloadBlob(name,blob){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1200);
+}
+
+async function confirmExportSave(){
+  if(!exportFormat) return;
+  const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
+  if(qs("exportFileName")) qs("exportFileName").value=fileName;
+
+  if(!exportDirectoryHandle && !exportFileHandle && qs("exportSaveLocation")?.value==="未選択"){
+    const chosen=await chooseExportLocation();
+    if(!chosen) return;
+  }
+
+  const btn=qs("confirmExportBtn");
+  if(btn){btn.disabled=true;btn.textContent="保存中…"}
+  try{
+    const blob=await buildExportBlob(exportFormat);
+
+    if(exportDirectoryHandle){
+      const handle=await exportDirectoryHandle.getFileHandle(fileName,{create:true});
+      const writable=await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }else if(exportFileHandle){
+      const writable=await exportFileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }else{
+      downloadBlob(fileName,blob);
+    }
+
+    qs("fileSavePanel")?.classList.add("hidden");
+    hint.textContent=exportFormat.toUpperCase()+"を保存しました";
+  }catch(err){
+    alert("保存できませんでした。もう一度お試しください。");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="決定"}
+  }
+}
+
+qs("exportFileName")?.addEventListener("input",()=>{
+  if(exportDirectoryHandle) return;
+  if(exportFileHandle) resetExportLocation("ファイル名変更後、保存先を再選択してください");
+});
+qs("chooseExportLocationBtn").addEventListener("click",chooseExportLocation);
+qs("confirmExportBtn").addEventListener("click",confirmExportSave);
+qs("closeFileSaveBtn").addEventListener("click",()=>qs("fileSavePanel").classList.add("hidden"));
 
 qs("dxfBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  if(qs("dxfFileName")) qs("dxfFileName").value=defaultDxfFileName();
-  qs("dxfSavePanel")?.classList.remove("hidden");
-  setTimeout(()=>qs("dxfFileName")?.select(),0);
+  openExportSavePanel("dxf");
 });
-qs("closeDxfSaveBtn").addEventListener("click",()=>qs("dxfSavePanel").classList.add("hidden"));
-qs("saveDxfToFolderBtn").addEventListener("click",saveDxfWithLocation);
 qs("svgBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml");
+  openExportSavePanel("svg");
 });
 qs("printBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  printDrawing();
+  openExportSavePanel("pdf");
 });
 qs("sheetBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  qs("dxfSavePanel")?.classList.add("hidden");
+  qs("fileSavePanel")?.classList.add("hidden");
   syncSheetInputs();
   qs("sheetPanel").classList.remove("hidden");
 });
@@ -2272,7 +2441,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=130",{updateViaCache:"none"})
+      .register("./sw.js?v=131",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

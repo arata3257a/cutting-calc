@@ -34,6 +34,8 @@ let touchGestureActive=false;
 let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
 let quickCreatedId=null;
 let multiMoveMode="move";
+let moveDrag=null;
+let movePreviewShapes=[];
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -344,8 +346,9 @@ function draw(){
   ctx.clearRect(0,0,r.width,r.height);
   drawGrid(r.width,r.height);
   shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
+  movePreviewShapes.forEach(s=>drawShape(s,true));
   if(preview) drawShape(preview,true);
-  if(["dimension","copy","mirror","rotate"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
+  if(["dimension","copy","mirror","rotate","multi"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
@@ -446,12 +449,92 @@ function translateShape(s,dx,dy){
   if(s.type==="dim"){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;s.tx+=dx;s.ty+=dy}
 }
 
+function restoreMoveDragOriginals(){
+  if(!moveDrag || moveDrag.mode!=="move") return;
+  for(const item of moveDrag.before){
+    const target=shapes.find(s=>s.id===item.id);
+    if(target) Object.assign(target,JSON.parse(JSON.stringify(item.shape)));
+  }
+}
+
+function cancelMoveDrag(){
+  if(!moveDrag){movePreviewShapes=[];return;}
+  restoreMoveDragOriginals();
+  moveDrag=null;movePreviewShapes=[];dimSnapHover=null;
+}
+
+function startMoveDragFromSnap(snap,pointerId){
+  const targets=shapes.filter(s=>selectedIds.has(s.id));
+  if(!targets.length) return;
+  moveDrag={
+    pointerId,
+    mode:multiMoveMode,
+    base:{x:snap.x,y:snap.y},
+    before:targets.map(s=>({id:s.id,shape:JSON.parse(JSON.stringify(s))})),
+    moved:false
+  };
+  movePreviewShapes=[];
+  dimSnapHover={x:snap.x,y:snap.y};
+  hint.textContent=snap.kind+"をつかみました。そのままドラッグ";
+  draw();
+}
+
+function updateMoveDrag(raw){
+  if(!moveDrag) return;
+  const excluded=moveDrag.mode==="move"?new Set(moveDrag.before.map(x=>x.id)):null;
+  const snap=findTransformSnap(raw,24,excluded);
+  const target=snap?{x:snap.x,y:snap.y}:raw;
+  const dx=target.x-moveDrag.base.x,dy=target.y-moveDrag.base.y;
+  if(Math.hypot(dx,dy)*scale>4) moveDrag.moved=true;
+  dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
+
+  if(moveDrag.mode==="move"){
+    for(const item of moveDrag.before){
+      const targetShape=shapes.find(s=>s.id===item.id);
+      if(!targetShape) continue;
+      Object.assign(targetShape,JSON.parse(JSON.stringify(item.shape)));
+      translateShape(targetShape,dx,dy);
+    }
+  }else{
+    movePreviewShapes=moveDrag.before.map((item,i)=>{
+      const s=JSON.parse(JSON.stringify(item.shape));
+      s.id=-100000-i;
+      translateShape(s,dx,dy);
+      return s;
+    });
+  }
+  draw();
+}
+
+function finishMoveDrag(){
+  if(!moveDrag) return;
+  const mode=moveDrag.mode,moved=moveDrag.moved,count=moveDrag.before.length;
+  if(!moved){
+    restoreMoveDragOriginals();
+    moveDrag=null;movePreviewShapes=[];dimSnapHover=null;
+    hint.textContent="端点・中点・中心・交点をつかんでドラッグ";
+    draw();return;
+  }
+  if(mode==="copy"){
+    const copies=movePreviewShapes.map(s=>{
+      const c=JSON.parse(JSON.stringify(s));c.id=newId();return c;
+    });
+    shapes.push(...copies);
+    selectedIds=new Set(copies.map(s=>s.id));
+  }
+  moveDrag=null;movePreviewShapes=[];dimSnapHover=null;
+  snapshot();openMultiPanel();
+  hint.textContent=mode==="copy"?count+"個をドラッグコピーしました":count+"個をドラッグ移動しました";
+  draw();
+}
+
 canvas.addEventListener("pointerdown",e=>{
   canvas.setPointerCapture?.(e.pointerId);
 
   if(e.pointerType==="touch"){
     activeTouchPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(activeTouchPointers.size>=2){
+      cancelMoveDrag();
       const pts=[...activeTouchPointers.values()].slice(0,2);
       const r=canvas.getBoundingClientRect();
       const mid={x:(pts[0].x+pts[1].x)/2-r.left,y:(pts[0].y+pts[1].y)/2-r.top};
@@ -477,7 +560,14 @@ canvas.addEventListener("pointerdown",e=>{
     return;
   }
   if(tool==="dimension"){ handleDimensionTap(p); return; }
-  if(tool==="multi"){ handleMultiTap(raw); return; }
+  if(tool==="multi"){
+    if(selectedIds.size){
+      const selectedHit=hitTest(raw,s=>selectedIds.has(s.id));
+      const baseSnap=selectedHit?findTransformSnap(raw):null;
+      if(baseSnap){startMoveDragFromSnap(baseSnap,e.pointerId);return;}
+    }
+    handleMultiTap(raw);return;
+  }
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
@@ -543,6 +633,10 @@ canvas.addEventListener("pointermove",e=>{
   }
   const raw=eventWorld(e);
 
+  if(tool==="multi" && moveDrag){
+    updateMoveDrag(raw);return;
+  }
+
   if(transformToolNeedsSnap()){
     const snap=findTransformSnap(raw);
     dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
@@ -596,10 +690,18 @@ canvas.addEventListener("pointerup",e=>{
       return;
     }
   }
+  if(tool==="multi" && moveDrag && moveDrag.pointerId===e.pointerId){
+    finishMoveDrag();return;
+  }
   if(tool==="pan" && panDrag){panDrag=null;hint.textContent="画面をドラッグして移動";return;}
 });
 
+canvas.addEventListener("pointercancel",e=>{
+  if(moveDrag && moveDrag.pointerId===e.pointerId){cancelMoveDrag();draw();}
+});
+
 function setTool(next){
+  cancelMoveDrag();
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;dimSnapHover=null;panDrag=null;
   quickCreatedId=null;
   qs("dimensionModeDock")?.classList.toggle("hidden",tool!=="dimension");
@@ -619,7 +721,7 @@ function setTool(next){
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ → 軸を2点で指定";
   else if(tool==="rotate") hint.textContent="回転する図形をタップ → 回転中心を選択";
   else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
-  else if(tool==="multi"){hint.textContent="移動する図形をタップして選択";openMultiPanel();}
+  else if(tool==="multi"){hint.textContent="図形を選択 → 端点・中点・中心・交点をドラッグ";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
     openQuick(tool);
@@ -673,10 +775,10 @@ function dimensionEndpointCandidates(){
   return pts;
 }
 
-function dimensionPrimitives(){
+function dimensionPrimitives(excludeIds=null){
   const lines=[],circles=[],arcs=[];
   for(const s of shapes){
-    if(!isShapeVisible(s)) continue;
+    if(!isShapeVisible(s) || excludeIds?.has(s.id)) continue;
     if(s.type==="line"){
       lines.push({...s,sourceId:s.id});
     }else if(s.type==="rect"){
@@ -739,8 +841,8 @@ function pushUniquePoint(list,p,kind="交点"){
   if(!list.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<1e-7)) list.push({...p,kind});
 }
 
-function dimensionIntersectionCandidates(){
-  const {lines,circles,arcs}=dimensionPrimitives();
+function dimensionIntersectionCandidates(excludeIds=null){
+  const {lines,circles,arcs}=dimensionPrimitives(excludeIds);
   const pts=[];
 
   for(let i=0;i<lines.length;i++){
@@ -795,11 +897,11 @@ function findDimensionSnap(p,maxPx=22){
   return best;
 }
 
-function transformSnapCandidates(){
+function transformSnapCandidates(excludeIds=null){
   const pts=[];
   const add=(p,kind)=>pushUniquePoint(pts,{x:p.x,y:p.y},kind);
   for(const s of shapes){
-    if(!isShapeVisible(s) || s.type==="dim") continue;
+    if(!isShapeVisible(s) || s.type==="dim" || excludeIds?.has(s.id)) continue;
     if(s.type==="line"){
       add({x:s.x1,y:s.y1},"端点");
       add({x:s.x2,y:s.y2},"端点");
@@ -832,14 +934,14 @@ function transformSnapCandidates(){
       add({x:s.cx+hs,y:s.cy},"中点");
     }
   }
-  for(const p of dimensionIntersectionCandidates()) add(p,"交点");
+  for(const p of dimensionIntersectionCandidates(excludeIds)) add(p,"交点");
   return pts;
 }
 
-function findTransformSnap(p,maxPx=24){
+function findTransformSnap(p,maxPx=24,excludeIds=null){
   const tol=maxPx/scale;
   let best=null,bestD=Infinity;
-  for(const c of transformSnapCandidates()){
+  for(const c of transformSnapCandidates(excludeIds)){
     const d=Math.hypot(p.x-c.x,p.y-c.y);
     if(d<=tol && d<bestD){best=c;bestD=d}
   }
@@ -885,6 +987,7 @@ function openMultiPanel(){
   qs("quickTitle").textContent="図形を移動";
   quickFields.innerHTML=
     '<div class="multi-count">移動する図形: '+selectedIds.size+'個</div>'+
+    '<div class="field-note">数値入力 または 端点・中点・中心・交点をつかんでドラッグ</div>'+
     '<div class="transform-mode-choice">'+
       '<button id="moveOriginalBtn" class="transform-mode-btn" type="button">↔<span>元図形を移動</span></button>'+
       '<button id="moveCopyBtn" class="transform-mode-btn" type="button">⧉<span>コピーして移動</span></button>'+

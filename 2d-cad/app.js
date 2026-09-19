@@ -1978,11 +1978,16 @@ function svgRectPath(s,b,m){
   parts.push("Z");return parts.join(" ");
 }
 
-function svgShape(s,b,m){
-  const stroke='stroke="#111" stroke-width="0.35" fill="none" vector-effect="non-scaling-stroke"';
+function svgShape(s,b,m,pdfMode=false){
+  const shapeColor=pdfMode?"#000":"#111";
+  const shapeWidth=pdfMode?"0.55":"0.35";
+  const dimColor=pdfMode?"#8a8a8a":"#555";
+  const dimTextColor=pdfMode?"#777":"#333";
+  const dimWidth=pdfMode?"0.18":"0.25";
+  const stroke='stroke="'+shapeColor+'" stroke-width="'+shapeWidth+'" fill="none" vector-effect="non-scaling-stroke"';
   if(s.type==="point"){
     const p=svgPoint(s.x,s.y,b,m);
-    return '<circle cx="'+p.x+'" cy="'+p.y+'" r="0.8" fill="#111"/>';
+    return '<circle cx="'+p.x+'" cy="'+p.y+'" r="0.8" fill="'+shapeColor+'"/>';
   }
   if(s.type==="line"){
     const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m);
@@ -2010,15 +2015,15 @@ function svgShape(s,b,m){
     let oa,ob,value;
     if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
     else{oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
-    return `<g stroke="#555" stroke-width="0.25" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g><text x="${(oa.x+ob.x)/2}" y="${(oa.y+ob.y)/2-1.5}" font-size="3.5" text-anchor="middle" fill="#333">${round(value)} mm</text>`;
+    return `<g stroke="${dimColor}" stroke-width="${dimWidth}" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g><text x="${(oa.x+ob.x)/2}" y="${(oa.y+ob.y)/2-1.5}" font-size="3.5" text-anchor="middle" fill="${dimTextColor}">${round(value)} mm</text>`;
   }
   return "";
 }
-function buildSVG(){
+function buildSVG(pdfMode=false){
   const b=exportBounds(),margin=10,framePad=5,titleH=30;
   const geomW=Math.max(30,b.maxX-b.minX),geomH=Math.max(20,b.maxY-b.minY);
   const w=geomW+margin*2,h=geomH+margin*2+titleH;
-  const shapesSvg=shapes.filter(isShapeVisible).map(s=>svgShape(s,b,margin)).join("");
+  const shapesSvg=shapes.filter(isShapeVisible).map(s=>svgShape(s,b,margin,pdfMode)).join("");
   const titleY=h-titleH;
   const splitX=w*0.55;
   const row1=titleY+8,row2=titleY+16,row3=titleY+24;
@@ -2287,7 +2292,7 @@ function makeJpegPdf(jpegBytes,pixelW,pixelH,pageWpt,pageHpt){
 }
 
 async function buildPdfBlob(){
-  const svg=buildSVG();
+  const svg=buildSVG(true);
   const size=svg.match(/width="([0-9.]+)mm" height="([0-9.]+)mm"/);
   const mmW=size?Number(size[1]):210;
   const mmH=size?Number(size[2]):297;
@@ -2445,7 +2450,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=132",{updateViaCache:"none"})
+      .register("./sw.js?v=133",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

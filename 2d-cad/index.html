@@ -9,13 +9,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=117">
+  <link rel="stylesheet" href="./style.css?v=118">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.17 / mm</small>
+      <small>v1.18 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -61,6 +61,7 @@
       <nav class="draw-toolbar" aria-label="作図ツール">
         <button class="tool active" data-tool="select">↖<span>選択</span></button>
         <button class="tool" data-tool="line">／<span>直線</span></button>
+        <button class="tool" data-tool="parallel">∥<span>平行線</span></button>
         <button class="tool" data-tool="circle">○<span>円</span></button>
         <button class="tool" data-tool="slot">▭<span>長穴</span></button>
         <button class="tool" data-tool="arc">⌒<span>円弧</span></button>
@@ -146,6 +147,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=117"></script>
+  <script src="./app.js?v=118"></script>
 </body>
 </html>

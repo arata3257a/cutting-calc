@@ -28,7 +28,7 @@ const newId = () => nextId++;
 const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
 
 function shapeLabel(type){
-  return {line:"直線",rect:"四角",circle:"円",slot:"長穴"}[type] || type;
+  return {line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴"}[type] || type;
 }
 
 function snapValue(v){
@@ -150,10 +150,18 @@ function drawShape(s,isPreview=false){
       left+Math.abs(b.x-a.x)/2,top-7,selected);
   }
 
-  if(s.type==="circle"){
+  if(s.type==="circle" || s.type==="hole"){
     const c=worldToScreen({x:s.cx,y:s.cy});
     ctx.beginPath();ctx.arc(c.x,c.y,Math.abs(s.r*scale),0,Math.PI*2);ctx.stroke();
-    drawDimensionText(`Ø${round(Math.abs(s.r*2))}`,c.x,c.y-Math.abs(s.r*scale)-7,selected);
+    if(s.type==="hole"){
+      const mark=Math.max(5,Math.min(12,Math.abs(s.r*scale)*0.7));
+      ctx.beginPath();ctx.moveTo(c.x-mark,c.y);ctx.lineTo(c.x+mark,c.y);
+      ctx.moveTo(c.x,c.y-mark);ctx.lineTo(c.x,c.y+mark);ctx.stroke();
+      const label=s.holeKind && s.holeKind!=="through" ? `${s.holeKind} 下穴 Ø${round(Math.abs(s.r*2))}` : `穴 Ø${round(Math.abs(s.r*2))}`;
+      drawDimensionText(label,c.x,c.y-Math.abs(s.r*scale)-7,selected);
+    }else{
+      drawDimensionText(`Ø${round(Math.abs(s.r*2))}`,c.x,c.y-Math.abs(s.r*scale)-7,selected);
+    }
   }
 
   if(s.type==="slot"){
@@ -196,6 +204,9 @@ function shapeFromPoints(a,b){
   if(tool==="circle"){
     return {id:newId(),type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y))};
   }
+  if(tool==="hole"){
+    return {id:newId(),type:"hole",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),holeKind:"through"};
+  }
   if(tool==="slot"){
     const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
     return {id:newId(),type:"slot",cx,cy,length:Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),width:Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y))};
@@ -217,7 +228,7 @@ function distancePointSegment(p,a,b){
 function hitShape(s,p){
   const tol=8/scale;
   if(s.type==="line") return distancePointSegment(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol;
-  if(s.type==="circle") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
+  if(s.type==="circle" || s.type==="hole") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
   if(s.type==="rect"){
     const x1=Math.min(s.x,s.x+s.w)-tol,x2=Math.max(s.x,s.x+s.w)+tol;
     const y1=Math.min(s.y,s.y+s.h)-tol,y2=Math.max(s.y,s.y+s.h)+tol;
@@ -240,7 +251,7 @@ function hitTest(p){
 function translateShape(s,dx,dy){
   if(s.type==="line"){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy}
   if(s.type==="rect"){s.x+=dx;s.y+=dy}
-  if(s.type==="circle"){s.cx+=dx;s.cy+=dy}
+  if(s.type==="circle" || s.type==="hole"){s.cx+=dx;s.cy+=dy}
   if(s.type==="slot"){s.cx+=dx;s.cy+=dy}
 }
 
@@ -346,6 +357,15 @@ function openQuick(type){
   if(type==="circle"){
     quickFields.innerHTML=field("qX","中心 X",0)+field("qY","中心 Y",0)+field("qD","直径 Ø",20);
   }
+  if(type==="hole"){
+    quickFields.innerHTML=
+      '<div class="field"><label for="qHoleType">穴種</label><select id="qHoleType"><option value="through">通し穴</option><option value="M3">M3タップ</option><option value="M4">M4タップ</option><option value="M5">M5タップ</option><option value="M6">M6タップ</option><option value="M8">M8タップ</option><option value="M10">M10タップ</option><option value="M12">M12タップ</option></select></div>'+
+      field("qD","穴径 Ø",10)+field("qX","中心 X",0)+field("qY","中心 Y",0);
+    const tapDrill={M3:2.5,M4:3.3,M5:4.2,M6:5.0,M8:6.8,M10:8.5,M12:10.2};
+    qs("qHoleType").addEventListener("change",e=>{
+      if(tapDrill[e.target.value]) qs("qD").value=tapDrill[e.target.value];
+    });
+  }
   if(type==="slot"){
     quickFields.innerHTML=field("qX","中心 X",0)+field("qY","中心 Y",0)+field("qLength","全長",40)+field("qW","幅",10);
   }
@@ -365,6 +385,10 @@ qs("createByValueBtn").addEventListener("click",()=>{
   }
   if(tool==="circle"){
     s={id:newId(),type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2};
+  }
+  if(tool==="hole"){
+    const holeKind=qs("qHoleType")?.value || "through";
+    s={id:newId(),type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind};
   }
   if(tool==="slot"){
     s={id:newId(),type:"slot",cx:x,cy:y,length:Math.abs(num(qs("qLength").value)),width:Math.abs(num(qs("qW").value))};
@@ -387,6 +411,10 @@ function openProperty(s){
   if(s.type==="circle"){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pD","直径 Ø",s.r*2);
   }
+  if(s.type==="hole"){
+    html+=`<div class="field"><label>穴種</label><input value="${s.holeKind && s.holeKind!=="through" ? s.holeKind+"タップ" : "通し穴"}" disabled></div>`;
+    html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pD","穴径 Ø",s.r*2);
+  }
   if(s.type==="slot"){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pLength","全長",s.length)+field("pW","幅",s.width);
   }
@@ -407,7 +435,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   if(s.type==="rect"){
     s.x=num(qs("pX").value);s.y=num(qs("pY").value);s.w=num(qs("pW").value);s.h=num(qs("pH").value);
   }
-  if(s.type==="circle"){
+  if(s.type==="circle" || s.type==="hole"){
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.r=Math.abs(num(qs("pD").value))/2;
   }
   if(s.type==="slot"){
@@ -437,7 +465,7 @@ function getBounds(){
       minX=Math.min(minX,s.x,s.x+s.w);maxX=Math.max(maxX,s.x,s.x+s.w);
       minY=Math.min(minY,s.y,s.y+s.h);maxY=Math.max(maxY,s.y,s.y+s.h);
     }
-    if(s.type==="circle"){
+    if(s.type==="circle" || s.type==="hole"){
       minX=Math.min(minX,s.cx-s.r);maxX=Math.max(maxX,s.cx+s.r);
       minY=Math.min(minY,s.cy-s.r);maxY=Math.max(maxY,s.cy+s.r);
     }
@@ -535,7 +563,7 @@ function toDXF(){
   let body="";
   for(const s of shapes){
     if(s.type==="line") body+=dxfLine(s);
-    if(s.type==="circle") body+=dxfCircle(s.cx,s.cy,Math.abs(s.r));
+    if(s.type==="circle" || s.type==="hole") body+=dxfCircle(s.cx,s.cy,Math.abs(s.r));
     if(s.type==="rect"){
       const x2=s.x+s.w,y2=s.y+s.h;
       body+=dxfLine({x1:s.x,y1:s.y,x2,y2:s.y});

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "100x50 plate with two Ø10 holes",
+  "unit": "mm",
+  "shapes": [
+    {"type":"rect","x":0,"y":0,"w":100,"h":50},
+    {"type":"circle","cx":25,"cy":25,"r":5},
+    {"type":"circle","cx":75,"cy":25,"r":5}
+  ]
+}

@@ -1869,13 +1869,41 @@ function downloadText(name,text,type){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
+function closeTransferPanels(){
+  qs("loadPanel")?.classList.add("hidden");
+  qs("outputPanel")?.classList.add("hidden");
+}
+
+qs("loadMenuBtn").addEventListener("click",()=>{
+  const panel=qs("loadPanel");
+  const willOpen=panel.classList.contains("hidden");
+  closeTransferPanels();
+  qs("sheetPanel")?.classList.add("hidden");
+  if(willOpen) panel.classList.remove("hidden");
+});
+
+qs("outputMenuBtn").addEventListener("click",()=>{
+  const panel=qs("outputPanel");
+  const willOpen=panel.classList.contains("hidden");
+  closeTransferPanels();
+  qs("sheetPanel")?.classList.add("hidden");
+  if(willOpen) panel.classList.remove("hidden");
+});
+
+qs("closeLoadBtn").addEventListener("click",()=>qs("loadPanel").classList.add("hidden"));
+qs("closeOutputBtn").addEventListener("click",()=>qs("outputPanel").classList.add("hidden"));
+
 qs("exportBtn").addEventListener("click",()=>{
+  qs("outputPanel")?.classList.add("hidden");
   downloadText("2d-cad-drawing.json",JSON.stringify({
     version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
   },null,2),"application/json");
 });
 
-qs("importBtn").addEventListener("click",()=>qs("importInput").click());
+qs("importBtn").addEventListener("click",()=>{
+  qs("loadPanel")?.classList.add("hidden");
+  qs("importInput").click();
+});
 qs("importInput").addEventListener("change",async e=>{
   const f=e.target.files?.[0]; if(!f) return;
   try{
@@ -2125,7 +2153,10 @@ function parseDXF(text){
   return out;
 }
 
-qs("dxfImportBtn").addEventListener("click",()=>qs("dxfInput").click());
+qs("dxfImportBtn").addEventListener("click",()=>{
+  qs("loadPanel")?.classList.add("hidden");
+  qs("dxfInput").click();
+});
 qs("dxfInput").addEventListener("change",async e=>{
   const f=e.target.files?.[0];if(!f)return;
   try{
@@ -2136,10 +2167,23 @@ qs("dxfInput").addEventListener("change",async e=>{
   e.target.value="";
 });
 
-qs("dxfBtn").addEventListener("click",()=>downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf"));
-qs("svgBtn").addEventListener("click",()=>downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml"));
-qs("printBtn").addEventListener("click",printDrawing);
-qs("sheetBtn").addEventListener("click",()=>{syncSheetInputs();qs("sheetPanel").classList.remove("hidden")});
+qs("dxfBtn").addEventListener("click",()=>{
+  qs("outputPanel")?.classList.add("hidden");
+  downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf");
+});
+qs("svgBtn").addEventListener("click",()=>{
+  qs("outputPanel")?.classList.add("hidden");
+  downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml");
+});
+qs("printBtn").addEventListener("click",()=>{
+  qs("outputPanel")?.classList.add("hidden");
+  printDrawing();
+});
+qs("sheetBtn").addEventListener("click",()=>{
+  closeTransferPanels();
+  syncSheetInputs();
+  qs("sheetPanel").classList.remove("hidden");
+});
 qs("closeSheetBtn").addEventListener("click",()=>qs("sheetPanel").classList.add("hidden"));
 qs("saveSheetBtn").addEventListener("click",()=>{
   drawingMeta={
@@ -2185,7 +2229,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=125",{updateViaCache:"none"})
+      .register("./sw.js?v=126",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

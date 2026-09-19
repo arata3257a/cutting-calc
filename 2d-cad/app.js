@@ -569,3 +569,10 @@ snapshot();
 setTool("select");
 window.addEventListener("resize",resize);
 resize();
+
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}

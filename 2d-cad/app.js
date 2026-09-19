@@ -33,7 +33,7 @@ const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
 function shapeLabel(type){
   return {
     line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
-    trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R"
+    trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R",copy:"コピー",mirror:"ミラー"
   }[type] || type;
 }
 
@@ -326,6 +326,8 @@ canvas.addEventListener("pointerdown",e=>{
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
+  if(tool==="copy"){ handleCopyTap(raw); return; }
+  if(tool==="mirror"){ handleMirrorTap(raw); return; }
   if(tool==="arc"){ handleArcTap(p); return; }
 
   if(tool==="select"){
@@ -413,12 +415,15 @@ function setTool(next){
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
   selectedId=null;closeProperty();quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
 
   if(tool==="select") hint.textContent="図形をタップして選択できます";
   else if(tool==="trim") hint.textContent="削る側の直線をタップ";
   else if(tool==="offset") hint.textContent="オフセット元の図形をタップ";
   else if(tool==="chamfer") hint.textContent="面取りする四角の角をタップ";
   else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
+  else if(tool==="copy") hint.textContent="コピーする図形をタップ";
+  else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
   else if(tool==="arc"){
     openQuick(tool);
     hint.textContent="中心→始点→終点の順にタップ、または数値入力";
@@ -546,6 +551,74 @@ function applyCornerMod(){
 }
 
 
+function handleCopyTap(p){
+  const source=hitTest(p);
+  if(!source){hint.textContent="コピーする図形をタップ";return;}
+  selectedId=source.id;opState={sourceId:source.id};
+  qs("quickTitle").textContent="コピー";
+  quickFields.innerHTML=field("qDX","X方向",10)+field("qDY","Y方向",0);
+  qs("createByValueBtn").textContent="コピー作成";
+  quickPanel.classList.remove("hidden");
+  hint.textContent="移動量を入力してください";draw();
+}
+
+function handleMirrorTap(p){
+  const source=hitTest(p);
+  if(!source){hint.textContent="ミラーする図形をタップ";return;}
+  selectedId=source.id;opState={sourceId:source.id};
+  qs("quickTitle").textContent="ミラー";
+  quickFields.innerHTML='<div class="field"><label for="qMirrorAxis">基準線</label><select id="qMirrorAxis"><option value="Y">縦線 X=</option><option value="X">横線 Y=</option></select></div>'+field("qMirrorValue","基準座標",0);
+  qs("createByValueBtn").textContent="ミラー作成";
+  quickPanel.classList.remove("hidden");
+  hint.textContent="基準線を指定してください";draw();
+}
+
+function swapCornersForMirror(s,axis){
+  if(s.type!=="rect"||!s.corners)return;
+  const c=s.corners;
+  s.corners=axis==="Y"
+    ? {tl:c.tr,tr:c.tl,bl:c.br,br:c.bl}
+    : {tl:c.bl,bl:c.tl,tr:c.br,br:c.tr};
+}
+
+function applyCopy(){
+  const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
+  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  translateShape(s,num(qs("qDX")?.value),num(qs("qDY")?.value));
+  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="コピーしました";draw();
+}
+
+function applyMirror(){
+  const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
+  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  const axis=qs("qMirrorAxis")?.value||"Y",v=num(qs("qMirrorValue")?.value);
+
+  if(s.type==="line"){
+    if(axis==="Y"){s.x1=2*v-s.x1;s.x2=2*v-s.x2}else{s.y1=2*v-s.y1;s.y2=2*v-s.y2}
+  }else if(s.type==="rect"){
+    const r=rectNorm(s);
+    if(axis==="Y"){s.x=2*v-r.x2;s.y=r.y1;s.w=r.w;s.h=r.h}
+    else{s.x=r.x1;s.y=2*v-r.y2;s.w=r.w;s.h=r.h}
+    swapCornersForMirror(s,axis);
+  }else if(s.type==="circle"||s.type==="hole"||s.type==="slot"){
+    if(axis==="Y")s.cx=2*v-s.cx;else s.cy=2*v-s.cy;
+  }else if(s.type==="arc"){
+    if(axis==="Y"){
+      s.cx=2*v-s.cx;
+      const old1=s.a1,old2=s.a2;
+      s.a1=normDeg(180-old2);s.a2=normDeg(180-old1);
+    }else{
+      s.cy=2*v-s.cy;
+      const old1=s.a1,old2=s.a2;
+      s.a1=normDeg(-old2);s.a2=normDeg(-old1);
+    }
+  }
+  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="ミラーしました";draw();
+}
+
+
 function field(name,label,value=0,step="any"){
   return `<div class="field"><label for="${name}">${label}</label><input id="${name}" type="number" inputmode="decimal" step="${step}" value="${round(num(value))}"></div>`;
 }
@@ -582,6 +655,8 @@ function openQuick(type){
 qs("createByValueBtn").addEventListener("click",()=>{
   if(tool==="offset") return applyOffset();
   if(tool==="chamfer" || tool==="fillet") return applyCornerMod();
+  if(tool==="copy") return applyCopy();
+  if(tool==="mirror") return applyMirror();
 
   let s=null;
   const x=num(qs("qX")?.value),y=num(qs("qY")?.value);

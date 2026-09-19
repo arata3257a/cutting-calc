@@ -25,9 +25,8 @@ let opState = null;
 let arcDraft = null;
 let dimDraft = null;
 let panDrag = null;
-let layerVisibility={"0":true,"外形":true,"穴":true,"寸法":true};
+let layerVisibility=Object.fromEntries(Array.from({length:11},(_,i)=>[String(i),true]));
 let selectedIds=new Set();
-const SNAP_STEPS=[0.5,1,2,5,10];
 let activeTouchPointers=new Map();
 let touchGesture=null;
 let touchGestureActive=false;
@@ -40,17 +39,16 @@ const newId = () => nextId++;
 const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
 const currentLayer = () => qs("layerSelect")?.value || "0";
 function ensureLayer(name){
-  name=String(name||"0");
-  if(!(name in layerVisibility)) layerVisibility[name]=true;
-  const sel=qs("layerSelect");
-  if(sel && ![...sel.options].some(o=>o.value===name)){
-    const o=document.createElement("option");o.value=name;o.textContent=name;sel.appendChild(o);
-  }
-  return name;
+  const legacy={"外形":"0","穴":"1","寸法":"2"};
+  let v=legacy[String(name)] ?? String(name ?? "0");
+  const n=Math.round(Number(v));
+  if(!Number.isFinite(n) || n<0 || n>10) v="0";
+  else v=String(n);
+  if(!(v in layerVisibility)) layerVisibility[v]=true;
+  return v;
 }
 function assignLayer(s,fallback=null){
-  if(!s.layer) s.layer=fallback||currentLayer();
-  s.layer=ensureLayer(s.layer);
+  s.layer=ensureLayer(s.layer ?? fallback ?? currentLayer());
   return s;
 }
 function isShapeVisible(s){return layerVisibility[s.layer||"0"]!==false;}
@@ -107,17 +105,10 @@ function appendRectCorner(key,mod,v,r,S){
   ctx.arc(c.x,c.y,v*scale,rad(-a[0]),rad(-a[1]),true);
 }
 
-function currentSnapStep(){
-  const i=Math.max(0,Math.min(SNAP_STEPS.length-1,Math.round(num(qs("snapRange")?.value))));
-  return SNAP_STEPS[i];
-}
-function snapValue(v){
-  const step=currentSnapStep();
-  return Math.round(v / step) * step;
-}
+function snapValue(v){ return v; }
 
 function snapPoint(p){
-  return {x:snapValue(p.x),y:snapValue(p.y)};
+  return {x:p.x,y:p.y};
 }
 
 function resize(){
@@ -612,14 +603,13 @@ function setTool(next){
   draw();
 }
 
-document.querySelectorAll(".tool").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
+document.querySelectorAll(".tool[data-tool]").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
 
 function handleDimensionTap(p){
   if(!dimDraft){dimDraft={stage:1,a:p};preview=null;hint.textContent="寸法の終点をタップ";return;}
   if(dimDraft.stage===1){dimDraft.b=p;dimDraft.stage=2;hint.textContent="寸法を置く位置をタップ";return;}
   const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
-    tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned",layer:"寸法"};
-  ensureLayer("寸法");
+    tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned",layer:currentLayer()};
   shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;preview=null;hint.textContent="寸法線を作成しました";draw();
 }
 
@@ -974,7 +964,10 @@ function openProperty(s){
   quickPanel.classList.add("hidden");
   propertyPanel.classList.remove("hidden");
   let html=`<div class="field"><label>種類</label><input value="${shapeLabel(s.type)}" disabled></div>`;
-  html+=`<div class="field"><label>レイヤー</label><input id="pLayer" value="${s.layer||"0"}"></div>`;
+  html+='<div class="field"><label>レイヤー</label><select id="pLayer">'+
+    Array.from({length:11},(_,i)=>'<option value="'+i+'">'+i+'</option>').join('')+
+    '</select></div>';
+  setTimeout(()=>{if(qs("pLayer"))qs("pLayer").value=ensureLayer(s.layer)},0);
   if(s.type==="line"){
     html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2);
   }
@@ -1059,7 +1052,7 @@ function deleteCurrentSelection(){
   hint.textContent="削除する図形を先に選択してください";
 }
 qs("deleteSelectedBtn").addEventListener("click",deleteCurrentSelection);
-qs("deleteToolBtn").addEventListener("click",deleteCurrentSelection);
+qs("deleteToolBtn").addEventListener("click",e=>{e.stopPropagation();deleteCurrentSelection();});
 
 qs("layerBtn").addEventListener("click",()=>{
   qs("layerPanel").classList.toggle("hidden");
@@ -1076,15 +1069,6 @@ qs("layerSelect").addEventListener("change",()=>{
   const layer=currentLayer();
   qs("layerVisibleBtn").textContent=layerVisibility[layer]===false?"🚫 非表示":"👁 表示中";
 });
-
-function updateSnapSliderLabel(){
-  if(qs("snapValueLabel")) qs("snapValueLabel").textContent=currentSnapStep()+" mm";
-}
-qs("snapRange").addEventListener("input",()=>{
-  updateSnapSliderLabel();
-  hint.textContent="スナップ "+currentSnapStep()+" mm";
-});
-updateSnapSliderLabel();
 
 qs("undoBtn").addEventListener("click",()=>restoreHistory(historyIndex-1));
 qs("redoBtn").addEventListener("click",()=>restoreHistory(historyIndex+1));
@@ -1178,7 +1162,12 @@ qs("importInput").addEventListener("change",async e=>{
     shapes=data.shapes.map(s=>assignLayer({...s,id:s.id??newId()},"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
     if(data.drawingMeta) drawingMeta={...drawingMeta,...data.drawingMeta};
-    if(data.layerVisibility) layerVisibility={...layerVisibility,...data.layerVisibility};
+    if(data.layerVisibility){
+      for(let i=0;i<=10;i++){
+        const k=String(i);
+        if(typeof data.layerVisibility[k]==="boolean") layerVisibility[k]=data.layerVisibility[k];
+      }
+    }
     selectedId=null;selectedIds.clear();snapshot();fitView();hint.textContent="図面を読み込みました";
   }catch{alert("このJSONファイルは読み込めませんでした")}
   e.target.value="";
@@ -1434,7 +1423,12 @@ try{
     shapes=saved.shapes.map(s=>assignLayer(s,"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
     if(saved.drawingMeta) drawingMeta={...drawingMeta,...saved.drawingMeta};
-    if(saved.layerVisibility) layerVisibility={...layerVisibility,...saved.layerVisibility};
+    if(saved.layerVisibility){
+      for(let i=0;i<=10;i++){
+        const k=String(i);
+        if(typeof saved.layerVisibility[k]==="boolean") layerVisibility[k]=saved.layerVisibility[k];
+      }
+    }
   }
 }catch{}
 

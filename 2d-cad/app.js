@@ -1014,7 +1014,9 @@ function openProperty(s){
     '</select></div>';
   setTimeout(()=>{if(qs("pLayer"))qs("pLayer").value=ensureLayer(s.layer)},0);
   if(s.type==="line"){
-    html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2);
+    const length=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+    const angle=normDeg(deg(Math.atan2(s.y2-s.y1,s.x2-s.x1)));
+    html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pLength","長さ",length)+field("pAngle","角度 °",angle);
   }
   if(s.type==="rect"){
     html+=field("pX","左下 X",s.x)+field("pY","左下 Y",s.y)+field("pW","幅",s.w)+field("pH","高さ",s.h);
@@ -1058,7 +1060,12 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   const s=selectedShape(); if(!s) return;
   if(qs("pLayer")) s.layer=ensureLayer(qs("pLayer").value.trim()||"0");
   if(s.type==="line"){
-    s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);
+    const x1=num(qs("pX1").value),y1=num(qs("pY1").value);
+    const length=Math.abs(num(qs("pLength").value));
+    const angle=rad(num(qs("pAngle").value));
+    s.x1=x1;s.y1=y1;
+    s.x2=x1+length*Math.cos(angle);
+    s.y2=y1+length*Math.sin(angle);
   }
   if(s.type==="rect"){
     s.x=num(qs("pX").value);s.y=num(qs("pY").value);s.w=num(qs("pW").value);s.h=num(qs("pH").value);

@@ -741,6 +741,7 @@ function setTool(next){
   quickCreatedId=null;
   qs("dimensionModeDock")?.classList.toggle("hidden",tool!=="dimension");
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
+  qs("layerBtn")?.classList.toggle("active",!qs("layerPanel")?.classList.contains("hidden"));
   selectedId=null;
   if(tool!=="multi") selectedIds.clear();
   closeProperty();quickPanel.classList.add("hidden");
@@ -1760,12 +1761,23 @@ function deleteCurrentSelection(){
   hint.textContent="削除する図形を先に選択してください";
 }
 qs("deleteSelectedBtn").addEventListener("click",deleteCurrentSelection);
-qs("deleteToolBtn").addEventListener("click",e=>{e.stopPropagation();deleteCurrentSelection();});
+qs("deleteToolBtn").addEventListener("click",e=>{
+  e.stopPropagation();
+  const btn=qs("deleteToolBtn");
+  btn.classList.add("command-flash");
+  setTimeout(()=>btn.classList.remove("command-flash"),220);
+  deleteCurrentSelection();
+});
 
 qs("layerBtn").addEventListener("click",()=>{
-  qs("layerPanel").classList.toggle("hidden");
+  const panel=qs("layerPanel");
+  panel.classList.toggle("hidden");
+  qs("layerBtn").classList.toggle("active",!panel.classList.contains("hidden"));
 });
-qs("closeLayerBtn").addEventListener("click",()=>qs("layerPanel").classList.add("hidden"));
+qs("closeLayerBtn").addEventListener("click",()=>{
+  qs("layerPanel").classList.add("hidden");
+  qs("layerBtn").classList.remove("active");
+});
 qs("layerVisibleBtn").addEventListener("click",()=>{
   const layer=currentLayer();
   layerVisibility[layer]=!(layerVisibility[layer]!==false);
@@ -2163,7 +2175,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=123",{updateViaCache:"none"})
+      .register("./sw.js?v=124",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

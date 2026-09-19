@@ -1882,9 +1882,7 @@ qs("outputMenu")?.addEventListener("toggle",()=>{
 
 qs("exportBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  downloadText("2d-cad-drawing.json",JSON.stringify({
-    version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
-  },null,2),"application/json");
+  openExportSavePanel("json");
 });
 
 qs("importBtn").addEventListener("click",()=>{
@@ -2167,21 +2165,24 @@ let exportDirectoryHandle=null;
 let exportFileHandle=null;
 
 function exportExtension(format){
+  if(format==="json") return ".json";
   return format==="dxf"?".dxf":format==="svg"?".svg":".pdf";
 }
 
 function exportMime(format){
+  if(format==="json") return "application/json";
   return format==="dxf"?"application/dxf":format==="svg"?"image/svg+xml":"application/pdf";
 }
 
 function exportDescription(format){
+  if(format==="json") return "編集データ";
   return format==="dxf"?"DXF CADファイル":format==="svg"?"SVG画像ファイル":"PDF図面";
 }
 
 function normalizeExportFileName(value,format){
   const ext=exportExtension(format);
   let raw=safeFileBaseName(value);
-  for(const oldExt of [".dxf",".svg",".pdf"]){
+  for(const oldExt of [".json",".dxf",".svg",".pdf"]){
     if(raw.toLowerCase().endsWith(oldExt)) raw=raw.slice(0,-oldExt.length);
   }
   return (raw||"2d-cad-drawing")+ext;
@@ -2201,8 +2202,8 @@ function resetExportLocation(message="未選択"){
 function openExportSavePanel(format){
   exportFormat=format;
   resetExportLocation();
-  const label=format.toUpperCase();
-  if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=label+"出力";
+  const label=format==="json"?"編集データ":format.toUpperCase();
+  if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=format==="json"?"編集データを保存":label+"出力";
   if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName(format);
   qs("fileSavePanel")?.classList.remove("hidden");
   setTimeout(()=>qs("exportFileName")?.select(),0);
@@ -2319,6 +2320,9 @@ async function buildPdfBlob(){
 }
 
 async function buildExportBlob(format){
+  if(format==="json") return new Blob([JSON.stringify({
+    version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
+  },null,2)],{type:"application/json"});
   if(format==="dxf") return new Blob([toDXF()],{type:"application/dxf"});
   if(format==="svg") return new Blob([buildSVG()],{type:"image/svg+xml;charset=utf-8"});
   if(format==="pdf") return await buildPdfBlob();
@@ -2362,7 +2366,7 @@ async function confirmExportSave(){
     }
 
     qs("fileSavePanel")?.classList.add("hidden");
-    hint.textContent=exportFormat.toUpperCase()+"を保存しました";
+    hint.textContent=exportFormat==="json"?"編集データを保存しました":exportFormat.toUpperCase()+"を保存しました";
   }catch(err){
     alert("保存できませんでした。もう一度お試しください。");
   }finally{
@@ -2441,7 +2445,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=131",{updateViaCache:"none"})
+      .register("./sw.js?v=132",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

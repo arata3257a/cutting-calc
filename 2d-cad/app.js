@@ -1869,39 +1869,26 @@ function downloadText(name,text,type){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
-function closeTransferPanels(){
-  qs("loadPanel")?.classList.add("hidden");
-  qs("outputPanel")?.classList.add("hidden");
+function closeTransferMenus(){
+  if(qs("loadMenu")) qs("loadMenu").open=false;
+  if(qs("outputMenu")) qs("outputMenu").open=false;
 }
-
-qs("loadMenuBtn").addEventListener("click",()=>{
-  const panel=qs("loadPanel");
-  const willOpen=panel.classList.contains("hidden");
-  closeTransferPanels();
-  qs("sheetPanel")?.classList.add("hidden");
-  if(willOpen) panel.classList.remove("hidden");
+qs("loadMenu")?.addEventListener("toggle",()=>{
+  if(qs("loadMenu").open && qs("outputMenu")) qs("outputMenu").open=false;
 });
-
-qs("outputMenuBtn").addEventListener("click",()=>{
-  const panel=qs("outputPanel");
-  const willOpen=panel.classList.contains("hidden");
-  closeTransferPanels();
-  qs("sheetPanel")?.classList.add("hidden");
-  if(willOpen) panel.classList.remove("hidden");
+qs("outputMenu")?.addEventListener("toggle",()=>{
+  if(qs("outputMenu").open && qs("loadMenu")) qs("loadMenu").open=false;
 });
-
-qs("closeLoadBtn").addEventListener("click",()=>qs("loadPanel").classList.add("hidden"));
-qs("closeOutputBtn").addEventListener("click",()=>qs("outputPanel").classList.add("hidden"));
 
 qs("exportBtn").addEventListener("click",()=>{
-  qs("outputPanel")?.classList.add("hidden");
+  closeTransferMenus();
   downloadText("2d-cad-drawing.json",JSON.stringify({
     version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
   },null,2),"application/json");
 });
 
 qs("importBtn").addEventListener("click",()=>{
-  qs("loadPanel")?.classList.add("hidden");
+  closeTransferMenus();
   qs("importInput").click();
 });
 qs("importInput").addEventListener("change",async e=>{
@@ -2154,7 +2141,7 @@ function parseDXF(text){
 }
 
 qs("dxfImportBtn").addEventListener("click",()=>{
-  qs("loadPanel")?.classList.add("hidden");
+  closeTransferMenus();
   qs("dxfInput").click();
 });
 qs("dxfInput").addEventListener("change",async e=>{
@@ -2168,19 +2155,19 @@ qs("dxfInput").addEventListener("change",async e=>{
 });
 
 qs("dxfBtn").addEventListener("click",()=>{
-  qs("outputPanel")?.classList.add("hidden");
+  closeTransferMenus();
   downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf");
 });
 qs("svgBtn").addEventListener("click",()=>{
-  qs("outputPanel")?.classList.add("hidden");
+  closeTransferMenus();
   downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml");
 });
 qs("printBtn").addEventListener("click",()=>{
-  qs("outputPanel")?.classList.add("hidden");
+  closeTransferMenus();
   printDrawing();
 });
 qs("sheetBtn").addEventListener("click",()=>{
-  closeTransferPanels();
+  closeTransferMenus();
   syncSheetInputs();
   qs("sheetPanel").classList.remove("hidden");
 });
@@ -2229,7 +2216,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=126",{updateViaCache:"none"})
+      .register("./sw.js?v=127",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

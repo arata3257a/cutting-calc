@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=130">
+  <link rel="stylesheet" href="./style.css?v=131">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.30 / mm</small>
+      <small>v1.31 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -137,19 +137,26 @@
         <button id="saveSheetBtn" class="primary wide">図面情報を保存</button>
       </aside>
 
-      <aside id="dxfSavePanel" class="panel compact-panel hidden">
+      <aside id="fileSavePanel" class="panel compact-panel hidden">
         <div class="panel-title">
-          <strong>DXF出力</strong>
-          <button id="closeDxfSaveBtn" class="icon-btn">×</button>
+          <strong id="fileSaveTitle">ファイル出力</strong>
+          <button id="closeFileSaveBtn" class="icon-btn">×</button>
         </div>
         <div class="fields">
           <div class="field" style="grid-column:1/-1">
-            <label for="dxfFileName">ファイル名</label>
-            <input id="dxfFileName" value="2d-cad-drawing.dxf" autocomplete="off">
+            <label for="exportFileName">ファイル名</label>
+            <input id="exportFileName" value="" autocomplete="off">
           </div>
-          <div class="field-note">対応ブラウザでは保存先フォルダーを選べます。非対応の場合は通常のダウンロードになります。</div>
+          <div class="field" style="grid-column:1/-1">
+            <label for="exportSaveLocation">保存先</label>
+            <input id="exportSaveLocation" value="未選択" readonly>
+          </div>
+          <div class="field-note">保存先を選択してから「決定」を押すと保存します。端末がフォルダー指定に対応していない場合は、端末の通常の保存先を使用します。</div>
         </div>
-        <button id="saveDxfToFolderBtn" class="primary wide" type="button">保存先を選んで保存</button>
+        <div class="row">
+          <button id="chooseExportLocationBtn" type="button">保存先を選択</button>
+          <button id="confirmExportBtn" class="primary" type="button">決定</button>
+        </div>
       </aside>
 
     </section>
@@ -172,7 +179,7 @@
           <button id="exportBtn" type="button"><strong>編集データを保存</strong><span>あとで再編集</span></button>
           <button id="dxfBtn" type="button"><strong>DXF</strong><span>CAD用</span></button>
           <button id="svgBtn" type="button"><strong>SVG</strong><span>画像用</span></button>
-          <button id="printBtn" type="button"><strong>PDF / 印刷</strong><span>図枠付き</span></button>
+          <button id="printBtn" type="button"><strong>PDF</strong><span>図枠付き</span></button>
         </div>
       </details>
 
@@ -182,6 +189,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=130"></script>
+  <script src="./app.js?v=131"></script>
 </body>
 </html>

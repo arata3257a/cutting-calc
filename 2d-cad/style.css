@@ -11,94 +11,194 @@ button:active{transform:scale(.98)}
 button.primary{background:#18202a;color:#fff;border-color:#18202a}
 button.danger,.delete-tool{color:#a42424;border-color:#e0bcbc}
 button.wide{width:100%;margin-top:4px}
+
 header{
   height:60px;display:flex;align-items:center;justify-content:space-between;
   gap:10px;padding:8px 10px;background:#fff;border-bottom:1px solid #e1e5e9;z-index:20
 }
-.brand{min-width:0}.brand strong{display:block;font-size:16px;white-space:nowrap}.brand small{color:#6b7480}
-.header-actions{display:flex;gap:6px}.header-actions button{min-width:42px}
-main{height:calc(100% - 60px);display:grid;grid-template-rows:1fr auto;min-height:0}
-.workspace{position:relative;min-width:0;min-height:0;overflow:hidden}
-.canvas-wrap{position:absolute;inset:0;background:#fff}
-#cadCanvas{display:block;width:100%;height:100%;touch-action:none}
+.brand{min-width:0}
+.brand strong{display:block;font-size:16px;white-space:nowrap}
+.brand small{color:#6b7480}
+.header-actions{display:flex;gap:6px}
+.header-actions button{min-width:42px}
+
+main{
+  height:calc(100% - 60px);
+  display:grid;
+  grid-template-rows:minmax(0,1fr) auto;
+  min-height:0;
+}
+.workspace{
+  position:relative;
+  min-width:0;min-height:0;overflow:hidden;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 64px;
+  grid-template-rows:minmax(0,1fr) 70px;
+  background:#fff;
+}
+.canvas-wrap{
+  grid-column:1;
+  grid-row:1;
+  position:relative;
+  min-width:0;min-height:0;
+  overflow:hidden;
+  background:#fff;
+  border-right:1px solid #e1e5e9;
+  border-bottom:1px solid #e1e5e9;
+}
+#cadCanvas{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:none;
+}
 
 .draw-toolbar{
-  position:absolute;left:8px;right:76px;bottom:8px;z-index:5;
-  display:flex;gap:6px;overflow-x:auto;padding:6px;
-  background:rgba(255,255,255,.96);border:1px solid #dfe4e8;border-radius:16px;
-  box-shadow:0 4px 18px rgba(0,0,0,.12);scrollbar-width:none
+  grid-column:1;
+  grid-row:2;
+  position:relative;
+  z-index:5;
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  padding:6px 8px;
+  align-items:center;
+  background:#fff;
+  border-top:1px solid #e1e5e9;
+  scrollbar-width:none;
 }
 .draw-toolbar::-webkit-scrollbar,.edit-toolbar::-webkit-scrollbar{display:none}
+
+.edit-toolbar{
+  grid-column:2;
+  grid-row:1 / 3;
+  position:relative;
+  z-index:6;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  overflow-y:auto;
+  padding:6px 5px;
+  align-items:center;
+  background:#fff;
+  border-left:1px solid #e1e5e9;
+  scrollbar-width:none;
+}
+
 .tool{
-  flex:0 0 58px;min-width:58px;height:58px;padding:4px 3px;font-size:22px;border-radius:12px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px
+  flex:0 0 56px;
+  min-width:56px;
+  width:56px;
+  height:56px;
+  padding:4px 3px;
+  font-size:21px;
+  border-radius:12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
 }
 .tool span{font-size:9px;line-height:1.1;white-space:nowrap}
 .tool.active{outline:3px solid #18202a;border-color:#18202a}
+.edit-toolbar .tool{flex:0 0 52px;min-width:52px;width:52px;height:52px;font-size:19px}
 
-.edit-toolbar{
-  position:absolute;right:8px;top:132px;bottom:78px;z-index:6;width:62px;
-  display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding:5px;
-  background:rgba(255,255,255,.96);border:1px solid #dfe4e8;border-radius:16px;
-  box-shadow:0 4px 18px rgba(0,0,0,.12);scrollbar-width:none
-}
-.edit-toolbar .tool{flex:0 0 54px;min-width:50px;width:50px;height:54px;font-size:20px}
-
-.floating-btn{
-  position:absolute;z-index:8;width:58px;height:52px;padding:4px;border-radius:14px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:21px;
-  box-shadow:0 3px 12px rgba(0,0,0,.1)
-}
-.floating-btn span{font-size:9px;margin-top:1px}
-.layer-fab{right:8px;top:8px}
-.fit-fab{left:8px;top:8px}
 .dimension-mode{
-  position:absolute;z-index:8;right:76px;top:78px;background:rgba(255,255,255,.97);
-  border:1px solid #dfe4e8;border-radius:12px;padding:6px 9px;font-size:11px
+  position:absolute;
+  z-index:8;
+  right:8px;
+  top:8px;
+  background:rgba(255,255,255,.97);
+  border:1px solid #dfe4e8;
+  border-radius:12px;
+  padding:6px 9px;
+  font-size:11px;
 }
 .dimension-mode select{border:0;background:transparent;font-weight:700}
 
 #hint{
-  position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:4;
-  background:rgba(24,32,42,.88);color:#fff;border-radius:999px;padding:7px 12px;
-  font-size:12px;pointer-events:none;white-space:nowrap;max-width:70%;overflow:hidden;text-overflow:ellipsis
+  position:absolute;
+  left:50%;
+  bottom:10px;
+  transform:translateX(-50%);
+  z-index:4;
+  background:rgba(24,32,42,.88);
+  color:#fff;
+  border-radius:999px;
+  padding:7px 12px;
+  font-size:12px;
+  pointer-events:none;
+  white-space:nowrap;
+  max-width:82%;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
+
 .panel{
-  position:absolute;right:78px;top:68px;width:min(330px,calc(100% - 92px));
-  background:#fff;border:1px solid #dfe4e8;border-radius:16px;padding:12px;
-  box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:12
+  position:absolute;
+  right:74px;
+  top:8px;
+  width:min(330px,calc(100% - 84px));
+  background:#fff;
+  border:1px solid #dfe4e8;
+  border-radius:16px;
+  padding:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.16);
+  z-index:12;
 }
-.compact-panel{width:min(285px,calc(100% - 92px))}
+.compact-panel{width:min(285px,calc(100% - 84px))}
 .panel.hidden,.dimension-mode.hidden{display:none}
 .panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .icon-btn{border:0;padding:3px 8px;font-size:20px}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.field{display:flex;flex-direction:column;gap:4px}.field label{font-size:11px;color:#66717d}
-.field input,.field select{width:100%;border:1px solid #cfd6dd;border-radius:9px;padding:9px;font-size:16px;background:#fff}
-.row{display:flex;gap:8px;margin-top:10px}.row button{flex:1}
-.hidden-field{display:none}.field-note{grid-column:1/-1;font-size:11px;color:#66717d;line-height:1.45}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:#66717d}
+.field input,.field select{
+  width:100%;border:1px solid #cfd6dd;border-radius:9px;padding:9px;
+  font-size:16px;background:#fff
+}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+.hidden-field{display:none}
+.field-note{grid-column:1/-1;font-size:11px;color:#66717d;line-height:1.45}
 .multi-count{grid-column:1/-1;font-size:13px;font-weight:700}
 
 .bottom-actions{
-  display:flex;gap:7px;padding:7px;background:#fff;border-top:1px solid #e1e5e9;overflow-x:auto;z-index:15
+  display:flex;gap:7px;padding:7px;background:#fff;
+  border-top:1px solid #e1e5e9;overflow-x:auto;z-index:15
 }
 .bottom-actions button{white-space:nowrap;padding:8px 11px;font-size:13px}
 
 @media(max-width:520px){
   .brand strong{font-size:14px}
   .header-actions button{padding:8px 10px}
-  .panel{top:auto;bottom:76px;right:74px;width:calc(100% - 82px);max-height:56%;overflow:auto}
-  .layer-fab{top:8px;right:8px}
-  .edit-toolbar{top:68px;bottom:76px}
-  #hint{bottom:78px;max-width:62%}
+  .workspace{
+    grid-template-columns:minmax(0,1fr) 60px;
+    grid-template-rows:minmax(0,1fr) 68px;
+  }
+  .tool{flex-basis:54px;min-width:54px;width:54px;height:54px}
+  .edit-toolbar .tool{flex-basis:50px;min-width:50px;width:50px;height:50px}
+  .panel{
+    top:auto;
+    bottom:76px;
+    right:68px;
+    width:calc(100% - 76px);
+    max-height:58%;
+    overflow:auto;
+  }
+  #hint{bottom:8px;max-width:88%}
 }
+
 @media(min-width:900px){
-  .draw-toolbar{left:50%;right:auto;transform:translateX(-50%);width:auto}
-  .edit-toolbar{width:68px}
-  .tool{flex-basis:64px;min-width:64px}
+  .workspace{grid-template-columns:minmax(0,1fr) 72px;grid-template-rows:minmax(0,1fr) 76px}
+  .tool{flex-basis:64px;min-width:64px;width:64px;height:60px}
+  .edit-toolbar .tool{width:58px;min-width:58px;flex-basis:56px}
 }
+
 @media print{
-  header,.draw-toolbar,.edit-toolbar,.bottom-actions,.floating-btn,.dimension-mode,#hint,.panel{display:none!important}
+  header,.draw-toolbar,.edit-toolbar,.bottom-actions,.dimension-mode,#hint,.panel{display:none!important}
   body,main,.workspace,.canvas-wrap{width:100%!important;height:100%!important;margin:0!important;padding:0!important}
-  main{display:block!important}#cadCanvas{width:100vw!important;height:100vh!important}
+  main{display:block!important}
+  .workspace{display:block!important}
+  #cadCanvas{width:100vw!important;height:100vh!important}
 }

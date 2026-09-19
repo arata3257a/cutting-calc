@@ -691,13 +691,23 @@ function applyRotate(){
   }else if(s.type==="arc"){
     const p=rotatePoint({x:s.cx,y:s.cy},c,a);s.cx=p.x;s.cy=p.y;s.a1=normDeg(s.a1+deg(a));s.a2=normDeg(s.a2+deg(a));
   }else if(s.type==="rect"){
-    const r=rectNorm(s),pts=[
-      rotatePoint({x:r.x1,y:r.y1},c,a),rotatePoint({x:r.x2,y:r.y1},c,a),
-      rotatePoint({x:r.x2,y:r.y2},c,a),rotatePoint({x:r.x1,y:r.y2},c,a)
+    const angleDeg=num(qs("qRotateAngle")?.value);
+    const q=Math.round(angleDeg/90);
+    if(Math.abs(angleDeg-q*90)>1e-6){alert("四角形は現在90°単位の回転に対応しています");return;}
+    const r=rectNorm(s),center={x:(r.x1+r.x2)/2,y:(r.y1+r.y2)/2};
+    const rc=rotatePoint(center,c,rad(q*90));
+    const odd=Math.abs(q)%2===1;
+    s.w=odd?r.h:r.w;s.h=odd?r.w:r.h;
+    s.x=rc.x-s.w/2;s.y=rc.y-s.h/2;
+    const old=s.corners||{};
+    const maps=[
+      {tl:"tl",tr:"tr",br:"br",bl:"bl"},
+      {tl:"bl",tr:"tl",br:"tr",bl:"br"},
+      {tl:"br",tr:"bl",br:"tl",bl:"tr"},
+      {tl:"tr",tr:"br",br:"bl",bl:"tl"}
     ];
-    const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
-    s.x=Math.min(...xs);s.y=Math.min(...ys);s.w=Math.max(...xs)-s.x;s.h=Math.max(...ys)-s.y;
-    s.corners={};
+    const m=maps[((q%4)+4)%4];
+    s.corners={tl:old[m.tl],tr:old[m.tr],br:old[m.br],bl:old[m.bl]};
   }
   shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
   qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="回転コピーしました";draw();

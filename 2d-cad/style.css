@@ -346,11 +346,13 @@ main{
   border-color:#8798a8;
 }
 .transfer-popover{
-  position:absolute;
-  left:0;
-  bottom:calc(100% + 8px);
-  z-index:40;
-  min-width:210px;
+  position:fixed;
+  left:50%;
+  right:auto;
+  bottom:58px;
+  transform:translateX(-50%);
+  z-index:1000;
+  width:min(320px,calc(100vw - 24px));
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
@@ -358,11 +360,7 @@ main{
   background:#fff;
   border:1px solid #cfd6dd;
   border-radius:14px;
-  box-shadow:0 8px 28px rgba(0,0,0,.20);
-}
-.transfer-menu:last-of-type .transfer-popover{
-  left:auto;
-  right:0;
+  box-shadow:0 10px 32px rgba(0,0,0,.28);
 }
 .transfer-popover button{
   min-height:58px;

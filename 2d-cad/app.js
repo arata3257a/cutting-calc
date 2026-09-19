@@ -1500,12 +1500,27 @@ function enableDirectNumberEntry(root=document){
   root.querySelectorAll?.('input[type="number"]').forEach(input=>{
     if(input.dataset.directEntry==="1") return;
     input.dataset.directEntry="1";
-    const selectAll=()=>requestAnimationFrame(()=>{
-      try{input.select()}catch{}
+
+    const prepareEntry=()=>{
+      if(input.value!=="" && Number(input.value)===0){
+        input.dataset.zeroCleared="1";
+        input.value="";
+        return;
+      }
+      requestAnimationFrame(()=>{
+        try{input.select()}catch{}
+      });
+    };
+
+    input.addEventListener("focus",prepareEntry);
+    input.addEventListener("click",prepareEntry);
+    input.addEventListener("touchend",prepareEntry,{passive:true});
+    input.addEventListener("blur",()=>{
+      if(input.value.trim()==="" && input.dataset.zeroCleared==="1"){
+        input.value="0";
+      }
+      delete input.dataset.zeroCleared;
     });
-    input.addEventListener("focus",selectAll);
-    input.addEventListener("click",selectAll);
-    input.addEventListener("touchend",selectAll,{passive:true});
   });
 }
 
@@ -2132,7 +2147,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=120",{updateViaCache:"none"})
+      .register("./sw.js?v=121",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

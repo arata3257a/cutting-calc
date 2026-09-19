@@ -1,9 +1,9 @@
-const CACHE = "easy-2d-cad-v9";
+const CACHE = "easy-2d-cad-v10";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css",
-  "./app.js",
+  "./style.css?v=10",
+  "./app.js?v=10",
   "./manifest.webmanifest",
   "./icon.svg",
   "./data/drawing.json"
@@ -26,12 +26,10 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then(cached =>
-      cached || fetch(event.request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
-        return response;
-      })
-    )
+    fetch(event.request).then(response => {
+      const copy=response.clone();
+      caches.open(CACHE).then(cache => cache.put(event.request,copy));
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });

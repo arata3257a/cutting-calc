@@ -324,3 +324,54 @@ main{
 .chooser-btn strong{font-size:15px}
 .chooser-btn span{font-size:10px;color:#66717d;line-height:1.25;text-align:center}
 .chooser-btn:active{background:#e8eef4}
+
+.transfer-menu{
+  position:relative;
+  flex:0 0 auto;
+}
+.transfer-menu summary{
+  list-style:none;
+  white-space:nowrap;
+  padding:8px 11px;
+  font-size:13px;
+  border:1px solid #cfd6dd;
+  border-radius:9px;
+  background:#fff;
+  cursor:pointer;
+  user-select:none;
+}
+.transfer-menu summary::-webkit-details-marker{display:none}
+.transfer-menu[open] summary{
+  background:#e8eef4;
+  border-color:#8798a8;
+}
+.transfer-popover{
+  position:absolute;
+  left:0;
+  bottom:calc(100% + 8px);
+  z-index:40;
+  min-width:210px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:10px;
+  background:#fff;
+  border:1px solid #cfd6dd;
+  border-radius:14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.20);
+}
+.transfer-menu:last-of-type .transfer-popover{
+  left:auto;
+  right:0;
+}
+.transfer-popover button{
+  min-height:58px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  padding:7px 6px;
+}
+.transfer-popover button strong{font-size:14px}
+.transfer-popover button span{font-size:10px;color:#66717d}

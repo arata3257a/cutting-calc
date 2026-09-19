@@ -221,3 +221,18 @@ main{
   .workspace{display:block!important}
   #cadCanvas{width:100vw!important;height:100vh!important}
 }
+
+.point-mode-btn{
+  grid-column:1/-1;
+  min-height:44px;
+  border:2px solid #18202a;
+  font-weight:800;
+  background:#fff;
+}
+.transform-point-note{
+  padding:7px 9px;
+  border-radius:9px;
+  background:#f3f5f7;
+  color:#18202a;
+  font-weight:700;
+}

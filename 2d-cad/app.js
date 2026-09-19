@@ -158,6 +158,13 @@ function autoSave(){
   }));
 }
 
+function syncSheetInputs(){
+  if(qs("sheetTitle")) qs("sheetTitle").value=drawingMeta.title||"加工図";
+  if(qs("sheetNo")) qs("sheetNo").value=drawingMeta.drawingNo||"";
+  if(qs("sheetScale")) qs("sheetScale").value=drawingMeta.scale||"1:1";
+  if(qs("sheetName")) qs("sheetName").value=drawingMeta.author||"";
+}
+
 function drawGrid(w,h){
   const left=screenToWorld({x:0,y:h}).x;
   const right=screenToWorld({x:w,y:0}).x;
@@ -1104,6 +1111,98 @@ function convertOldShape(s){
   return s;
 }
 
+function xmlEscape(v){
+  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&apos;"}[m]));
+}
+function exportBounds(){
+  const visible=shapes.filter(isShapeVisible);
+  if(!visible.length)return {minX:0,minY:0,maxX:100,maxY:50};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const add=(x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
+  visible.forEach(s=>{
+    if(s.type==="line"||s.type==="dim"){add(s.x1,s.y1);add(s.x2,s.y2);if(s.type==="dim")add(s.tx,s.ty)}
+    else if(s.type==="rect"){const r=rectNorm(s);add(r.x1,r.y1);add(r.x2,r.y2)}
+    else if(s.type==="circle"||s.type==="hole"){const rr=s.type==="hole"?Math.max(s.r,(s.counterD||0)/2):s.r;add(s.cx-rr,s.cy-rr);add(s.cx+rr,s.cy+rr)}
+    else if(s.type==="slot"){add(s.cx-s.length/2,s.cy-s.width/2);add(s.cx+s.length/2,s.cy+s.width/2)}
+    else if(s.type==="arc"){
+      add(s.cx+s.r*Math.cos(rad(s.a1)),s.cy+s.r*Math.sin(rad(s.a1)));
+      add(s.cx+s.r*Math.cos(rad(s.a2)),s.cy+s.r*Math.sin(rad(s.a2)));
+      [0,90,180,270].forEach(a=>{if(angleOnArc(a,s.a1,s.a2))add(s.cx+s.r*Math.cos(rad(a)),s.cy+s.r*Math.sin(rad(a)))});
+    }
+  });
+  return {minX,minY,maxX,maxY};
+}
+function svgPoint(x,y,b,m){return {x:x-b.minX+m,y:b.maxY-y+m};}
+function svgArcPath(s,b,m){
+  const p1=svgPoint(s.cx+s.r*Math.cos(rad(s.a1)),s.cy+s.r*Math.sin(rad(s.a1)),b,m);
+  const p2=svgPoint(s.cx+s.r*Math.cos(rad(s.a2)),s.cy+s.r*Math.sin(rad(s.a2)),b,m);
+  const large=ccwSpan(s.a1,s.a2)>180?1:0;
+  return `M ${p1.x} ${p1.y} A ${s.r} ${s.r} 0 ${large} 0 ${p2.x} ${p2.y}`;
+}
+function svgShape(s,b,m){
+  const stroke='stroke="#111" stroke-width="0.35" fill="none" vector-effect="non-scaling-stroke"';
+  if(s.type==="line"){
+    const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m);
+    return `<line x1="${a.x}" y1="${a.y}" x2="${d.x}" y2="${d.y}" ${stroke}/>`;
+  }
+  if(s.type==="circle"||s.type==="hole"){
+    const c=svgPoint(s.cx,s.cy,b,m);let out=`<circle cx="${c.x}" cy="${c.y}" r="${s.r}" ${stroke}/>`;
+    if(s.type==="hole"&&s.counterD&&s.counterD>s.r*2)out+=`<circle cx="${c.x}" cy="${c.y}" r="${s.counterD/2}" ${stroke}/>`;
+    if(s.type==="hole"){
+      const mark=Math.max(2,Math.min(5,s.r));
+      out+=`<line x1="${c.x-mark}" y1="${c.y}" x2="${c.x+mark}" y2="${c.y}" ${stroke}/><line x1="${c.x}" y1="${c.y-mark}" x2="${c.x}" y2="${c.y+mark}" ${stroke}/>`;
+    }
+    return out;
+  }
+  if(s.type==="arc") return `<path d="${svgArcPath(s,b,m)}" ${stroke}/>`;
+  if(s.type==="slot"){
+    const p=svgPoint(s.cx-s.length/2,s.cy+s.width/2,b,m);
+    return `<rect x="${p.x}" y="${p.y}" width="${s.length}" height="${s.width}" rx="${s.width/2}" ${stroke}/>`;
+  }
+  if(s.type==="rect"){
+    const r=rectNorm(s),p=svgPoint(r.x1,r.y2,b,m);
+    return `<rect x="${p.x}" y="${p.y}" width="${r.w}" height="${r.h}" ${stroke}/>`;
+  }
+  if(s.type==="dim"){
+    const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m),q=svgPoint(s.tx,s.ty,b,m),mode=s.mode||"aligned";
+    let oa,ob,value;
+    if(mode==="horizontal"){oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
+    else if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
+    else{
+      const vx=d.x-a.x,vy=d.y-a.y,len=Math.hypot(vx,vy)||1,nx=-vy/len,ny=vx/len,mid={x:(a.x+d.x)/2,y:(a.y+d.y)/2};
+      const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;oa={x:a.x+nx*off,y:a.y+ny*off};ob={x:d.x+nx*off,y:d.y+ny*off};value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+    }
+    return `<g stroke="#555" stroke-width="0.25" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g><text x="${(oa.x+ob.x)/2}" y="${(oa.y+ob.y)/2-1.5}" font-size="3.5" text-anchor="middle" fill="#333">${round(value)} mm</text>`;
+  }
+  return "";
+}
+function buildSVG(){
+  const b=exportBounds(),margin=10,framePad=5,titleH=22;
+  const geomW=Math.max(30,b.maxX-b.minX),geomH=Math.max(20,b.maxY-b.minY);
+  const w=geomW+margin*2,h=geomH+margin*2+titleH;
+  const shapesSvg=shapes.filter(isShapeVisible).map(s=>svgShape(s,b,margin)).join("");
+  const titleY=h-titleH;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}">
+<rect width="${w}" height="${h}" fill="white"/>
+<rect x="${framePad}" y="${framePad}" width="${w-framePad*2}" height="${h-framePad*2}" fill="none" stroke="#111" stroke-width="0.4"/>
+<g font-family="Arial, sans-serif">${shapesSvg}
+<line x1="${framePad}" y1="${titleY}" x2="${w-framePad}" y2="${titleY}" stroke="#111" stroke-width="0.4"/>
+<line x1="${w*0.55}" y1="${titleY}" x2="${w*0.55}" y2="${h-framePad}" stroke="#111" stroke-width="0.3"/>
+<text x="${framePad+3}" y="${titleY+7}" font-size="5" font-weight="bold">${xmlEscape(drawingMeta.title||"加工図")}</text>
+<text x="${framePad+3}" y="${titleY+14}" font-size="3.5">図番: ${xmlEscape(drawingMeta.drawingNo||"-")}</text>
+<text x="${w*0.55+3}" y="${titleY+7}" font-size="3.5">尺度: ${xmlEscape(drawingMeta.scale||"1:1")}</text>
+<text x="${w*0.55+3}" y="${titleY+14}" font-size="3.5">作成者: ${xmlEscape(drawingMeta.author||"-")}</text>
+</g></svg>`;
+}
+function printDrawing(){
+  const svg=buildSVG();
+  const win=window.open("","_blank");
+  if(!win){alert("ポップアップを許可してください");return;}
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${xmlEscape(drawingMeta.title||"加工図")}</title><style>body{margin:0;display:grid;place-items:center;background:#fff}svg{max-width:100vw;max-height:100vh}@media print{svg{width:100%;height:auto}}</style></head><body>${svg.replace(/^<\?xml[^>]*>\s*/,"")}<script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
+  win.document.close();
+}
+
 function dxfPair(code,value){return `${code}\n${value}\n`}
 function dxfLine(s){
   return dxfPair(0,"LINE")+dxfPair(8,0)+dxfPair(10,s.x1)+dxfPair(20,s.y1)+dxfPair(30,0)+dxfPair(11,s.x2)+dxfPair(21,s.y2)+dxfPair(31,0);
@@ -1203,12 +1302,27 @@ qs("dxfInput").addEventListener("change",async e=>{
 });
 
 qs("dxfBtn").addEventListener("click",()=>downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf"));
+qs("svgBtn").addEventListener("click",()=>downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml"));
+qs("printBtn").addEventListener("click",printDrawing);
+qs("sheetBtn").addEventListener("click",()=>{syncSheetInputs();qs("sheetPanel").classList.remove("hidden")});
+qs("closeSheetBtn").addEventListener("click",()=>qs("sheetPanel").classList.add("hidden"));
+qs("saveSheetBtn").addEventListener("click",()=>{
+  drawingMeta={
+    title:qs("sheetTitle").value.trim()||"加工図",
+    drawingNo:qs("sheetNo").value.trim(),
+    scale:qs("sheetScale").value.trim()||"1:1",
+    author:qs("sheetName").value.trim()
+  };
+  autoSave();qs("sheetPanel").classList.add("hidden");hint.textContent="図枠設定を保存しました";
+});
 
 try{
   const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
   if(saved && Array.isArray(saved.shapes)){
     shapes=saved.shapes.map(s=>assignLayer(s,"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
+    if(saved.drawingMeta) drawingMeta={...drawingMeta,...saved.drawingMeta};
+    if(saved.layerVisibility) layerVisibility={...layerVisibility,...saved.layerVisibility};
   }
 }catch{}
 

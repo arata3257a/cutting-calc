@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=128">
+  <link rel="stylesheet" href="./style.css?v=129">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.28 / mm</small>
+      <small>v1.29 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -146,7 +146,7 @@
       <details id="loadMenu" class="transfer-menu">
         <summary>📥 読込み</summary>
         <div class="transfer-popover">
-          <button id="importBtn" type="button"><strong>JSON</strong><span>保存データ</span></button>
+          <button id="importBtn" type="button"><strong>保存データを読込</strong><span>続きから編集</span></button>
           <button id="dxfImportBtn" type="button"><strong>DXF</strong><span>CADデータ</span></button>
         </div>
       </details>
@@ -154,7 +154,7 @@
       <details id="outputMenu" class="transfer-menu">
         <summary>📤 出力</summary>
         <div class="transfer-popover">
-          <button id="exportBtn" type="button"><strong>JSON</strong><span>編集用</span></button>
+          <button id="exportBtn" type="button"><strong>編集データを保存</strong><span>あとで再編集</span></button>
           <button id="dxfBtn" type="button"><strong>DXF</strong><span>CAD用</span></button>
           <button id="svgBtn" type="button"><strong>SVG</strong><span>画像用</span></button>
           <button id="printBtn" type="button"><strong>PDF / 印刷</strong><span>図枠付き</span></button>
@@ -167,6 +167,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=128"></script>
+  <script src="./app.js?v=129"></script>
 </body>
 </html>

@@ -90,3 +90,11 @@ main{
 
 .hidden-field{display:none}
 .field-note{grid-column:1/-1;font-size:11px;color:#66717d;line-height:1.45}
+
+.multi-count{grid-column:1/-1;font-size:13px;font-weight:700}
+@media print{
+  header,.toolbar,.bottom-actions,.view-controls,.snap-control,#hint,.panel{display:none!important}
+  body,main,.workspace,.canvas-wrap{width:100%!important;height:100%!important;margin:0!important;padding:0!important}
+  main{display:block!important}
+  #cadCanvas{width:100vw!important;height:100vh!important}
+}

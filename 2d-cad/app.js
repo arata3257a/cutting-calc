@@ -610,7 +610,7 @@ function setTool(next){
   else if(tool==="copy") hint.textContent="コピーする図形をタップ";
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
   else if(tool==="rotate") hint.textContent="回転する図形をタップ";
-  else if(tool==="dimension") hint.textContent="端点または線の交点をタップ";
+  else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
   else if(tool==="multi"){hint.textContent="複数の図形をタップして選択";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
@@ -624,6 +624,17 @@ function setTool(next){
 }
 
 document.querySelectorAll(".tool[data-tool]").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
+function setDimensionMode(mode){
+  const value=mode==="vertical"?"vertical":"horizontal";
+  if(qs("dimensionModeSelect")) qs("dimensionModeSelect").value=value;
+  qs("dimHorizontalBtn")?.classList.toggle("active",value==="horizontal");
+  qs("dimVerticalBtn")?.classList.toggle("active",value==="vertical");
+  hint.textContent=value==="horizontal"?"水平寸法：端点・交点・円の頂点を選択":"垂直寸法：端点・交点・円の頂点を選択";
+}
+qs("dimHorizontalBtn")?.addEventListener("click",()=>setDimensionMode("horizontal"));
+qs("dimVerticalBtn")?.addEventListener("click",()=>setDimensionMode("vertical"));
+
+
 
 function dimensionEndpointCandidates(){
   const pts=[];
@@ -642,18 +653,124 @@ function dimensionEndpointCandidates(){
         {x:r.x1,y:r.y1,kind:"端点"},{x:r.x2,y:r.y1,kind:"端点"},
         {x:r.x2,y:r.y2,kind:"端点"},{x:r.x1,y:r.y2,kind:"端点"}
       );
+    }else if(s.type==="circle" || s.type==="hole"){
+      pts.push(
+        {x:s.cx+s.r,y:s.cy,kind:"円の頂点"},
+        {x:s.cx-s.r,y:s.cy,kind:"円の頂点"},
+        {x:s.cx,y:s.cy+s.r,kind:"円の頂点"},
+        {x:s.cx,y:s.cy-s.r,kind:"円の頂点"}
+      );
     }
   }
   return pts;
 }
 
-function dimensionIntersectionCandidates(){
-  const lines=shapes.filter(s=>isShapeVisible(s)&&s.type==="line");
+function dimensionPrimitives(){
+  const lines=[],circles=[],arcs=[];
+  for(const s of shapes){
+    if(!isShapeVisible(s)) continue;
+    if(s.type==="line"){
+      lines.push({...s,sourceId:s.id});
+    }else if(s.type==="rect"){
+      const r=rectNorm(s);
+      lines.push(
+        {x1:r.x1,y1:r.y1,x2:r.x2,y2:r.y1,sourceId:s.id},
+        {x1:r.x2,y1:r.y1,x2:r.x2,y2:r.y2,sourceId:s.id},
+        {x1:r.x2,y1:r.y2,x2:r.x1,y2:r.y2,sourceId:s.id},
+        {x1:r.x1,y1:r.y2,x2:r.x1,y2:r.y1,sourceId:s.id}
+      );
+    }else if(s.type==="circle" || s.type==="hole"){
+      circles.push({cx:s.cx,cy:s.cy,r:s.r,sourceId:s.id});
+    }else if(s.type==="arc"){
+      arcs.push({cx:s.cx,cy:s.cy,r:s.r,a1:s.a1,a2:s.a2,sourceId:s.id});
+    }
+  }
+  return {lines,circles,arcs};
+}
+
+function segmentCircleIntersections(line,circle){
+  const dx=line.x2-line.x1,dy=line.y2-line.y1;
+  const fx=line.x1-circle.cx,fy=line.y1-circle.cy;
+  const a=dx*dx+dy*dy;
+  if(a<EPS) return [];
+  const b=2*(fx*dx+fy*dy);
+  const c=fx*fx+fy*fy-circle.r*circle.r;
+  const disc=b*b-4*a*c;
+  if(disc<-EPS) return [];
+  const root=Math.sqrt(Math.max(0,disc));
+  const ts=[(-b-root)/(2*a),(-b+root)/(2*a)];
   const pts=[];
+  for(const t of ts){
+    if(t>=-1e-7&&t<=1+1e-7){
+      const p={x:line.x1+t*dx,y:line.y1+t*dy};
+      if(!pts.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<1e-7)) pts.push(p);
+    }
+  }
+  return pts;
+}
+
+function circleCircleIntersections(a,b){
+  const dx=b.cx-a.cx,dy=b.cy-a.cy,d=Math.hypot(dx,dy);
+  if(d<EPS || d>a.r+b.r+1e-7 || d<Math.abs(a.r-b.r)-1e-7) return [];
+  const x=(a.r*a.r-b.r*b.r+d*d)/(2*d);
+  const h2=a.r*a.r-x*x;
+  if(h2<-EPS) return [];
+  const h=Math.sqrt(Math.max(0,h2));
+  const ux=dx/d,uy=dy/d;
+  const px=a.cx+x*ux,py=a.cy+x*uy;
+  const p1={x:px-h*uy,y:py+h*ux};
+  const p2={x:px+h*uy,y:py-h*ux};
+  return Math.hypot(p1.x-p2.x,p1.y-p2.y)<1e-7?[p1]:[p1,p2];
+}
+
+function onArcPoint(p,arc){
+  return angleOnArc(angleOf(arc.cx,arc.cy,p),arc.a1,arc.a2);
+}
+
+function pushUniquePoint(list,p,kind="交点"){
+  if(!list.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<1e-7)) list.push({...p,kind});
+}
+
+function dimensionIntersectionCandidates(){
+  const {lines,circles,arcs}=dimensionPrimitives();
+  const pts=[];
+
   for(let i=0;i<lines.length;i++){
     for(let j=i+1;j<lines.length;j++){
+      if(lines[i].sourceId===lines[j].sourceId) continue;
       const p=lineIntersection(lines[i],lines[j]);
-      if(p) pts.push({...p,kind:"交点"});
+      if(p) pushUniquePoint(pts,p);
+    }
+  }
+
+  for(const line of lines){
+    for(const circle of circles){
+      if(line.sourceId===circle.sourceId) continue;
+      segmentCircleIntersections(line,circle).forEach(p=>pushUniquePoint(pts,p));
+    }
+    for(const arc of arcs){
+      if(line.sourceId===arc.sourceId) continue;
+      segmentCircleIntersections(line,arc).filter(p=>onArcPoint(p,arc)).forEach(p=>pushUniquePoint(pts,p));
+    }
+  }
+
+  for(let i=0;i<circles.length;i++){
+    for(let j=i+1;j<circles.length;j++){
+      if(circles[i].sourceId===circles[j].sourceId) continue;
+      circleCircleIntersections(circles[i],circles[j]).forEach(p=>pushUniquePoint(pts,p));
+    }
+    for(const arc of arcs){
+      if(circles[i].sourceId===arc.sourceId) continue;
+      circleCircleIntersections(circles[i],arc).filter(p=>onArcPoint(p,arc)).forEach(p=>pushUniquePoint(pts,p));
+    }
+  }
+
+  for(let i=0;i<arcs.length;i++){
+    for(let j=i+1;j<arcs.length;j++){
+      if(arcs[i].sourceId===arcs[j].sourceId) continue;
+      circleCircleIntersections(arcs[i],arcs[j])
+        .filter(p=>onArcPoint(p,arcs[i])&&onArcPoint(p,arcs[j]))
+        .forEach(p=>pushUniquePoint(pts,p));
     }
   }
   return pts;
@@ -673,14 +790,14 @@ function findDimensionSnap(p,maxPx=22){
 function handleDimensionTap(p){
   if(!dimDraft){
     const snap=findDimensionSnap(p);
-    if(!snap){hint.textContent="端点または線の交点をタップしてください";dimSnapHover=null;draw();return;}
+    if(!snap){hint.textContent="端点・交点・円の頂点をタップしてください";dimSnapHover=null;draw();return;}
     dimDraft={stage:1,a:{x:snap.x,y:snap.y}};
     dimSnapHover={x:snap.x,y:snap.y};
     preview=null;hint.textContent=snap.kind+"を取得。寸法の終点をタップ";draw();return;
   }
   if(dimDraft.stage===1){
     const snap=findDimensionSnap(p);
-    if(!snap){hint.textContent="終点は端点または線の交点を選んでください";dimSnapHover=null;draw();return;}
+    if(!snap){hint.textContent="終点は端点・交点・円の頂点を選んでください";dimSnapHover=null;draw();return;}
     if(Math.hypot(snap.x-dimDraft.a.x,snap.y-dimDraft.a.y)<1e-7){
       hint.textContent="始点とは別の端点・交点を選んでください";return;
     }

@@ -2154,10 +2154,65 @@ qs("dxfInput").addEventListener("change",async e=>{
   e.target.value="";
 });
 
+function safeFileBaseName(value){
+  return String(value||"")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g,"_")
+    .replace(/\s+/g," ")
+    .replace(/[. ]+$/g,"") || "2d-cad-drawing";
+}
+
+function defaultDxfFileName(){
+  const base=safeFileBaseName(drawingMeta.drawingNo || drawingMeta.title || "2d-cad-drawing");
+  return base.toLowerCase().endsWith(".dxf")?base:base+".dxf";
+}
+
+function normalizeDxfFileName(value){
+  const raw=safeFileBaseName(value);
+  return raw.toLowerCase().endsWith(".dxf")?raw:raw+".dxf";
+}
+
+async function saveDxfWithLocation(){
+  const fileName=normalizeDxfFileName(qs("dxfFileName")?.value || defaultDxfFileName());
+  if(qs("dxfFileName")) qs("dxfFileName").value=fileName;
+  const content=toDXF();
+
+  if(typeof window.showSaveFilePicker==="function"){
+    try{
+      const handle=await window.showSaveFilePicker({
+        suggestedName:fileName,
+        types:[{
+          description:"DXF CADファイル",
+          accept:{"application/dxf":[".dxf"],"text/plain":[".dxf"]}
+        }]
+      });
+      const writable=await handle.createWritable();
+      await writable.write(new Blob([content],{type:"application/dxf"}));
+      await writable.close();
+      qs("dxfSavePanel")?.classList.add("hidden");
+      hint.textContent="DXFを保存しました";
+      return;
+    }catch(err){
+      if(err?.name==="AbortError"){
+        hint.textContent="DXF保存をキャンセルしました";
+        return;
+      }
+    }
+  }
+
+  downloadText(fileName,content,"application/dxf");
+  qs("dxfSavePanel")?.classList.add("hidden");
+  hint.textContent="指定したファイル名でDXFをダウンロードしました";
+}
+
 qs("dxfBtn").addEventListener("click",()=>{
   closeTransferMenus();
-  downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf");
+  if(qs("dxfFileName")) qs("dxfFileName").value=defaultDxfFileName();
+  qs("dxfSavePanel")?.classList.remove("hidden");
+  setTimeout(()=>qs("dxfFileName")?.select(),0);
 });
+qs("closeDxfSaveBtn").addEventListener("click",()=>qs("dxfSavePanel").classList.add("hidden"));
+qs("saveDxfToFolderBtn").addEventListener("click",saveDxfWithLocation);
 qs("svgBtn").addEventListener("click",()=>{
   closeTransferMenus();
   downloadText("2d-cad-drawing.svg",buildSVG(),"image/svg+xml");
@@ -2168,6 +2223,7 @@ qs("printBtn").addEventListener("click",()=>{
 });
 qs("sheetBtn").addEventListener("click",()=>{
   closeTransferMenus();
+  qs("dxfSavePanel")?.classList.add("hidden");
   syncSheetInputs();
   qs("sheetPanel").classList.remove("hidden");
 });
@@ -2216,7 +2272,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=129",{updateViaCache:"none"})
+      .register("./sw.js?v=130",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

@@ -2362,11 +2362,6 @@ async function showPdfPreview(){
   const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
   if(qs("exportFileName")) qs("exportFileName").value=fileName;
 
-  if(!exportDirectoryHandle && !exportFileHandle && qs("exportSaveLocation")?.value==="未選択"){
-    const chosen=await chooseExportLocation();
-    if(!chosen) return;
-  }
-
   const btn=qs("confirmExportBtn");
   if(btn){btn.disabled=true;btn.textContent="作成中…"}
   try{
@@ -2507,7 +2502,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=133",{updateViaCache:"none"})
+      .register("./sw.js?v=134",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

@@ -906,7 +906,20 @@ function applyMirror(){
 
 
 function field(name,label,value=0,step="any"){
-  return `<div class="field"><label for="${name}">${label}</label><input id="${name}" type="number" inputmode="decimal" step="${step}" value="${round(num(value))}"></div>`;
+  return `<div class="field"><label for="${name}">${label}</label><input id="${name}" type="number" inputmode="decimal" enterkeyhint="done" autocomplete="off" step="${step}" value="${round(num(value))}"></div>`;
+}
+
+function enableDirectNumberEntry(root=document){
+  root.querySelectorAll?.('input[type="number"]').forEach(input=>{
+    if(input.dataset.directEntry==="1") return;
+    input.dataset.directEntry="1";
+    const selectAll=()=>requestAnimationFrame(()=>{
+      try{input.select()}catch{}
+    });
+    input.addEventListener("focus",selectAll);
+    input.addEventListener("click",selectAll);
+    input.addEventListener("touchend",selectAll,{passive:true});
+  });
 }
 
 function openQuick(type){
@@ -947,6 +960,7 @@ function openQuick(type){
     quickFields.innerHTML=field("qX","中心 X",0)+field("qY","中心 Y",0)+field("qLength","全長",40)+field("qW","幅",10);
   }
   quickPanel.classList.remove("hidden");
+  enableDirectNumberEntry(quickPanel);
 }
 
 qs("createByValueBtn").addEventListener("click",()=>{
@@ -1052,6 +1066,7 @@ function openProperty(s){
     setTimeout(()=>{if(qs("pDimMode"))qs("pDimMode").value=s.mode||"aligned"},0);
   }
   propertyFields.innerHTML=html;
+  enableDirectNumberEntry(propertyPanel);
 }
 
 function closeProperty(){

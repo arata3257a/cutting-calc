@@ -304,9 +304,9 @@ function hitShape(s,p){
   return false;
 }
 
-function hitTest(p){
+function hitTest(p,filter=null){
   for(let i=shapes.length-1;i>=0;i--){
-    if(hitShape(shapes[i],p)) return shapes[i];
+    if((!filter || filter(shapes[i])) && hitShape(shapes[i],p)) return shapes[i];
   }
   return null;
 }
@@ -644,7 +644,11 @@ function closeProperty(){
   propertyPanel.classList.add("hidden");
 }
 qs("closePropertyBtn").addEventListener("click",()=>{selectedId=null;closeProperty();draw()});
-qs("closeQuickBtn").addEventListener("click",()=>quickPanel.classList.add("hidden"));
+qs("closeQuickBtn").addEventListener("click",()=>{
+  opState=null;
+  quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
+});
 
 qs("applyPropertyBtn").addEventListener("click",()=>{
   const s=selectedShape(); if(!s) return;
@@ -695,6 +699,14 @@ function getBounds(){
     if(s.type==="slot"){
       minX=Math.min(minX,s.cx-s.length/2);maxX=Math.max(maxX,s.cx+s.length/2);
       minY=Math.min(minY,s.cy-s.width/2);maxY=Math.max(maxY,s.cy+s.width/2);
+    }
+    if(s.type==="arc"){
+      const add=(x,y)=>{minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);};
+      add(s.cx+s.r*Math.cos(rad(s.a1)),s.cy+s.r*Math.sin(rad(s.a1)));
+      add(s.cx+s.r*Math.cos(rad(s.a2)),s.cy+s.r*Math.sin(rad(s.a2)));
+      [0,90,180,270].forEach(a=>{
+        if(angleOnArc(a,s.a1,s.a2)) add(s.cx+s.r*Math.cos(rad(a)),s.cy+s.r*Math.sin(rad(a)));
+      });
     }
   }
   return {minX,minY,maxX,maxY};
@@ -765,7 +777,7 @@ qs("sampleBtn").addEventListener("click",async()=>{
 
 function convertOldShape(s){
   if(s.type==="line") return {type:"line",x1:num(s.x1),y1:num(s.y1),x2:num(s.x2),y2:num(s.y2)};
-  if(s.type==="rect" && "w" in s) return s;
+  if(s.type==="rect" && "w" in s) return {...s,corners:s.corners||{}};
   if(s.type==="rect") return {type:"rect",x:num(s.x1),y:num(s.y1),w:num(s.x2)-num(s.x1),h:num(s.y2)-num(s.y1)};
   if(s.type==="circle" && "r" in s) return s;
   if(s.type==="circle") return {type:"circle",cx:num(s.x1),cy:num(s.y1),r:Math.hypot(num(s.x2)-num(s.x1),num(s.y2)-num(s.y1))};
@@ -780,20 +792,41 @@ function dxfCircle(cx,cy,r){
   return dxfPair(0,"CIRCLE")+dxfPair(8,0)+dxfPair(10,cx)+dxfPair(20,cy)+dxfPair(30,0)+dxfPair(40,r);
 }
 function dxfArc(cx,cy,r,a1,a2){
-  return dxfPair(0,"ARC")+dxfPair(8,0)+dxfPair(10,cx)+dxfPair(20,cy)+dxfPair(30,0)+dxfPair(40,r)+dxfPair(50,a1)+dxfPair(51,a2);
+  return dxfPair(0,"ARC")+dxfPair(8,0)+dxfPair(10,cx)+dxfPair(20,cy)+dxfPair(30,0)+dxfPair(40,r)+dxfPair(50,normDeg(a1))+dxfPair(51,normDeg(a2));
+}
+function dxfRect(s){
+  const r=rectNorm(s),c=s.corners||{},limit=maxCornerValue(s);
+  const val=k=>Math.min(c[k]?.value||0,limit);
+  const tl=val("tl"),tr=val("tr"),br=val("br"),bl=val("bl");
+  let out="";
+  out+=dxfLine({x1:r.x1+bl,y1:r.y1,x2:r.x2-br,y2:r.y1});
+  out+=dxfCorner("br",c.br,br,r);
+  out+=dxfLine({x1:r.x2,y1:r.y1+br,x2:r.x2,y2:r.y2-tr});
+  out+=dxfCorner("tr",c.tr,tr,r);
+  out+=dxfLine({x1:r.x2-tr,y1:r.y2,x2:r.x1+tl,y2:r.y2});
+  out+=dxfCorner("tl",c.tl,tl,r);
+  out+=dxfLine({x1:r.x1,y1:r.y2-tl,x2:r.x1,y2:r.y1+bl});
+  out+=dxfCorner("bl",c.bl,bl,r);
+  return out;
+}
+function dxfCorner(key,mod,v,r){
+  if(!mod||v<=EPS) return "";
+  if(mod.type==="chamfer"){
+    const a={br:{x:r.x2-v,y:r.y1},tr:{x:r.x2,y:r.y2-v},tl:{x:r.x1+v,y:r.y2},bl:{x:r.x1,y:r.y1+v}}[key];
+    const b={br:{x:r.x2,y:r.y1+v},tr:{x:r.x2-v,y:r.y2},tl:{x:r.x1,y:r.y2-v},bl:{x:r.x1+v,y:r.y1}}[key];
+    return dxfLine({x1:a.x,y1:a.y,x2:b.x,y2:b.y});
+  }
+  const centers={br:{x:r.x2-v,y:r.y1+v},tr:{x:r.x2-v,y:r.y2-v},tl:{x:r.x1+v,y:r.y2-v},bl:{x:r.x1+v,y:r.y1+v}};
+  const angles={br:[270,360],tr:[0,90],tl:[90,180],bl:[180,270]};
+  return dxfArc(centers[key].x,centers[key].y,v,angles[key][0],angles[key][1]);
 }
 function toDXF(){
   let body="";
   for(const s of shapes){
     if(s.type==="line") body+=dxfLine(s);
     if(s.type==="circle" || s.type==="hole") body+=dxfCircle(s.cx,s.cy,Math.abs(s.r));
-    if(s.type==="rect"){
-      const x2=s.x+s.w,y2=s.y+s.h;
-      body+=dxfLine({x1:s.x,y1:s.y,x2,y2:s.y});
-      body+=dxfLine({x1:x2,y1:s.y,x2,y2});
-      body+=dxfLine({x1:x2,y1:y2,x2:s.x,y2});
-      body+=dxfLine({x1:s.x,y1:y2,x2:s.x,y2:s.y});
-    }
+    if(s.type==="arc") body+=dxfArc(s.cx,s.cy,Math.abs(s.r),s.a1,s.a2);
+    if(s.type==="rect") body+=dxfRect(s);
     if(s.type==="slot"){
       const r=s.width/2;
       const hs=Math.max(0,(s.length-s.width)/2);

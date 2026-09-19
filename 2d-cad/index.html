@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=124">
+  <link rel="stylesheet" href="./style.css?v=125">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.24 / mm</small>
+      <small>v1.25 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -123,16 +123,18 @@
 
       <aside id="sheetPanel" class="panel hidden">
         <div class="panel-title">
-          <strong>図枠・タイトル</strong>
+          <strong>図面情報</strong>
           <button id="closeSheetBtn" class="icon-btn">×</button>
         </div>
         <div class="fields">
-          <div class="field"><label for="sheetTitle">図面名</label><input id="sheetTitle" value="加工図"></div>
+          <div class="field"><label for="sheetTitle">品名</label><input id="sheetTitle" value=""></div>
           <div class="field"><label for="sheetNo">図番</label><input id="sheetNo" value=""></div>
           <div class="field"><label for="sheetScale">尺度</label><input id="sheetScale" value="1:1"></div>
-          <div class="field"><label for="sheetName">作成者</label><input id="sheetName" value=""></div>
+          <div class="field"><label for="sheetName">作者</label><input id="sheetName" value=""></div>
+          <div class="field"><label for="sheetMaterial">材質</label><input id="sheetMaterial" value=""></div>
+          <div class="field"><label for="sheetDate">日付</label><input id="sheetDate" type="date" value=""></div>
         </div>
-        <button id="saveSheetBtn" class="primary wide">図枠設定を保存</button>
+        <button id="saveSheetBtn" class="primary wide">図面情報を保存</button>
       </aside>
     </section>
 
@@ -144,13 +146,13 @@
       <button id="exportBtn">JSON出力</button>
       <button id="dxfBtn">DXF出力</button>
       <button id="svgBtn">SVG出力</button>
-      <button id="sheetBtn">図枠</button>
+      <button id="sheetBtn">図面情報</button>
       <button id="printBtn">印刷/PDF</button>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
   </main>
 
-  <script src="./app.js?v=124"></script>
+  <script src="./app.js?v=125"></script>
 </body>
 </html>

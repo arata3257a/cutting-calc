@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=126">
+  <link rel="stylesheet" href="./style.css?v=127">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.26 / mm</small>
+      <small>v1.27 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -137,42 +137,36 @@
         <button id="saveSheetBtn" class="primary wide">図面情報を保存</button>
       </aside>
 
-      <aside id="loadPanel" class="panel compact-panel hidden">
-        <div class="panel-title">
-          <strong>読込み</strong>
-          <button id="closeLoadBtn" class="icon-btn">×</button>
-        </div>
-        <div class="chooser-grid">
-          <button id="importBtn" class="chooser-btn" type="button"><strong>JSON</strong><span>保存データを読込み</span></button>
-          <button id="dxfImportBtn" class="chooser-btn" type="button"><strong>DXF</strong><span>CADデータを読込み</span></button>
-        </div>
-      </aside>
-
-      <aside id="outputPanel" class="panel compact-panel hidden">
-        <div class="panel-title">
-          <strong>出力</strong>
-          <button id="closeOutputBtn" class="icon-btn">×</button>
-        </div>
-        <div class="chooser-grid">
-          <button id="exportBtn" class="chooser-btn" type="button"><strong>JSON</strong><span>編集用データ</span></button>
-          <button id="dxfBtn" class="chooser-btn" type="button"><strong>DXF</strong><span>CADデータ</span></button>
-          <button id="svgBtn" class="chooser-btn" type="button"><strong>SVG</strong><span>ベクター画像</span></button>
-          <button id="printBtn" class="chooser-btn" type="button"><strong>PDF / 印刷</strong><span>図枠付き出力</span></button>
-        </div>
-      </aside>
     </section>
 
     <section class="bottom-actions">
       <button id="newBtn">新規</button>
       <button id="sampleBtn">サンプル</button>
-      <button id="loadMenuBtn">📥 読込み</button>
-      <button id="outputMenuBtn">📤 出力</button>
+
+      <details id="loadMenu" class="transfer-menu">
+        <summary>📥 読込み</summary>
+        <div class="transfer-popover">
+          <button id="importBtn" type="button"><strong>JSON</strong><span>保存データ</span></button>
+          <button id="dxfImportBtn" type="button"><strong>DXF</strong><span>CADデータ</span></button>
+        </div>
+      </details>
+
+      <details id="outputMenu" class="transfer-menu">
+        <summary>📤 出力</summary>
+        <div class="transfer-popover">
+          <button id="exportBtn" type="button"><strong>JSON</strong><span>編集用</span></button>
+          <button id="dxfBtn" type="button"><strong>DXF</strong><span>CAD用</span></button>
+          <button id="svgBtn" type="button"><strong>SVG</strong><span>画像用</span></button>
+          <button id="printBtn" type="button"><strong>PDF / 印刷</strong><span>図枠付き</span></button>
+        </div>
+      </details>
+
       <button id="sheetBtn">図面情報</button>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
   </main>
 
-  <script src="./app.js?v=126"></script>
+  <script src="./app.js?v=127"></script>
 </body>
 </html>

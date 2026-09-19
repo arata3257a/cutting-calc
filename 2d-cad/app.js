@@ -354,6 +354,33 @@ function shapeFromPoints(a,b,allocateId=true){
   return null;
 }
 
+
+function lineLength(s){return Math.hypot(s.x2-s.x1,s.y2-s.y1)}
+function sameLineRay(a,b){
+  if(a.type!=="line"||b.type!=="line")return false;
+  if((a.layer||"0")!==(b.layer||"0"))return false;
+  if(Math.hypot(a.x1-b.x1,a.y1-b.y1)>1e-6)return false;
+  const la=lineLength(a),lb=lineLength(b);
+  if(la<EPS||lb<EPS)return false;
+  const au={x:(a.x2-a.x1)/la,y:(a.y2-a.y1)/la};
+  const bu={x:(b.x2-b.x1)/lb,y:(b.y2-b.y1)/lb};
+  return au.x*bu.x+au.y*bu.y>0.999999;
+}
+function cleanupRedundantLines(){
+  const remove=new Set();
+  for(let i=0;i<shapes.length;i++){
+    if(remove.has(i)||shapes[i].type!=="line")continue;
+    for(let j=i+1;j<shapes.length;j++){
+      if(remove.has(j)||shapes[j].type!=="line")continue;
+      if(!sameLineRay(shapes[i],shapes[j]))continue;
+      const li=lineLength(shapes[i]),lj=lineLength(shapes[j]);
+      if(li>=lj)remove.add(j);else{remove.add(i);break;}
+    }
+  }
+  if(remove.size)shapes=shapes.filter((_,i)=>!remove.has(i));
+  return remove.size;
+}
+
 function distancePointSegment(p,a,b){
   const vx=b.x-a.x, vy=b.y-a.y;
   const wx=p.x-a.x, wy=p.y-a.y;
@@ -959,6 +986,13 @@ qs("createByValueBtn").addEventListener("click",()=>{
   }
   if(!s) return;
 
+  if(tool==="line" && quickCreatedId===null){
+    const existing=shapes
+      .filter(x=>x.type==="line" && sameLineRay(x,s))
+      .sort((a,b)=>lineLength(b)-lineLength(a))[0];
+    if(existing) quickCreatedId=existing.id;
+  }
+
   if(tool==="line" && quickCreatedId!==null){
     const target=shapes.find(x=>x.id===quickCreatedId && x.type==="line");
     if(target){
@@ -1183,6 +1217,7 @@ qs("importInput").addEventListener("change",async e=>{
     const data=JSON.parse(await f.text());
     if(!Array.isArray(data.shapes)) throw new Error();
     shapes=data.shapes.map(s=>assignLayer({...s,id:s.id??newId()},"0"));
+    cleanupRedundantLines();
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
     if(data.drawingMeta) drawingMeta={...drawingMeta,...data.drawingMeta};
     if(data.layerVisibility){
@@ -1444,7 +1479,9 @@ try{
   const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
   if(saved && Array.isArray(saved.shapes)){
     shapes=saved.shapes.map(s=>assignLayer(s,"0"));
+    const cleaned=cleanupRedundantLines();
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
+    if(cleaned) setTimeout(()=>{autoSave();hint.textContent=cleaned+"本の重複直線を整理しました"},0);
     if(saved.drawingMeta) drawingMeta={...drawingMeta,...saved.drawingMeta};
     if(saved.layerVisibility){
       for(let i=0;i<=10;i++){

@@ -177,24 +177,40 @@ function drawGrid(w,h){
   const right=screenToWorld({x:w,y:0}).x;
   const bottom=screenToWorld({x:0,y:h}).y;
   const top=screenToWorld({x:w,y:0}).y;
-  const step = scale>=7 ? 5 : scale>=2.5 ? 10 : 20;
+
+  // ズームに合わせて 20 → 10 → 5 → 2 → 1 mm と細かくする
+  const step =
+    scale>=14 ? 1 :
+    scale>=8 ? 2 :
+    scale>=5 ? 5 :
+    scale>=2.5 ? 10 : 20;
+  const majorStep=10;
 
   ctx.save();
   ctx.lineWidth=1;
   ctx.font="10px system-ui";
   ctx.fillStyle="#8d98a3";
 
-  for(let x=Math.floor(left/step)*step;x<=right;x+=step){
+  for(let x=Math.floor(left/step)*step;x<=right+EPS;x+=step){
     const sx=worldToScreen({x,y:0}).x;
-    ctx.strokeStyle = Math.abs(x)<0.001 ? "#a9b2bb" : "#edf0f3";
+    const isAxis=Math.abs(x)<0.001;
+    const isMajor=Math.abs(x/majorStep-Math.round(x/majorStep))<1e-7;
+    ctx.strokeStyle=isAxis?"#a9b2bb":isMajor?"#d8dde2":"#edf0f3";
     ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,h);ctx.stroke();
-    if(x!==0 && sx>20) ctx.fillText(String(round(x,0)),sx+2,Math.min(h-4,origin.y+13));
+    if(x!==0 && isMajor && sx>20){
+      ctx.fillText(String(round(x,0)),sx+2,Math.min(h-4,origin.y+13));
+    }
   }
-  for(let y=Math.floor(bottom/step)*step;y<=top;y+=step){
+
+  for(let y=Math.floor(bottom/step)*step;y<=top+EPS;y+=step){
     const sy=worldToScreen({x:0,y}).y;
-    ctx.strokeStyle = Math.abs(y)<0.001 ? "#a9b2bb" : "#edf0f3";
+    const isAxis=Math.abs(y)<0.001;
+    const isMajor=Math.abs(y/majorStep-Math.round(y/majorStep))<1e-7;
+    ctx.strokeStyle=isAxis?"#a9b2bb":isMajor?"#d8dde2":"#edf0f3";
     ctx.beginPath();ctx.moveTo(0,sy);ctx.lineTo(w,sy);ctx.stroke();
-    if(y!==0 && sy<h-12) ctx.fillText(String(round(y,0)),Math.max(3,origin.x+4),sy-3);
+    if(y!==0 && isMajor && sy<h-12){
+      ctx.fillText(String(round(y,0)),Math.max(3,origin.x+4),sy-3);
+    }
   }
   ctx.restore();
 }
@@ -2147,7 +2163,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=121",{updateViaCache:"none"})
+      .register("./sw.js?v=122",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

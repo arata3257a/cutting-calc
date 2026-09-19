@@ -84,3 +84,6 @@ main{
   .toolbar{padding:12px 8px}
   .tool{min-height:64px}
 }
+
+.hidden-field{display:none}
+.field-note{grid-column:1/-1;font-size:11px;color:#66717d;line-height:1.45}

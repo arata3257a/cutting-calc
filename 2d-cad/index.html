@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=129">
+  <link rel="stylesheet" href="./style.css?v=130">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.29 / mm</small>
+      <small>v1.30 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -137,6 +137,21 @@
         <button id="saveSheetBtn" class="primary wide">図面情報を保存</button>
       </aside>
 
+      <aside id="dxfSavePanel" class="panel compact-panel hidden">
+        <div class="panel-title">
+          <strong>DXF出力</strong>
+          <button id="closeDxfSaveBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field" style="grid-column:1/-1">
+            <label for="dxfFileName">ファイル名</label>
+            <input id="dxfFileName" value="2d-cad-drawing.dxf" autocomplete="off">
+          </div>
+          <div class="field-note">対応ブラウザでは保存先フォルダーを選べます。非対応の場合は通常のダウンロードになります。</div>
+        </div>
+        <button id="saveDxfToFolderBtn" class="primary wide" type="button">保存先を選んで保存</button>
+      </aside>
+
     </section>
 
     <section class="bottom-actions">
@@ -167,6 +182,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=129"></script>
+  <script src="./app.js?v=130"></script>
 </body>
 </html>

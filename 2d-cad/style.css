@@ -291,3 +291,16 @@ main{
   color:#fff;
   border-color:#18202a;
 }
+
+.edit-toolbar #layerBtn.active{
+  background:#e8a24c;
+  color:#fff;
+  border-color:#a95d0c;
+  outline:3px solid rgba(169,93,12,.30);
+}
+.edit-toolbar .delete-tool.command-flash{
+  background:#b72b2b;
+  color:#fff;
+  border-color:#7f1515;
+  outline:3px solid rgba(183,43,43,.28);
+}

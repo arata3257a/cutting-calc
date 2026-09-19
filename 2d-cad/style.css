@@ -50,9 +50,12 @@ main{
 .view-controls button{padding:6px 10px}
 .snap-control{
   position:absolute;top:8px;right:8px;background:rgba(255,255,255,.94);
-  border:1px solid #e1e5e9;border-radius:10px;padding:5px 8px;font-size:12px
+  border:1px solid #e1e5e9;border-radius:10px;padding:5px 8px;font-size:12px;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:70%
 }
-.snap-control select{border:0;background:transparent;font-weight:700}
+.snap-control label{display:flex;align-items:center;gap:3px}
+.snap-control select{border:0;background:transparent;font-weight:700;max-width:90px}
+.snap-control button{padding:4px 7px;border-radius:8px}
 .panel{
   position:absolute;right:8px;top:52px;width:min(330px,calc(100% - 16px));
   background:#fff;border:1px solid #dfe4e8;border-radius:16px;padding:12px;

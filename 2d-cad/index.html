@@ -4,14 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>2D CAD かんたん作図</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v0.3 / mm</small>
+      <small>v0.4 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -52,7 +56,7 @@
         <div id="hint">図形をタップして選択できます</div>
       </div>
 
-      <aside id="quickPanel" class="panel">
+      <aside id="quickPanel" class="panel hidden">
         <div class="panel-title">
           <strong id="quickTitle">数値で作図</strong>
           <button id="closeQuickBtn" class="icon-btn">×</button>

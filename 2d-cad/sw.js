@@ -1,9 +1,9 @@
-const CACHE = "easy-2d-cad-v18";
+const CACHE = "easy-2d-cad-v19";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=18",
-  "./app.js?v=18",
+  "./style.css?v=19",
+  "./app.js?v=19",
   "./manifest.webmanifest",
   "./icon.svg",
   "./data/drawing.json"

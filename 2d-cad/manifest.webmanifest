@@ -1,0 +1,19 @@
+{
+  "name": "2D CAD かんたん作図",
+  "short_name": "2D CAD",
+  "description": "加工現場向けの直感的な簡易2D CAD",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

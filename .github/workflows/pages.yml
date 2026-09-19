@@ -31,7 +31,7 @@ jobs:
       - name: Upload 2D CAD
         uses: actions/upload-pages-artifact@v4
         with:
-          path: "./2d-cad"
+          path: "."
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

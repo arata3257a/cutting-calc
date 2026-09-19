@@ -1091,12 +1091,11 @@ function handleParallelTap(p){
   opState={sourceId:source.id};
   qs("quickTitle").textContent="平行線";
   quickFields.innerHTML=
-    field("qParallelDistance","元の線からの距離（±で方向）",5)+
-    '<div class="field-note">＋/−で作る側を切り替えます。長さ・角度は元の直線と同じです。</div>';
+    field("qParallelDistance","元の線から ± mm",5);
   qs("createByValueBtn").textContent="平行線を作成";
   quickPanel.classList.remove("hidden");
   enableDirectNumberEntry(quickPanel);
-  hint.textContent="距離を入力して平行線を作成";
+  hint.textContent="元の線からの距離を＋/−mmで入力";
   draw();
 }
 

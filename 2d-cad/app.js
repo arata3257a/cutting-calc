@@ -344,7 +344,7 @@ function draw(){
   drawGrid(r.width,r.height);
   shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
   if(preview) drawShape(preview,true);
-  if(tool==="dimension" && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
+  if(["dimension","copy","mirror","rotate"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
@@ -542,6 +542,12 @@ canvas.addEventListener("pointermove",e=>{
   }
   const raw=eventWorld(e);
 
+  if(transformToolNeedsSnap()){
+    const snap=findTransformSnap(raw);
+    dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
+    draw();return;
+  }
+
   if(tool==="dimension" && (!dimDraft || dimDraft.stage===1)){
     const snap=findDimensionSnap(raw);
     dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
@@ -607,9 +613,9 @@ function setTool(next){
   else if(tool==="offset") hint.textContent="オフセット元の図形をタップ";
   else if(tool==="chamfer") hint.textContent="面取りする四角の角をタップ";
   else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
-  else if(tool==="copy") hint.textContent="コピーする図形をタップ";
-  else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
-  else if(tool==="rotate") hint.textContent="回転する図形をタップ";
+  else if(tool==="copy") hint.textContent="コピーする図形をタップ（移動量／点から点）";
+  else if(tool==="mirror") hint.textContent="ミラーする図形をタップ → 軸を2点で指定";
+  else if(tool==="rotate") hint.textContent="回転する図形をタップ → 回転中心を選択";
   else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
   else if(tool==="multi"){hint.textContent="複数の図形をタップして選択";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
@@ -787,6 +793,64 @@ function findDimensionSnap(p,maxPx=22){
   return best;
 }
 
+function transformSnapCandidates(){
+  const pts=[];
+  const add=(p,kind)=>pushUniquePoint(pts,{x:p.x,y:p.y},kind);
+  for(const s of shapes){
+    if(!isShapeVisible(s) || s.type==="dim") continue;
+    if(s.type==="line"){
+      add({x:s.x1,y:s.y1},"端点");
+      add({x:s.x2,y:s.y2},"端点");
+      add({x:(s.x1+s.x2)/2,y:(s.y1+s.y2)/2},"中点");
+    }else if(s.type==="rect"){
+      const r=rectNorm(s);
+      add({x:r.x1,y:r.y1},"端点");add({x:r.x2,y:r.y1},"端点");
+      add({x:r.x2,y:r.y2},"端点");add({x:r.x1,y:r.y2},"端点");
+      add({x:(r.x1+r.x2)/2,y:r.y1},"中点");
+      add({x:r.x2,y:(r.y1+r.y2)/2},"中点");
+      add({x:(r.x1+r.x2)/2,y:r.y2},"中点");
+      add({x:r.x1,y:(r.y1+r.y2)/2},"中点");
+      add({x:(r.x1+r.x2)/2,y:(r.y1+r.y2)/2},"中心");
+    }else if(s.type==="circle" || s.type==="hole"){
+      add({x:s.cx,y:s.cy},"中心");
+      add({x:s.cx+s.r,y:s.cy},"円の頂点");
+      add({x:s.cx-s.r,y:s.cy},"円の頂点");
+      add({x:s.cx,y:s.cy+s.r},"円の頂点");
+      add({x:s.cx,y:s.cy-s.r},"円の頂点");
+    }else if(s.type==="arc"){
+      const mid=normDeg(s.a1+ccwSpan(s.a1,s.a2)/2);
+      add({x:s.cx,y:s.cy},"中心");
+      add({x:s.cx+s.r*Math.cos(rad(s.a1)),y:s.cy+s.r*Math.sin(rad(s.a1))},"端点");
+      add({x:s.cx+s.r*Math.cos(rad(s.a2)),y:s.cy+s.r*Math.sin(rad(s.a2))},"端点");
+      add({x:s.cx+s.r*Math.cos(rad(mid)),y:s.cy+s.r*Math.sin(rad(mid))},"中点");
+    }else if(s.type==="slot"){
+      const hs=Math.max(0,(s.length-s.width)/2);
+      add({x:s.cx,y:s.cy},"中心");
+      add({x:s.cx-hs,y:s.cy},"中点");
+      add({x:s.cx+hs,y:s.cy},"中点");
+    }
+  }
+  for(const p of dimensionIntersectionCandidates()) add(p,"交点");
+  return pts;
+}
+
+function findTransformSnap(p,maxPx=24){
+  const tol=maxPx/scale;
+  let best=null,bestD=Infinity;
+  for(const c of transformSnapCandidates()){
+    const d=Math.hypot(p.x-c.x,p.y-c.y);
+    if(d<=tol && d<bestD){best=c;bestD=d}
+  }
+  return best;
+}
+
+function transformToolNeedsSnap(){
+  if(tool==="copy") return opState?.stage==="copyBase" || opState?.stage==="copyTarget";
+  if(tool==="mirror") return opState?.stage==="axis1" || opState?.stage==="axis2";
+  if(tool==="rotate") return opState?.stage==="center";
+  return false;
+}
+
 function handleDimensionTap(p){
   if(!dimDraft){
     const snap=findDimensionSnap(p);
@@ -955,26 +1019,75 @@ function applyCornerMod(){
 }
 
 
+function finishTransform(message){
+  opState=null;dimSnapHover=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
+  hint.textContent=message;draw();
+}
+
 function handleCopyTap(p){
-  const source=hitTest(p);
-  if(!source){hint.textContent="コピーする図形をタップ";return;}
-  selectedId=source.id;opState={sourceId:source.id};
-  qs("quickTitle").textContent="コピー";
-  quickFields.innerHTML=field("qDX","X方向",10)+field("qDY","Y方向",0);
-  qs("createByValueBtn").textContent="コピー作成";
-  quickPanel.classList.remove("hidden");
-  hint.textContent="移動量を入力してください";draw();
+  if(!opState?.sourceId){
+    const source=hitTest(p,s=>s.type!=="dim");
+    if(!source){hint.textContent="コピーする図形をタップ";return;}
+    selectedId=source.id;opState={sourceId:source.id,stage:"numeric"};
+    qs("quickTitle").textContent="コピー";
+    quickFields.innerHTML=
+      field("qDX","X方向",10)+field("qDY","Y方向",0)+
+      '<button id="copyPointModeBtn" class="point-mode-btn" type="button">◎ 点から点へコピー</button>';
+    qs("createByValueBtn").textContent="移動量でコピー";
+    quickPanel.classList.remove("hidden");
+    enableDirectNumberEntry(quickPanel);
+    qs("copyPointModeBtn")?.addEventListener("click",()=>{
+      opState.stage="copyBase";
+      quickPanel.classList.add("hidden");
+      dimSnapHover=null;
+      hint.textContent="コピー元の基準点をタップ（端点・中点・中心・交点）";
+      draw();
+    });
+    hint.textContent="移動量を入力、または点から点へコピー";draw();return;
+  }
+  if(opState.stage==="copyBase"){
+    const snap=findTransformSnap(p);
+    if(!snap){hint.textContent="端点・中点・中心・交点を選んでください";return;}
+    opState.base={x:snap.x,y:snap.y};opState.stage="copyTarget";
+    dimSnapHover={x:snap.x,y:snap.y};
+    hint.textContent=snap.kind+"を基準にしました。移動先の点をタップ";draw();return;
+  }
+  if(opState.stage==="copyTarget"){
+    const snap=findTransformSnap(p);
+    if(!snap){hint.textContent="移動先の端点・中点・中心・交点を選んでください";return;}
+    const source=shapes.find(s=>s.id===opState.sourceId);if(!source)return;
+    const s=JSON.parse(JSON.stringify(source));s.id=newId();
+    translateShape(s,snap.x-opState.base.x,snap.y-opState.base.y);
+    shapes.push(s);selectedId=s.id;snapshot();
+    finishTransform("点から点へコピーしました");return;
+  }
+  hint.textContent="移動量を入力、または「点から点へコピー」を選択";
 }
 
 function handleRotateTap(p){
-  const source=hitTest(p,s=>s.type!=="dim");
-  if(!source){hint.textContent="回転する図形をタップ";return;}
-  selectedId=source.id;opState={sourceId:source.id};
-  qs("quickTitle").textContent="回転";
-  quickFields.innerHTML=field("qRotateAngle","角度 °",90)+field("qRotateX","基準 X",0)+field("qRotateY","基準 Y",0);
-  qs("createByValueBtn").textContent="回転作成";
-  quickPanel.classList.remove("hidden");
-  hint.textContent="角度と基準点を入力してください";draw();
+  if(!opState?.sourceId){
+    const source=hitTest(p,s=>s.type!=="dim");
+    if(!source){hint.textContent="回転する図形をタップ";return;}
+    selectedId=source.id;opState={sourceId:source.id,stage:"center"};
+    quickPanel.classList.add("hidden");dimSnapHover=null;
+    hint.textContent="回転中心をタップ（角・中点・中心・交点）";draw();return;
+  }
+  if(opState.stage==="center"){
+    const snap=findTransformSnap(p);
+    if(!snap){hint.textContent="回転中心は端点・中点・中心・交点から選んでください";return;}
+    opState.center={x:snap.x,y:snap.y};opState.stage="angle";
+    dimSnapHover={x:snap.x,y:snap.y};
+    qs("quickTitle").textContent="回転";
+    quickFields.innerHTML=
+      '<div class="field-note transform-point-note">回転中心：'+snap.kind+' ('+round(snap.x)+', '+round(snap.y)+')</div>'+
+      field("qRotateAngle","回転角度 °",90);
+    qs("createByValueBtn").textContent="この中心で回転";
+    quickPanel.classList.remove("hidden");
+    enableDirectNumberEntry(quickPanel);
+    hint.textContent=snap.kind+"を回転中心に設定。角度を入力";draw();return;
+  }
+  hint.textContent="角度を入力して回転してください";
 }
 
 function rotatePoint(p,c,a){
@@ -985,7 +1098,8 @@ function rotatePoint(p,c,a){
 function applyRotate(){
   const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
   const s=JSON.parse(JSON.stringify(source));s.id=newId();
-  const c={x:num(qs("qRotateX")?.value),y:num(qs("qRotateY")?.value)},a=rad(num(qs("qRotateAngle")?.value));
+  const c=opState?.center;if(!c){hint.textContent="回転中心を選んでください";return;}
+  const a=rad(num(qs("qRotateAngle")?.value));
   if(s.type==="line"){
     let p=rotatePoint({x:s.x1,y:s.y1},c,a),q=rotatePoint({x:s.x2,y:s.y2},c,a);
     s.x1=p.x;s.y1=p.y;s.x2=q.x;s.y2=q.y;
@@ -1012,19 +1126,33 @@ function applyRotate(){
     const m=maps[((q%4)+4)%4];
     s.corners={tl:old[m.tl],tr:old[m.tr],br:old[m.br],bl:old[m.bl]};
   }
-  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
-  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="回転コピーしました";draw();
+  shapes.push(s);selectedId=s.id;snapshot();
+  finishTransform("回転コピーしました");
 }
 
 function handleMirrorTap(p){
-  const source=hitTest(p);
-  if(!source){hint.textContent="ミラーする図形をタップ";return;}
-  selectedId=source.id;opState={sourceId:source.id};
-  qs("quickTitle").textContent="ミラー";
-  quickFields.innerHTML='<div class="field"><label for="qMirrorAxis">基準線</label><select id="qMirrorAxis"><option value="Y">縦線 X=</option><option value="X">横線 Y=</option></select></div>'+field("qMirrorValue","基準座標",0);
-  qs("createByValueBtn").textContent="ミラー作成";
-  quickPanel.classList.remove("hidden");
-  hint.textContent="基準線を指定してください";draw();
+  if(!opState?.sourceId){
+    const source=hitTest(p,s=>s.type!=="dim");
+    if(!source){hint.textContent="ミラーする図形をタップ";return;}
+    selectedId=source.id;opState={sourceId:source.id,stage:"axis1"};
+    quickPanel.classList.add("hidden");dimSnapHover=null;
+    hint.textContent="ミラー軸の1点目をタップ（端点・中点・中心・交点）";draw();return;
+  }
+  if(opState.stage==="axis1"){
+    const snap=findTransformSnap(p);
+    if(!snap){hint.textContent="軸の1点目は端点・中点・中心・交点から選んでください";return;}
+    opState.axis1={x:snap.x,y:snap.y};opState.stage="axis2";
+    dimSnapHover={x:snap.x,y:snap.y};
+    hint.textContent=snap.kind+"を取得。ミラー軸の2点目をタップ";draw();return;
+  }
+  if(opState.stage==="axis2"){
+    const snap=findTransformSnap(p);
+    if(!snap){hint.textContent="軸の2点目は端点・中点・中心・交点から選んでください";return;}
+    if(Math.hypot(snap.x-opState.axis1.x,snap.y-opState.axis1.y)<1e-7){
+      hint.textContent="1点目とは別の点を選んでください";return;
+    }
+    applyMirrorByAxis(opState.axis1,{x:snap.x,y:snap.y});return;
+  }
 }
 
 function swapCornersForMirror(s,axis){
@@ -1039,37 +1167,55 @@ function applyCopy(){
   const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
   const s=JSON.parse(JSON.stringify(source));s.id=newId();
   translateShape(s,num(qs("qDX")?.value),num(qs("qDY")?.value));
-  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
-  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="コピーしました";draw();
+  shapes.push(s);selectedId=s.id;snapshot();
+  finishTransform("コピーしました");
+}
+
+function reflectPointAcrossLine(p,a,b){
+  const dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;
+  if(len2<EPS) return {...p};
+  const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/len2;
+  const q={x:a.x+t*dx,y:a.y+t*dy};
+  return {x:2*q.x-p.x,y:2*q.y-p.y};
+}
+
+function applyMirrorByAxis(a,b){
+  const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
+  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  const dx=b.x-a.x,dy=b.y-a.y;
+  const horizontal=Math.abs(dy)<1e-7;
+  const vertical=Math.abs(dx)<1e-7;
+
+  if(s.type==="line"){
+    const p=reflectPointAcrossLine({x:s.x1,y:s.y1},a,b);
+    const q=reflectPointAcrossLine({x:s.x2,y:s.y2},a,b);
+    s.x1=p.x;s.y1=p.y;s.x2=q.x;s.y2=q.y;
+  }else if(s.type==="circle"||s.type==="hole"){
+    const p=reflectPointAcrossLine({x:s.cx,y:s.cy},a,b);s.cx=p.x;s.cy=p.y;
+  }else if(s.type==="arc"){
+    const p1={x:s.cx+s.r*Math.cos(rad(s.a1)),y:s.cy+s.r*Math.sin(rad(s.a1))};
+    const p2={x:s.cx+s.r*Math.cos(rad(s.a2)),y:s.cy+s.r*Math.sin(rad(s.a2))};
+    const c=reflectPointAcrossLine({x:s.cx,y:s.cy},a,b);
+    const r1=reflectPointAcrossLine(p1,a,b),r2=reflectPointAcrossLine(p2,a,b);
+    s.cx=c.x;s.cy=c.y;
+    s.a1=angleOf(s.cx,s.cy,r2);s.a2=angleOf(s.cx,s.cy,r1);
+  }else if(s.type==="rect"){
+    if(!horizontal&&!vertical){alert("既存の四角形は斜め軸ミラーには未対応です");return;}
+    const r=rectNorm(s);
+    if(vertical){s.x=2*a.x-r.x2;s.y=r.y1;s.w=r.w;s.h=r.h;swapCornersForMirror(s,"Y")}
+    else{s.x=r.x1;s.y=2*a.y-r.y2;s.w=r.w;s.h=r.h;swapCornersForMirror(s,"X")}
+  }else if(s.type==="slot"){
+    if(!horizontal&&!vertical){alert("長穴の斜め軸ミラーは次の拡張で対応します");return;}
+    const c=reflectPointAcrossLine({x:s.cx,y:s.cy},a,b);s.cx=c.x;s.cy=c.y;
+  }else{
+    return;
+  }
+  shapes.push(s);selectedId=s.id;snapshot();
+  finishTransform("選んだ2点を軸にミラーしました");
 }
 
 function applyMirror(){
-  const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
-  const s=JSON.parse(JSON.stringify(source));s.id=newId();
-  const axis=qs("qMirrorAxis")?.value||"Y",v=num(qs("qMirrorValue")?.value);
-
-  if(s.type==="line"){
-    if(axis==="Y"){s.x1=2*v-s.x1;s.x2=2*v-s.x2}else{s.y1=2*v-s.y1;s.y2=2*v-s.y2}
-  }else if(s.type==="rect"){
-    const r=rectNorm(s);
-    if(axis==="Y"){s.x=2*v-r.x2;s.y=r.y1;s.w=r.w;s.h=r.h}
-    else{s.x=r.x1;s.y=2*v-r.y2;s.w=r.w;s.h=r.h}
-    swapCornersForMirror(s,axis);
-  }else if(s.type==="circle"||s.type==="hole"||s.type==="slot"){
-    if(axis==="Y")s.cx=2*v-s.cx;else s.cy=2*v-s.cy;
-  }else if(s.type==="arc"){
-    if(axis==="Y"){
-      s.cx=2*v-s.cx;
-      const old1=s.a1,old2=s.a2;
-      s.a1=normDeg(180-old2);s.a2=normDeg(180-old1);
-    }else{
-      s.cy=2*v-s.cy;
-      const old1=s.a1,old2=s.a2;
-      s.a1=normDeg(-old2);s.a2=normDeg(-old1);
-    }
-  }
-  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
-  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="ミラーしました";draw();
+  hint.textContent="ミラー軸を図形上の2点で選んでください";
 }
 
 
@@ -1244,7 +1390,7 @@ function closeProperty(){
 }
 qs("closePropertyBtn").addEventListener("click",()=>{selectedId=null;closeProperty();draw()});
 qs("closeQuickBtn").addEventListener("click",()=>{
-  opState=null;quickCreatedId=null;
+  opState=null;quickCreatedId=null;dimSnapHover=null;
   quickPanel.classList.add("hidden");
   qs("createByValueBtn").textContent="この寸法で作成";
 });

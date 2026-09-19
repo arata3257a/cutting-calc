@@ -24,6 +24,7 @@ let nextId = 1;
 let opState = null;
 let arcDraft = null;
 let dimDraft = null;
+let dimSnapHover = null;
 let panDrag = null;
 let layerVisibility=Object.fromEntries(Array.from({length:11},(_,i)=>[String(i),true]));
 let selectedIds=new Set();
@@ -329,12 +330,26 @@ function drawSlotPath(s){
   ctx.closePath();
 }
 
+function drawDimensionSnapMarker(p){
+  if(!p) return;
+  const q=worldToScreen(p);
+  ctx.save();
+  ctx.strokeStyle="#0b63ce";
+  ctx.fillStyle="rgba(255,255,255,.95)";
+  ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(q.x,q.y,6,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(q.x-9,q.y);ctx.lineTo(q.x+9,q.y);
+  ctx.moveTo(q.x,q.y-9);ctx.lineTo(q.x,q.y+9);ctx.stroke();
+  ctx.restore();
+}
+
 function draw(){
   const r=canvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
   drawGrid(r.width,r.height);
   shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
   if(preview) drawShape(preview,true);
+  if(tool==="dimension" && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
@@ -532,6 +547,12 @@ canvas.addEventListener("pointermove",e=>{
   }
   const raw=eventWorld(e);
 
+  if(tool==="dimension" && (!dimDraft || dimDraft.stage===1)){
+    const snap=findDimensionSnap(raw);
+    dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
+    draw();return;
+  }
+
   if(tool==="dimension" && dimDraft?.stage===2){
     const p=snapPoint(raw);
     preview={id:-1,type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
@@ -577,7 +598,7 @@ canvas.addEventListener("pointerup",e=>{
 });
 
 function setTool(next){
-  tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;panDrag=null;
+  tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;dimSnapHover=null;panDrag=null;
   quickCreatedId=null;
   qs("dimensionModeDock")?.classList.toggle("hidden",tool!=="dimension");
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
@@ -594,7 +615,7 @@ function setTool(next){
   else if(tool==="copy") hint.textContent="コピーする図形をタップ";
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
   else if(tool==="rotate") hint.textContent="回転する図形をタップ";
-  else if(tool==="dimension") hint.textContent="寸法の始点をタップ";
+  else if(tool==="dimension") hint.textContent="端点または線の交点をタップ";
   else if(tool==="multi"){hint.textContent="複数の図形をタップして選択";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
@@ -609,12 +630,72 @@ function setTool(next){
 
 document.querySelectorAll(".tool[data-tool]").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
 
+function dimensionEndpointCandidates(){
+  const pts=[];
+  for(const s of shapes){
+    if(!isShapeVisible(s)) continue;
+    if(s.type==="line"){
+      pts.push({x:s.x1,y:s.y1,kind:"端点"},{x:s.x2,y:s.y2,kind:"端点"});
+    }else if(s.type==="arc"){
+      pts.push(
+        {x:s.cx+s.r*Math.cos(rad(s.a1)),y:s.cy+s.r*Math.sin(rad(s.a1)),kind:"端点"},
+        {x:s.cx+s.r*Math.cos(rad(s.a2)),y:s.cy+s.r*Math.sin(rad(s.a2)),kind:"端点"}
+      );
+    }else if(s.type==="rect"){
+      const r=rectNorm(s);
+      pts.push(
+        {x:r.x1,y:r.y1,kind:"端点"},{x:r.x2,y:r.y1,kind:"端点"},
+        {x:r.x2,y:r.y2,kind:"端点"},{x:r.x1,y:r.y2,kind:"端点"}
+      );
+    }
+  }
+  return pts;
+}
+
+function dimensionIntersectionCandidates(){
+  const lines=shapes.filter(s=>isShapeVisible(s)&&s.type==="line");
+  const pts=[];
+  for(let i=0;i<lines.length;i++){
+    for(let j=i+1;j<lines.length;j++){
+      const p=lineIntersection(lines[i],lines[j]);
+      if(p) pts.push({...p,kind:"交点"});
+    }
+  }
+  return pts;
+}
+
+function findDimensionSnap(p,maxPx=22){
+  const tol=maxPx/scale;
+  const candidates=[...dimensionEndpointCandidates(),...dimensionIntersectionCandidates()];
+  let best=null,bestD=Infinity;
+  for(const c of candidates){
+    const d=Math.hypot(p.x-c.x,p.y-c.y);
+    if(d<=tol && d<bestD){best=c;bestD=d}
+  }
+  return best;
+}
+
 function handleDimensionTap(p){
-  if(!dimDraft){dimDraft={stage:1,a:p};preview=null;hint.textContent="寸法の終点をタップ";return;}
-  if(dimDraft.stage===1){dimDraft.b=p;dimDraft.stage=2;hint.textContent="寸法を置く位置をタップ";return;}
+  if(!dimDraft){
+    const snap=findDimensionSnap(p);
+    if(!snap){hint.textContent="端点または線の交点をタップしてください";dimSnapHover=null;draw();return;}
+    dimDraft={stage:1,a:{x:snap.x,y:snap.y}};
+    dimSnapHover={x:snap.x,y:snap.y};
+    preview=null;hint.textContent=snap.kind+"を取得。寸法の終点をタップ";draw();return;
+  }
+  if(dimDraft.stage===1){
+    const snap=findDimensionSnap(p);
+    if(!snap){hint.textContent="終点は端点または線の交点を選んでください";dimSnapHover=null;draw();return;}
+    if(Math.hypot(snap.x-dimDraft.a.x,snap.y-dimDraft.a.y)<1e-7){
+      hint.textContent="始点とは別の端点・交点を選んでください";return;
+    }
+    dimDraft.b={x:snap.x,y:snap.y};dimDraft.stage=2;dimSnapHover=null;
+    hint.textContent=snap.kind+"を取得。寸法を置く位置をタップ";draw();return;
+  }
   const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
     tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned",layer:currentLayer()};
-  shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;preview=null;hint.textContent="寸法線を作成しました";draw();
+  shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;dimSnapHover=null;preview=null;
+  hint.textContent="寸法線を作成しました";draw();
 }
 
 function openMultiPanel(){

@@ -478,10 +478,10 @@ canvas.addEventListener("pointerdown",e=>{
   if(tool==="select"){
     const s=hitTest(raw);
     selectedId=s?.id ?? null;
+    drag=null;
     if(s){
-      drag={id:s.id,start:raw,before:JSON.parse(JSON.stringify(s))};
       openProperty(s);
-      hint.textContent="ドラッグで移動できます";
+      hint.textContent="選択しました。数値を変更できます";
     }else{
       closeProperty();
       hint.textContent="図形をタップして選択できます";
@@ -554,14 +554,6 @@ canvas.addEventListener("pointermove",e=>{
     draw(); return;
   }
 
-  if(tool==="select" && drag){
-    const s=selectedShape();
-    if(!s) return;
-    Object.assign(s,JSON.parse(JSON.stringify(drag.before)));
-    translateShape(s,raw.x-drag.start.x,raw.y-drag.start.y);
-    draw();
-    return;
-  }
   if(start){
     const p=snapPoint(raw);
     preview=shapeFromPoints(start,p,false);
@@ -582,23 +574,6 @@ canvas.addEventListener("pointerup",e=>{
     }
   }
   if(tool==="pan" && panDrag){panDrag=null;hint.textContent="画面をドラッグして移動";return;}
-  if(tool==="select" && drag){
-    const s=selectedShape();
-    if(s){
-      if(s.type==="line"){
-        s.x1=snapValue(s.x1);s.y1=snapValue(s.y1);s.x2=snapValue(s.x2);s.y2=snapValue(s.y2);
-      }else if(s.type==="rect"){
-        s.x=snapValue(s.x);s.y=snapValue(s.y);
-      }else if(s.type==="circle"||s.type==="hole"||s.type==="arc"||s.type==="slot"){
-        s.cx=snapValue(s.cx);s.cy=snapValue(s.cy);
-      }else if(s.type==="dim"){
-        s.x1=snapValue(s.x1);s.y1=snapValue(s.y1);s.x2=snapValue(s.x2);s.y2=snapValue(s.y2);
-        s.tx=snapValue(s.tx);s.ty=snapValue(s.ty);
-      }
-      snapshot();openProperty(s);
-    }
-    drag=null;draw();
-  }
 });
 
 function setTool(next){

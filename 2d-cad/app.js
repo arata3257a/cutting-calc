@@ -63,7 +63,7 @@ function isShapeVisible(s){return layerVisibility[s.layer||"0"]!==false;}
 
 function shapeLabel(type){
   return {
-    line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
+    line:"直線",parallel:"平行線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
     trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R",copy:"コピー",mirror:"ミラー",
     rotate:"回転",dimension:"寸法線",pan:"画面移動",dim:"寸法線"
   }[type] || type;
@@ -570,6 +570,7 @@ canvas.addEventListener("pointerdown",e=>{
   }
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
+  if(tool==="parallel"){ handleParallelTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
   if(tool==="copy"){ handleCopyTap(raw); return; }
   if(tool==="mirror"){ handleMirrorTap(raw); return; }
@@ -715,6 +716,7 @@ function setTool(next){
   if(tool==="select") hint.textContent="図形をタップして選択できます";
   else if(tool==="trim") hint.textContent="削る側の直線をタップ";
   else if(tool==="offset") hint.textContent="オフセット元の図形をタップ";
+  else if(tool==="parallel") hint.textContent="平行線の元になる直線をタップ";
   else if(tool==="chamfer") hint.textContent="面取りする四角の角をタップ";
   else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
   else if(tool==="copy") hint.textContent="コピーする図形をタップ（移動量／点から点）";
@@ -723,7 +725,9 @@ function setTool(next){
   else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
   else if(tool==="multi"){hint.textContent="図形を選択 → 端点・中点・中心・交点をドラッグ";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
-  else if(tool==="arc"){
+  else if(tool==="parallel"){
+    // 元の直線を選ぶまでは入力パネルを出さない
+  }else if(tool==="arc"){
     openQuick(tool);
     hint.textContent="中心→始点→終点の順にタップ、または数値入力";
   }else{
@@ -1075,6 +1079,53 @@ function handleTrimTap(p){
   const d2=Math.hypot(opState.click.x-target.x2,opState.click.y-target.y2);
   if(d1<d2){target.x1=ip.x;target.y1=ip.y}else{target.x2=ip.x;target.y2=ip.y}
   snapshot(); opState=null; selectedId=target.id; hint.textContent="トリムしました"; draw();
+}
+
+function handleParallelTap(p){
+  const source=hitTest(p,s=>s.type==="line");
+  if(!source){
+    hint.textContent="平行線の元になる直線をタップしてください";
+    return;
+  }
+  selectedId=source.id;
+  opState={sourceId:source.id};
+  qs("quickTitle").textContent="平行線";
+  quickFields.innerHTML=
+    field("qParallelDistance","元の線からの距離（±で方向）",5)+
+    '<div class="field-note">＋/−で作る側を切り替えます。長さ・角度は元の直線と同じです。</div>';
+  qs("createByValueBtn").textContent="平行線を作成";
+  quickPanel.classList.remove("hidden");
+  enableDirectNumberEntry(quickPanel);
+  hint.textContent="距離を入力して平行線を作成";
+  draw();
+}
+
+function applyParallel(){
+  const source=shapes.find(s=>s.id===opState?.sourceId && s.type==="line");
+  if(!source) return;
+  const d=num(qs("qParallelDistance")?.value);
+  const dx=source.x2-source.x1,dy=source.y2-source.y1,len=Math.hypot(dx,dy);
+  if(len<EPS){
+    hint.textContent="長さ0の直線には平行線を作れません";
+    return;
+  }
+  const nx=-dy/len,ny=dx/len;
+  const s={
+    ...JSON.parse(JSON.stringify(source)),
+    id:newId(),
+    x1:source.x1+nx*d,
+    y1:source.y1+ny*d,
+    x2:source.x2+nx*d,
+    y2:source.y2+ny*d
+  };
+  shapes.push(s);
+  selectedId=s.id;
+  snapshot();
+  opState=null;
+  quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
+  hint.textContent="平行線を作成しました";
+  draw();
 }
 
 function handleOffsetTap(p){
@@ -1454,6 +1505,7 @@ function openQuick(type){
 
 qs("createByValueBtn").addEventListener("click",()=>{
   if(tool==="offset") return applyOffset();
+  if(tool==="parallel") return applyParallel();
   if(tool==="chamfer" || tool==="fillet") return applyCornerMod();
   if(tool==="copy") return applyCopy();
   if(tool==="mirror") return applyMirror();

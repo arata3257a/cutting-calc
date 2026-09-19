@@ -26,6 +26,8 @@ let arcDraft = null;
 let dimDraft = null;
 let panDrag = null;
 let layerVisibility={"0":true,"外形":true,"穴":true,"寸法":true};
+let selectedIds=new Set();
+let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -144,7 +146,7 @@ function restoreHistory(index){
   if(index<0 || index>=history.length) return;
   historyIndex=index;
   shapes=JSON.parse(history[historyIndex]);
-  selectedId=null;start=null;preview=null;drag=null;
+  selectedId=null;selectedIds.clear();start=null;preview=null;drag=null;
   closeProperty();
   draw();
   autoSave();
@@ -152,7 +154,7 @@ function restoreHistory(index){
 
 function autoSave(){
   localStorage.setItem(STORAGE_KEY,JSON.stringify({
-    version:VERSION,unit:"mm",nextId,shapes
+    version:VERSION,unit:"mm",nextId,shapes,drawingMeta,layerVisibility
   }));
 }
 
@@ -197,7 +199,7 @@ function drawDimensionText(text,x,y,selected=false){
 }
 
 function drawShape(s,isPreview=false){
-  const selected = !isPreview && s.id===selectedId;
+  const selected = !isPreview && (s.id===selectedId || selectedIds.has(s.id));
   ctx.save();
   ctx.strokeStyle = isPreview ? "#7c8792" : selected ? "#0b63ce" : "#111820";
   ctx.lineWidth = selected ? 3 : 2;
@@ -269,12 +271,23 @@ function drawDimensionShape(s,selected=false,isPreview=false){
   const a=worldToScreen({x:s.x1,y:s.y1});
   const b=worldToScreen({x:s.x2,y:s.y2});
   const q=worldToScreen({x:s.tx,y:s.ty});
-  const vx=b.x-a.x,vy=b.y-a.y,len=Math.hypot(vx,vy)||1;
-  const nx=-vy/len,ny=vx/len;
-  const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-  const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;
-  const oa={x:a.x+nx*off,y:a.y+ny*off};
-  const ob={x:b.x+nx*off,y:b.y+ny*off};
+  const mode=s.mode||"aligned";
+  let oa,ob,value;
+
+  if(mode==="horizontal"){
+    oa={x:a.x,y:q.y}; ob={x:b.x,y:q.y}; value=Math.abs(s.x2-s.x1);
+  }else if(mode==="vertical"){
+    oa={x:q.x,y:a.y}; ob={x:q.x,y:b.y}; value=Math.abs(s.y2-s.y1);
+  }else{
+    const vx=b.x-a.x,vy=b.y-a.y,len=Math.hypot(vx,vy)||1;
+    const nx=-vy/len,ny=vx/len;
+    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;
+    oa={x:a.x+nx*off,y:a.y+ny*off};
+    ob={x:b.x+nx*off,y:b.y+ny*off};
+    value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  }
+
   ctx.save();
   ctx.strokeStyle=isPreview?"#7c8792":selected?"#0b63ce":"#4d5965";
   ctx.lineWidth=1.2;
@@ -283,14 +296,13 @@ function drawDimensionShape(s,selected=false,isPreview=false){
   ctx.moveTo(a.x,a.y);ctx.lineTo(oa.x,oa.y);
   ctx.moveTo(b.x,b.y);ctx.lineTo(ob.x,ob.y);
   ctx.moveTo(oa.x,oa.y);ctx.lineTo(ob.x,ob.y);
-  const ah=6;
-  const ux=(ob.x-oa.x)/(Math.hypot(ob.x-oa.x,ob.y-oa.y)||1),uy=(ob.y-oa.y)/(Math.hypot(ob.x-oa.x,ob.y-oa.y)||1);
+  const span=Math.hypot(ob.x-oa.x,ob.y-oa.y)||1;
+  const ux=(ob.x-oa.x)/span,uy=(ob.y-oa.y)/span,ah=6;
   ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah-uy*3,oa.y+uy*ah+ux*3);
   ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah+uy*3,oa.y+uy*ah-ux*3);
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah-uy*3,ob.y-uy*ah+ux*3);
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah+uy*3,ob.y-uy*ah-ux*3);
   ctx.stroke();
-  const value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
   drawDimensionText(round(value)+" mm",(oa.x+ob.x)/2,(oa.y+ob.y)/2-6,selected);
   ctx.restore();
 }
@@ -400,6 +412,7 @@ canvas.addEventListener("pointerdown",e=>{
     return;
   }
   if(tool==="dimension"){ handleDimensionTap(p); return; }
+  if(tool==="multi"){ handleMultiTap(raw); return; }
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
@@ -449,7 +462,8 @@ canvas.addEventListener("pointermove",e=>{
 
   if(tool==="dimension" && dimDraft?.stage===2){
     const p=snapPoint(raw);
-    preview={id:-1,type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,tx:p.x,ty:p.y};
+    preview={id:-1,type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
+      tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned"};
     draw();return;
   }
 
@@ -504,7 +518,9 @@ canvas.addEventListener("pointerup",()=>{
 function setTool(next){
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;panDrag=null;
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
-  selectedId=null;closeProperty();quickPanel.classList.add("hidden");
+  selectedId=null;
+  if(tool!=="multi") selectedIds.clear();
+  closeProperty();quickPanel.classList.add("hidden");
   qs("createByValueBtn").textContent="この寸法で作成";
 
   if(tool==="select") hint.textContent="図形をタップして選択できます";
@@ -516,6 +532,7 @@ function setTool(next){
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
   else if(tool==="rotate") hint.textContent="回転する図形をタップ";
   else if(tool==="dimension") hint.textContent="寸法の始点をタップ";
+  else if(tool==="multi"){hint.textContent="複数の図形をタップして選択";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
     openQuick(tool);
@@ -532,9 +549,40 @@ document.querySelectorAll(".tool").forEach(btn=>btn.addEventListener("click",()=
 function handleDimensionTap(p){
   if(!dimDraft){dimDraft={stage:1,a:p};preview=null;hint.textContent="寸法の終点をタップ";return;}
   if(dimDraft.stage===1){dimDraft.b=p;dimDraft.stage=2;hint.textContent="寸法を置く位置をタップ";return;}
-  const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,tx:p.x,ty:p.y,layer:"寸法"};
+  const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
+    tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned",layer:"寸法"};
   ensureLayer("寸法");
   shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;preview=null;hint.textContent="寸法線を作成しました";draw();
+}
+
+function openMultiPanel(){
+  qs("quickTitle").textContent="複数選択";
+  quickFields.innerHTML=
+    '<div class="multi-count">選択: '+selectedIds.size+'個</div>'+
+    field("qMultiDX","X移動",0)+field("qMultiDY","Y移動",0)+
+    '<button id="multiDeleteBtn" class="danger" type="button">選択を削除</button>';
+  qs("createByValueBtn").textContent="まとめて移動";
+  quickPanel.classList.remove("hidden");
+  qs("multiDeleteBtn").addEventListener("click",deleteMultiSelected);
+}
+function handleMultiTap(p){
+  const s=hitTest(p);
+  if(!s){hint.textContent="図形をタップして追加/解除";return;}
+  if(selectedIds.has(s.id)) selectedIds.delete(s.id); else selectedIds.add(s.id);
+  selectedId=null;openMultiPanel();
+  hint.textContent="選択中: "+selectedIds.size+"個";draw();
+}
+function applyMultiMove(){
+  if(!selectedIds.size)return;
+  const dx=num(qs("qMultiDX")?.value),dy=num(qs("qMultiDY")?.value);
+  shapes.filter(s=>selectedIds.has(s.id)).forEach(s=>translateShape(s,dx,dy));
+  snapshot();openMultiPanel();hint.textContent=selectedIds.size+"個を移動しました";draw();
+}
+function deleteMultiSelected(){
+  if(!selectedIds.size)return;
+  const count=selectedIds.size;
+  shapes=shapes.filter(s=>!selectedIds.has(s.id));
+  selectedIds.clear();snapshot();openMultiPanel();hint.textContent=count+"個を削除しました";draw();
 }
 
 function handleArcTap(p){
@@ -820,6 +868,7 @@ qs("createByValueBtn").addEventListener("click",()=>{
   if(tool==="copy") return applyCopy();
   if(tool==="mirror") return applyMirror();
   if(tool==="rotate") return applyRotate();
+  if(tool==="multi") return applyMultiMove();
 
   let s=null;
   const x=num(qs("qX")?.value),y=num(qs("qY")?.value);
@@ -882,6 +931,8 @@ function openProperty(s){
   }
   if(s.type==="dim"){
     html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2)+field("pTX","表示 X",s.tx)+field("pTY","表示 Y",s.ty);
+    html+='<div class="field"><label>寸法方向</label><select id="pDimMode"><option value="aligned">平行</option><option value="horizontal">水平</option><option value="vertical">垂直</option></select></div>';
+    setTimeout(()=>{if(qs("pDimMode"))qs("pDimMode").value=s.mode||"aligned"},0);
   }
   propertyFields.innerHTML=html;
 }
@@ -918,6 +969,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   }
   if(s.type==="dim"){
     s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);s.tx=num(qs("pTX").value);s.ty=num(qs("pTY").value);
+    s.mode=qs("pDimMode")?.value||s.mode||"aligned";
   }
   snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
 });

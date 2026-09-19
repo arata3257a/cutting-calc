@@ -202,11 +202,19 @@ function drawShape(s,isPreview=false){
     const c=worldToScreen({x:s.cx,y:s.cy});
     ctx.beginPath();ctx.arc(c.x,c.y,Math.abs(s.r*scale),0,Math.PI*2);ctx.stroke();
     if(s.type==="hole"){
+      if(s.counterD && s.counterD>s.r*2){
+        ctx.beginPath();ctx.arc(c.x,c.y,(s.counterD/2)*scale,0,Math.PI*2);ctx.stroke();
+      }
       const mark=Math.max(5,Math.min(12,Math.abs(s.r*scale)*0.7));
       ctx.beginPath();ctx.moveTo(c.x-mark,c.y);ctx.lineTo(c.x+mark,c.y);
       ctx.moveTo(c.x,c.y-mark);ctx.lineTo(c.x,c.y+mark);ctx.stroke();
-      const label=s.holeKind && s.holeKind!=="through" ? `${s.holeKind} 下穴 Ø${round(Math.abs(s.r*2))}` : `穴 Ø${round(Math.abs(s.r*2))}`;
-      drawDimensionText(label,c.x,c.y-Math.abs(s.r*scale)-7,selected);
+      let label;
+      if(s.holeKind==="counterbore") label="ザグリ Ø"+round(s.r*2)+" / Ø"+round(s.counterD||0);
+      else if(s.holeKind==="countersink") label="皿穴 Ø"+round(s.r*2)+" / Ø"+round(s.counterD||0);
+      else if(s.holeKind && s.holeKind!=="through") label=s.holeKind+" 下穴 Ø"+round(Math.abs(s.r*2));
+      else label="穴 Ø"+round(Math.abs(s.r*2));
+      const labelR=Math.max(Math.abs(s.r),Math.abs((s.counterD||0)/2));
+      drawDimensionText(label,c.x,c.y-labelR*scale-7,selected);
     }else{
       drawDimensionText(`Ø${round(Math.abs(s.r*2))}`,c.x,c.y-Math.abs(s.r*scale)-7,selected);
     }
@@ -287,7 +295,11 @@ function distancePointSegment(p,a,b){
 function hitShape(s,p){
   const tol=8/scale;
   if(s.type==="line") return distancePointSegment(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol;
-  if(s.type==="circle" || s.type==="hole") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
+  if(s.type==="circle") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
+  if(s.type==="hole"){
+    const rr=Math.max(Math.abs(s.r),Math.abs((s.counterD||0)/2));
+    return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-rr)<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
+  }
   if(s.type==="arc"){
     const d=Math.hypot(p.x-s.cx,p.y-s.cy);
     return Math.abs(d-s.r)<=tol && angleOnArc(angleOf(s.cx,s.cy,p),s.a1,s.a2);
@@ -639,11 +651,22 @@ function openQuick(type){
   }
   if(type==="hole"){
     quickFields.innerHTML=
-      '<div class="field"><label for="qHoleType">穴種</label><select id="qHoleType"><option value="through">通し穴</option><option value="M3">M3タップ（並目）</option><option value="M4">M4タップ（並目）</option><option value="M5">M5タップ（並目）</option><option value="M6">M6タップ（並目）</option><option value="M8">M8タップ（並目）</option><option value="M10">M10タップ（並目）</option><option value="M12">M12タップ（並目）</option></select></div>'+
-      field("qD","穴径 Ø",10)+field("qX","中心 X",0)+field("qY","中心 Y",0);
+      '<div class="field"><label for="qHoleType">穴種</label><select id="qHoleType">'+
+      '<option value="through">通し穴</option>'+
+      '<option value="M3">M3タップ（並目）</option><option value="M4">M4タップ（並目）</option>'+
+      '<option value="M5">M5タップ（並目）</option><option value="M6">M6タップ（並目）</option>'+
+      '<option value="M8">M8タップ（並目）</option><option value="M10">M10タップ（並目）</option>'+
+      '<option value="M12">M12タップ（並目）</option>'+
+      '<option value="counterbore">ザグリ穴</option><option value="countersink">皿穴</option></select></div>'+
+      field("qD","下穴 / 貫通 Ø",10)+
+      '<div id="holeOuterField" class="field hidden-field"><label for="qOuterD">外径 Ø</label><input id="qOuterD" type="number" inputmode="decimal" step="any" value="18"></div>'+
+      field("qX","中心 X",0)+field("qY","中心 Y",0)+
+      '<div class="field-note">ザグリ・皿穴は上面図として同心円で表示します。外径は任意入力です。</div>';
     const tapDrill={M3:2.5,M4:3.3,M5:4.2,M6:5.0,M8:6.8,M10:8.5,M12:10.2};
     qs("qHoleType").addEventListener("change",e=>{
-      if(tapDrill[e.target.value]) qs("qD").value=tapDrill[e.target.value];
+      const kind=e.target.value;
+      if(tapDrill[kind]) qs("qD").value=tapDrill[kind];
+      qs("holeOuterField").classList.toggle("hidden-field",!(kind==="counterbore"||kind==="countersink"));
     });
   }
   if(type==="slot"){
@@ -678,7 +701,8 @@ qs("createByValueBtn").addEventListener("click",()=>{
   }
   if(tool==="hole"){
     const holeKind=qs("qHoleType")?.value || "through";
-    s={id,type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind};
+    const outerD=(holeKind==="counterbore"||holeKind==="countersink")?Math.abs(num(qs("qOuterD")?.value)):0;
+    s={id,type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind,counterD:outerD};
   }
   if(tool==="slot"){
     const a=Math.abs(num(qs("qLength").value)),b=Math.abs(num(qs("qW").value));
@@ -703,8 +727,11 @@ function openProperty(s){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pD","直径 Ø",s.r*2);
   }
   if(s.type==="hole"){
-    html+=`<div class="field"><label>穴種</label><input value="${s.holeKind && s.holeKind!=="through" ? s.holeKind+"タップ" : "通し穴"}" disabled></div>`;
+    const holeName=s.holeKind==="counterbore"?"ザグリ穴":s.holeKind==="countersink"?"皿穴":
+      (s.holeKind && s.holeKind!=="through" ? s.holeKind+"タップ" : "通し穴");
+    html+='<div class="field"><label>穴種</label><input value="'+holeName+'" disabled></div>';
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pD","穴径 Ø",s.r*2);
+    if(s.counterD) html+=field("pOuterD","外径 Ø",s.counterD);
   }
   if(s.type==="slot"){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pLength","全長",s.length)+field("pW","幅",s.width);
@@ -735,6 +762,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   }
   if(s.type==="circle" || s.type==="hole"){
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.r=Math.abs(num(qs("pD").value))/2;
+    if(s.type==="hole" && qs("pOuterD")) s.counterD=Math.abs(num(qs("pOuterD").value));
   }
   if(s.type==="slot"){
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);const a=Math.abs(num(qs("pLength").value)),b=Math.abs(num(qs("pW").value));s.length=Math.max(a,b);s.width=Math.min(a,b);
@@ -768,8 +796,9 @@ function getBounds(){
       minY=Math.min(minY,s.y,s.y+s.h);maxY=Math.max(maxY,s.y,s.y+s.h);
     }
     if(s.type==="circle" || s.type==="hole"){
-      minX=Math.min(minX,s.cx-s.r);maxX=Math.max(maxX,s.cx+s.r);
-      minY=Math.min(minY,s.cy-s.r);maxY=Math.max(maxY,s.cy+s.r);
+      const rr=s.type==="hole"?Math.max(s.r,(s.counterD||0)/2):s.r;
+      minX=Math.min(minX,s.cx-rr);maxX=Math.max(maxX,s.cx+rr);
+      minY=Math.min(minY,s.cy-rr);maxY=Math.max(maxY,s.cy+rr);
     }
     if(s.type==="slot"){
       minX=Math.min(minX,s.cx-s.length/2);maxX=Math.max(maxX,s.cx+s.length/2);
@@ -900,6 +929,7 @@ function toDXF(){
   for(const s of shapes){
     if(s.type==="line") body+=dxfLine(s);
     if(s.type==="circle" || s.type==="hole") body+=dxfCircle(s.cx,s.cy,Math.abs(s.r));
+    if(s.type==="hole" && s.counterD && s.counterD>s.r*2) body+=dxfCircle(s.cx,s.cy,Math.abs(s.counterD/2));
     if(s.type==="arc") body+=dxfArc(s.cx,s.cy,Math.abs(s.r),s.a1,s.a2);
     if(s.type==="rect") body+=dxfRect(s);
     if(s.type==="slot"){

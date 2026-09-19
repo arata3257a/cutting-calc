@@ -9,13 +9,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=10">
+  <link rel="stylesheet" href="./style.css?v=11">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.0 / mm</small>
+      <small>v1.1 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -29,11 +29,6 @@
       <div class="canvas-wrap">
         <canvas id="cadCanvas"></canvas>
 
-        <div class="snap-slider">
-          <div class="snap-head"><span>スナップ</span><strong id="snapValueLabel">5 mm</strong></div>
-          <input id="snapRange" type="range" min="0" max="4" step="1" value="3" aria-label="スナップ間隔">
-          <div class="snap-marks"><span>0.5</span><span>1</span><span>2</span><span>5</span><span>10</span></div>
-        </div>
 
         <button id="layerBtn" class="floating-btn layer-fab" title="レイヤー">▱<span>レイヤー</span></button>
 
@@ -83,9 +78,16 @@
             <label for="layerSelect">現在のレイヤー</label>
             <select id="layerSelect">
               <option value="0">0</option>
-              <option value="外形">外形</option>
-              <option value="穴">穴</option>
-              <option value="寸法">寸法</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
             </select>
           </div>
           <div class="field">
@@ -146,6 +148,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=10"></script>
+  <script src="./app.js?v=11"></script>
 </body>
 </html>

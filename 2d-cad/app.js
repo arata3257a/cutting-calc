@@ -51,6 +51,9 @@ function ensureLayer(name){
 }
 function assignLayer(s,fallback=null){
   s.layer=ensureLayer(s.layer ?? fallback ?? currentLayer());
+  if(s.type==="dim" && s.mode!=="horizontal" && s.mode!=="vertical"){
+    s.mode=Math.abs((s.x2??0)-(s.x1??0)) >= Math.abs((s.y2??0)-(s.y1??0)) ? "horizontal" : "vertical";
+  }
   return s;
 }
 function isShapeVisible(s){return layerVisibility[s.layer||"0"]!==false;}
@@ -279,21 +282,13 @@ function drawDimensionShape(s,selected=false,isPreview=false){
   const a=worldToScreen({x:s.x1,y:s.y1});
   const b=worldToScreen({x:s.x2,y:s.y2});
   const q=worldToScreen({x:s.tx,y:s.ty});
-  const mode=s.mode||"aligned";
+  const mode=s.mode==="vertical"?"vertical":"horizontal";
   let oa,ob,value;
 
-  if(mode==="horizontal"){
-    oa={x:a.x,y:q.y}; ob={x:b.x,y:q.y}; value=Math.abs(s.x2-s.x1);
-  }else if(mode==="vertical"){
+  if(mode==="vertical"){
     oa={x:q.x,y:a.y}; ob={x:q.x,y:b.y}; value=Math.abs(s.y2-s.y1);
   }else{
-    const vx=b.x-a.x,vy=b.y-a.y,len=Math.hypot(vx,vy)||1;
-    const nx=-vy/len,ny=vx/len;
-    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-    const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;
-    oa={x:a.x+nx*off,y:a.y+ny*off};
-    ob={x:b.x+nx*off,y:b.y+ny*off};
-    value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+    oa={x:a.x,y:q.y}; ob={x:b.x,y:q.y}; value=Math.abs(s.x2-s.x1);
   }
 
   ctx.save();
@@ -556,7 +551,7 @@ canvas.addEventListener("pointermove",e=>{
   if(tool==="dimension" && dimDraft?.stage===2){
     const p=snapPoint(raw);
     preview={id:-1,type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
-      tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned"};
+      tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value==="vertical"?"vertical":"horizontal"};
     draw();return;
   }
 
@@ -693,7 +688,7 @@ function handleDimensionTap(p){
     hint.textContent=snap.kind+"を取得。寸法を置く位置をタップ";draw();return;
   }
   const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,
-    tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value||"aligned",layer:currentLayer()};
+    tx:p.x,ty:p.y,mode:qs("dimensionModeSelect")?.value==="vertical"?"vertical":"horizontal",layer:currentLayer()};
   shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;dimSnapHover=null;preview=null;
   hint.textContent="寸法線を作成しました";draw();
 }
@@ -1120,8 +1115,8 @@ function openProperty(s){
   }
   if(s.type==="dim"){
     html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2)+field("pTX","表示 X",s.tx)+field("pTY","表示 Y",s.ty);
-    html+='<div class="field"><label>寸法方向</label><select id="pDimMode"><option value="aligned">平行</option><option value="horizontal">水平</option><option value="vertical">垂直</option></select></div>';
-    setTimeout(()=>{if(qs("pDimMode"))qs("pDimMode").value=s.mode||"aligned"},0);
+    html+='<div class="field"><label>寸法方向</label><select id="pDimMode"><option value="horizontal">水平</option><option value="vertical">垂直</option></select></div>';
+    setTimeout(()=>{if(qs("pDimMode"))qs("pDimMode").value=s.mode==="vertical"?"vertical":"horizontal"},0);
   }
   propertyFields.innerHTML=html;
   enableDirectNumberEntry(propertyPanel);
@@ -1164,7 +1159,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   }
   if(s.type==="dim"){
     s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);s.tx=num(qs("pTX").value);s.ty=num(qs("pTY").value);
-    s.mode=qs("pDimMode")?.value||s.mode||"aligned";
+    s.mode=qs("pDimMode")?.value==="vertical"?"vertical":"horizontal";
   }
   snapshot();
   selectedId=null;
@@ -1405,14 +1400,10 @@ function svgShape(s,b,m){
     return `<path d="${svgRectPath(s,b,m)}" ${stroke}/>`;
   }
   if(s.type==="dim"){
-    const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m),q=svgPoint(s.tx,s.ty,b,m),mode=s.mode||"aligned";
+    const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m),q=svgPoint(s.tx,s.ty,b,m),mode=s.mode==="vertical"?"vertical":"horizontal";
     let oa,ob,value;
-    if(mode==="horizontal"){oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
-    else if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
-    else{
-      const vx=d.x-a.x,vy=d.y-a.y,len=Math.hypot(vx,vy)||1,nx=-vy/len,ny=vx/len,mid={x:(a.x+d.x)/2,y:(a.y+d.y)/2};
-      const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;oa={x:a.x+nx*off,y:a.y+ny*off};ob={x:d.x+nx*off,y:d.y+ny*off};value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
-    }
+    if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
+    else{oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
     return `<g stroke="#555" stroke-width="0.25" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g><text x="${(oa.x+ob.x)/2}" y="${(oa.y+ob.y)/2-1.5}" font-size="3.5" text-anchor="middle" fill="#333">${round(value)} mm</text>`;
   }
   return "";

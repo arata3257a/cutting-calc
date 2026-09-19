@@ -1080,7 +1080,9 @@ function downloadText(name,text,type){
 }
 
 qs("exportBtn").addEventListener("click",()=>{
-  downloadText("2d-cad-drawing.json",JSON.stringify({version:VERSION,unit:"mm",shapes},null,2),"application/json");
+  downloadText("2d-cad-drawing.json",JSON.stringify({
+    version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
+  },null,2),"application/json");
 });
 
 qs("importBtn").addEventListener("click",()=>qs("importInput").click());
@@ -1091,7 +1093,9 @@ qs("importInput").addEventListener("change",async e=>{
     if(!Array.isArray(data.shapes)) throw new Error();
     shapes=data.shapes.map(s=>assignLayer({...s,id:s.id??newId()},"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
-    selectedId=null;snapshot();fitView();hint.textContent="図面を読み込みました";
+    if(data.drawingMeta) drawingMeta={...drawingMeta,...data.drawingMeta};
+    if(data.layerVisibility) layerVisibility={...layerVisibility,...data.layerVisibility};
+    selectedId=null;selectedIds.clear();snapshot();fitView();hint.textContent="図面を読み込みました";
   }catch{alert("このJSONファイルは読み込めませんでした")}
   e.target.value="";
 });

@@ -217,16 +217,18 @@ function drawGrid(w,h){
   ctx.restore();
 }
 
-function drawDimensionText(text,x,y,selected=false){
+function drawDimensionText(text,x,y,selected=false,angle=0){
   ctx.save();
+  ctx.translate(x,y);
+  if(angle) ctx.rotate(angle);
   ctx.font="12px system-ui";
   const pad=4;
   const width=ctx.measureText(text).width+pad*2;
   ctx.fillStyle="rgba(255,255,255,.92)";
-  ctx.fillRect(x-width/2,y-10,width,16);
+  ctx.fillRect(-width/2,-10,width,16);
   ctx.fillStyle=selected ? "#0b63ce" : "#4d5965";
   ctx.textAlign="center";
-  ctx.fillText(text,x,y+2);
+  ctx.fillText(text,0,2);
   ctx.restore();
 }
 
@@ -336,7 +338,13 @@ function drawDimensionShape(s,selected=false,isPreview=false){
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah-uy*3,ob.y-uy*ah+ux*3);
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah+uy*3,ob.y-uy*ah-ux*3);
   ctx.stroke();
-  drawDimensionText(round(value)+" mm",(oa.x+ob.x)/2,(oa.y+ob.y)/2-6,selected);
+  const textX=(oa.x+ob.x)/2;
+  const textY=(oa.y+ob.y)/2;
+  if(mode==="vertical"){
+    drawDimensionText(round(value)+" mm",textX,textY,selected,-Math.PI/2);
+  }else{
+    drawDimensionText(round(value)+" mm",textX,textY-6,selected);
+  }
   ctx.restore();
 }
 
@@ -2015,7 +2023,11 @@ function svgShape(s,b,m,pdfMode=false){
     let oa,ob,value;
     if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
     else{oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
-    return `<g stroke="${dimColor}" stroke-width="${dimWidth}" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g><text x="${(oa.x+ob.x)/2}" y="${(oa.y+ob.y)/2-1.5}" font-size="3.5" text-anchor="middle" fill="${dimTextColor}">${round(value)} mm</text>`;
+    const mx=(oa.x+ob.x)/2,my=(oa.y+ob.y)/2;
+    const dimText=mode==="vertical"
+      ? `<text x="${mx}" y="${my}" font-size="3.5" text-anchor="middle" dominant-baseline="middle" fill="${dimTextColor}" transform="rotate(-90 ${mx} ${my})">${round(value)} mm</text>`
+      : `<text x="${mx}" y="${my-1.5}" font-size="3.5" text-anchor="middle" fill="${dimTextColor}">${round(value)} mm</text>`;
+    return `<g stroke="${dimColor}" stroke-width="${dimWidth}" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g>${dimText}`;
   }
   return "";
 }
@@ -2502,7 +2514,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=134",{updateViaCache:"none"})
+      .register("./sw.js?v=133",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

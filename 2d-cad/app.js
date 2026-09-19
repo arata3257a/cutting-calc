@@ -987,7 +987,7 @@ function openMultiPanel(){
   qs("quickTitle").textContent="図形を移動";
   quickFields.innerHTML=
     '<div class="multi-count">移動する図形: '+selectedIds.size+'個</div>'+
-    '<div class="field-note">数値入力 または 端点・中点・中心・交点をつかんでドラッグ</div>'+
+    '<div class="field-note"><strong>ドラッグ移動対応</strong><br>図形を選択 → 青い基準点（端点・中点・中心・交点）をつかんでそのままドラッグ</div>'+
     '<div class="transform-mode-choice">'+
       '<button id="moveOriginalBtn" class="transform-mode-btn" type="button">↔<span>元図形を移動</span></button>'+
       '<button id="moveCopyBtn" class="transform-mode-btn" type="button">⧉<span>コピーして移動</span></button>'+
@@ -2010,7 +2010,16 @@ resize();
 
 
 if ("serviceWorker" in navigator) {
+  let swReloading=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(swReloading) return;
+    swReloading=true;
+    location.reload();
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("./sw.js?v=117",{updateViaCache:"none"})
+      .then(reg=>reg.update())
+      .catch(() => {});
   });
 }

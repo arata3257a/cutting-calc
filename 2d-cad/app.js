@@ -33,6 +33,7 @@ let touchGesture=null;
 let touchGestureActive=false;
 let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
 let quickCreatedId=null;
+let multiMoveMode="move";
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -606,6 +607,7 @@ function setTool(next){
   selectedId=null;
   if(tool!=="multi") selectedIds.clear();
   closeProperty();quickPanel.classList.add("hidden");
+  qs("createByValueBtn").hidden=false;
   qs("createByValueBtn").textContent="この寸法で作成";
 
   if(tool==="select") hint.textContent="図形をタップして選択できます";
@@ -874,15 +876,28 @@ function handleDimensionTap(p){
   hint.textContent="寸法線を作成しました";draw();
 }
 
+function updateMoveModeUI(){
+  qs("moveOriginalBtn")?.classList.toggle("active",multiMoveMode==="move");
+  qs("moveCopyBtn")?.classList.toggle("active",multiMoveMode==="copy");
+  qs("createByValueBtn").textContent=multiMoveMode==="copy"?"コピーして移動":"元図形を移動";
+}
 function openMultiPanel(){
   qs("quickTitle").textContent="図形を移動";
   quickFields.innerHTML=
     '<div class="multi-count">移動する図形: '+selectedIds.size+'個</div>'+
+    '<div class="transform-mode-choice">'+
+      '<button id="moveOriginalBtn" class="transform-mode-btn" type="button">↔<span>元図形を移動</span></button>'+
+      '<button id="moveCopyBtn" class="transform-mode-btn" type="button">⧉<span>コピーして移動</span></button>'+
+    '</div>'+
     field("qMultiDX","X移動",0)+field("qMultiDY","Y移動",0)+
     '<button id="multiDeleteBtn" class="danger" type="button">選択を削除</button>';
-  qs("createByValueBtn").textContent="選択した図形を移動";
+  qs("createByValueBtn").hidden=false;
   quickPanel.classList.remove("hidden");
+  updateMoveModeUI();
+  qs("moveOriginalBtn")?.addEventListener("click",()=>{multiMoveMode="move";updateMoveModeUI()});
+  qs("moveCopyBtn")?.addEventListener("click",()=>{multiMoveMode="copy";updateMoveModeUI()});
   qs("multiDeleteBtn").addEventListener("click",deleteMultiSelected);
+  enableDirectNumberEntry(quickPanel);
 }
 function handleMultiTap(p){
   const s=hitTest(p);
@@ -894,8 +909,19 @@ function handleMultiTap(p){
 function applyMultiMove(){
   if(!selectedIds.size)return;
   const dx=num(qs("qMultiDX")?.value),dy=num(qs("qMultiDY")?.value);
-  shapes.filter(s=>selectedIds.has(s.id)).forEach(s=>translateShape(s,dx,dy));
-  snapshot();openMultiPanel();hint.textContent=selectedIds.size+"個を移動しました";draw();
+  const targets=shapes.filter(s=>selectedIds.has(s.id));
+  const count=targets.length;
+  if(multiMoveMode==="copy"){
+    const copies=targets.map(source=>{
+      const s=JSON.parse(JSON.stringify(source));
+      s.id=newId();translateShape(s,dx,dy);return s;
+    });
+    shapes.push(...copies);
+    selectedIds=new Set(copies.map(s=>s.id));
+    snapshot();openMultiPanel();hint.textContent=count+"個をコピーして移動しました";draw();return;
+  }
+  targets.forEach(s=>translateShape(s,dx,dy));
+  snapshot();openMultiPanel();hint.textContent=count+"個の元図形を移動しました";draw();
 }
 function deleteMultiSelected(){
   if(!selectedIds.size)return;
@@ -1021,6 +1047,7 @@ function applyCornerMod(){
 
 function finishTransform(message){
   opState=null;dimSnapHover=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").hidden=false;
   qs("createByValueBtn").textContent="この寸法で作成";
   hint.textContent=message;draw();
 }
@@ -1065,14 +1092,46 @@ function handleCopyTap(p){
   hint.textContent="移動量を入力、または「点から点へコピー」を選択";
 }
 
+function showTransformModeChoice(kind){
+  const isRotate=kind==="rotate";
+  qs("quickTitle").textContent=isRotate?"回転方法":"ミラー方法";
+  quickFields.innerHTML=
+    '<div class="field-note transform-point-note">'+(isRotate?"回転させる方法を選択":"ミラーする方法を選択")+'</div>'+
+    '<div class="transform-mode-choice">'+
+      '<button id="transformOriginalBtn" class="transform-mode-btn" type="button">↔<span>元図形</span></button>'+
+      '<button id="transformCopyBtn" class="transform-mode-btn" type="button">⧉<span>複写（コピー）</span></button>'+
+    '</div>';
+  qs("createByValueBtn").hidden=true;
+  quickPanel.classList.remove("hidden");
+  qs("transformOriginalBtn")?.addEventListener("click",()=>chooseTransformMode("move"));
+  qs("transformCopyBtn")?.addEventListener("click",()=>chooseTransformMode("copy"));
+}
+
+function chooseTransformMode(mode){
+  if(!opState) return;
+  opState.mode=mode==="copy"?"copy":"move";
+  qs("createByValueBtn").hidden=false;
+  quickPanel.classList.add("hidden");
+  dimSnapHover=null;
+  if(tool==="rotate"){
+    opState.stage="center";
+    hint.textContent=(opState.mode==="copy"?"コピーを回転：":"元図形を回転：")+"回転中心をタップ（端点・中点・中心・交点）";
+  }else if(tool==="mirror"){
+    opState.stage="axis1";
+    hint.textContent=(opState.mode==="copy"?"ミラーコピー：":"元図形をミラー：")+"軸の1点目をタップ";
+  }
+  draw();
+}
+
 function handleRotateTap(p){
   if(!opState?.sourceId){
     const source=hitTest(p,s=>s.type!=="dim");
     if(!source){hint.textContent="回転する図形をタップ";return;}
-    selectedId=source.id;opState={sourceId:source.id,stage:"center"};
-    quickPanel.classList.add("hidden");dimSnapHover=null;
-    hint.textContent="回転中心をタップ（角・中点・中心・交点）";draw();return;
+    selectedId=source.id;opState={sourceId:source.id,stage:"mode",mode:null};
+    dimSnapHover=null;showTransformModeChoice("rotate");
+    hint.textContent="元図形を回転するか、コピーを回転するか選択";draw();return;
   }
+  if(opState.stage==="mode"){hint.textContent="回転方法を選択してください";return;}
   if(opState.stage==="center"){
     const snap=findTransformSnap(p);
     if(!snap){hint.textContent="回転中心は端点・中点・中心・交点から選んでください";return;}
@@ -1097,7 +1156,8 @@ function rotatePoint(p,c,a){
 
 function applyRotate(){
   const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
-  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  const mode=opState?.mode==="copy"?"copy":"move";
+  const s=JSON.parse(JSON.stringify(source));
   const c=opState?.center;if(!c){hint.textContent="回転中心を選んでください";return;}
   const a=rad(num(qs("qRotateAngle")?.value));
   if(s.type==="line"){
@@ -1126,18 +1186,24 @@ function applyRotate(){
     const m=maps[((q%4)+4)%4];
     s.corners={tl:old[m.tl],tr:old[m.tr],br:old[m.br],bl:old[m.bl]};
   }
-  shapes.push(s);selectedId=s.id;snapshot();
-  finishTransform("回転コピーしました");
+  if(mode==="copy"){
+    s.id=newId();shapes.push(s);selectedId=s.id;
+  }else{
+    s.id=source.id;Object.assign(source,s);selectedId=source.id;
+  }
+  snapshot();
+  finishTransform(mode==="copy"?"回転コピーしました":"元図形を回転しました");
 }
 
 function handleMirrorTap(p){
   if(!opState?.sourceId){
     const source=hitTest(p,s=>s.type!=="dim");
     if(!source){hint.textContent="ミラーする図形をタップ";return;}
-    selectedId=source.id;opState={sourceId:source.id,stage:"axis1"};
-    quickPanel.classList.add("hidden");dimSnapHover=null;
-    hint.textContent="ミラー軸の1点目をタップ（端点・中点・中心・交点）";draw();return;
+    selectedId=source.id;opState={sourceId:source.id,stage:"mode",mode:null};
+    dimSnapHover=null;showTransformModeChoice("mirror");
+    hint.textContent="元図形をミラーするか、コピーを作るか選択";draw();return;
   }
+  if(opState.stage==="mode"){hint.textContent="ミラー方法を選択してください";return;}
   if(opState.stage==="axis1"){
     const snap=findTransformSnap(p);
     if(!snap){hint.textContent="軸の1点目は端点・中点・中心・交点から選んでください";return;}
@@ -1181,7 +1247,8 @@ function reflectPointAcrossLine(p,a,b){
 
 function applyMirrorByAxis(a,b){
   const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
-  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  const mode=opState?.mode==="copy"?"copy":"move";
+  const s=JSON.parse(JSON.stringify(source));
   const dx=b.x-a.x,dy=b.y-a.y;
   const horizontal=Math.abs(dy)<1e-7;
   const vertical=Math.abs(dx)<1e-7;
@@ -1210,8 +1277,13 @@ function applyMirrorByAxis(a,b){
   }else{
     return;
   }
-  shapes.push(s);selectedId=s.id;snapshot();
-  finishTransform("選んだ2点を軸にミラーしました");
+  if(mode==="copy"){
+    s.id=newId();shapes.push(s);selectedId=s.id;
+  }else{
+    s.id=source.id;Object.assign(source,s);selectedId=source.id;
+  }
+  snapshot();
+  finishTransform(mode==="copy"?"ミラーコピーしました":"元図形をミラーしました");
 }
 
 function applyMirror(){

@@ -9,32 +9,78 @@
 </head>
 <body>
   <header>
-    <div>
+    <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v0.1</small>
+      <small>v0.3 / mm</small>
     </div>
     <div class="header-actions">
-      <button id="undoBtn">↶ 戻る</button>
-      <button id="saveBtn">保存</button>
+      <button id="undoBtn" title="戻る">↶</button>
+      <button id="redoBtn" title="進む">↷</button>
+      <button id="saveBtn" class="primary">保存</button>
     </div>
   </header>
 
   <main>
     <section class="toolbar" aria-label="作図ツール">
-      <button class="tool active" data-tool="line">／<span>直線</span></button>
+      <button class="tool active" data-tool="select">↖<span>選択</span></button>
+      <button class="tool" data-tool="line">／<span>直線</span></button>
       <button class="tool" data-tool="rect">□<span>四角</span></button>
       <button class="tool" data-tool="circle">○<span>円</span></button>
+      <button class="tool" data-tool="slot">▭<span>長穴</span></button>
     </section>
 
-    <section class="canvas-wrap">
-      <canvas id="cadCanvas"></canvas>
-      <div id="hint">始点をタップしてください</div>
+    <section class="workspace">
+      <div class="canvas-wrap">
+        <canvas id="cadCanvas"></canvas>
+
+        <div class="view-controls">
+          <button id="zoomOutBtn">−</button>
+          <button id="fitBtn">全体</button>
+          <button id="zoomInBtn">＋</button>
+        </div>
+
+        <div class="snap-control">
+          <label>スナップ
+            <select id="snapSelect">
+              <option value="1">1 mm</option>
+              <option value="5" selected>5 mm</option>
+              <option value="10">10 mm</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="hint">図形をタップして選択できます</div>
+      </div>
+
+      <aside id="quickPanel" class="panel">
+        <div class="panel-title">
+          <strong id="quickTitle">数値で作図</strong>
+          <button id="closeQuickBtn" class="icon-btn">×</button>
+        </div>
+        <div id="quickFields" class="fields"></div>
+        <button id="createByValueBtn" class="primary wide">この寸法で作成</button>
+      </aside>
+
+      <aside id="propertyPanel" class="panel hidden">
+        <div class="panel-title">
+          <strong>選択した図形</strong>
+          <button id="closePropertyBtn" class="icon-btn">×</button>
+        </div>
+        <div id="propertyFields" class="fields"></div>
+        <div class="row">
+          <button id="applyPropertyBtn" class="primary">寸法を更新</button>
+          <button id="deleteSelectedBtn" class="danger">削除</button>
+        </div>
+      </aside>
     </section>
 
     <section class="bottom-actions">
+      <button id="newBtn">新規</button>
       <button id="sampleBtn">サンプル</button>
+      <button id="importBtn">JSON読込</button>
       <button id="exportBtn">JSON出力</button>
-      <button id="clearBtn" class="danger">全消去</button>
+      <button id="dxfBtn">DXF出力</button>
+      <input id="importInput" type="file" accept=".json,application/json" hidden>
     </section>
   </main>
 

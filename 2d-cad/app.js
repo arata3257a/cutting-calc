@@ -31,6 +31,7 @@ let activeTouchPointers=new Map();
 let touchGesture=null;
 let touchGestureActive=false;
 let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
+let quickCreatedId=null;
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -575,6 +576,7 @@ canvas.addEventListener("pointerup",e=>{
 
 function setTool(next){
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;panDrag=null;
+  quickCreatedId=null;
   qs("dimensionModeDock")?.classList.toggle("hidden",tool!=="dimension");
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
   selectedId=null;
@@ -956,7 +958,27 @@ qs("createByValueBtn").addEventListener("click",()=>{
     s={id,type:"slot",cx:x,cy:y,length:Math.max(a,b),width:Math.min(a,b),layer};
   }
   if(!s) return;
-  shapes.push(s);selectedId=s.id;snapshot();fitView();draw();
+
+  if(tool==="line" && quickCreatedId!==null){
+    const target=shapes.find(x=>x.id===quickCreatedId && x.type==="line");
+    if(target){
+      const keepId=target.id;
+      Object.assign(target,s,{id:keepId});
+      selectedId=keepId;
+      snapshot();fitView();draw();
+      qs("createByValueBtn").textContent="この寸法に更新";
+      hint.textContent="直線の寸法を更新しました";
+      return;
+    }
+    quickCreatedId=null;
+  }
+
+  shapes.push(s);selectedId=s.id;
+  if(tool==="line"){
+    quickCreatedId=s.id;
+    qs("createByValueBtn").textContent="この寸法に更新";
+  }
+  snapshot();fitView();draw();
   hint.textContent=`${shapeLabel(s.type)}を作成しました`;
 });
 
@@ -1003,7 +1025,7 @@ function closeProperty(){
 }
 qs("closePropertyBtn").addEventListener("click",()=>{selectedId=null;closeProperty();draw()});
 qs("closeQuickBtn").addEventListener("click",()=>{
-  opState=null;
+  opState=null;quickCreatedId=null;
   quickPanel.classList.add("hidden");
   qs("createByValueBtn").textContent="この寸法で作成";
 });
@@ -1036,6 +1058,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
 });
 
 function deleteCurrentSelection(){
+  if(quickCreatedId!==null && (selectedId===quickCreatedId || selectedIds.has(quickCreatedId))) quickCreatedId=null;
   if(selectedIds.size){
     const count=selectedIds.size;
     shapes=shapes.filter(s=>!selectedIds.has(s.id));

@@ -9,13 +9,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=111">
+  <link rel="stylesheet" href="./style.css?v=112">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.11 / mm</small>
+      <small>v1.12 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -30,12 +30,15 @@
         <canvas id="cadCanvas"></canvas>
 
         <div id="dimensionModeDock" class="dimension-mode hidden">
-          <label>寸法
-            <select id="dimensionModeSelect">
-              <option value="horizontal" selected>水平</option>
-              <option value="vertical">垂直</option>
-            </select>
-          </label>
+          <div class="dimension-mode-title">寸法方向を選択</div>
+          <div class="dimension-mode-buttons">
+            <button id="dimHorizontalBtn" class="dim-mode-btn active" type="button">↔<span>水平寸法</span></button>
+            <button id="dimVerticalBtn" class="dim-mode-btn" type="button">↕<span>垂直寸法</span></button>
+          </div>
+          <select id="dimensionModeSelect" class="visually-hidden" aria-label="寸法方向">
+            <option value="horizontal" selected>水平</option>
+            <option value="vertical">垂直</option>
+          </select>
         </div>
 
         <div id="hint">図形をタップして選択できます</div>
@@ -143,6 +146,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=111"></script>
+  <script src="./app.js?v=112"></script>
 </body>
 </html>

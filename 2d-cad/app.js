@@ -31,7 +31,7 @@ let selectedIds=new Set();
 let activeTouchPointers=new Map();
 let touchGesture=null;
 let touchGestureActive=false;
-let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
+let drawingMeta={title:"",drawingNo:"",scale:"1:1",author:"",material:"",date:""};
 let quickCreatedId=null;
 let multiMoveMode="move";
 let moveDrag=null;
@@ -166,10 +166,12 @@ function autoSave(){
 }
 
 function syncSheetInputs(){
-  if(qs("sheetTitle")) qs("sheetTitle").value=drawingMeta.title||"加工図";
+  if(qs("sheetTitle")) qs("sheetTitle").value=drawingMeta.title||"";
   if(qs("sheetNo")) qs("sheetNo").value=drawingMeta.drawingNo||"";
   if(qs("sheetScale")) qs("sheetScale").value=drawingMeta.scale||"1:1";
   if(qs("sheetName")) qs("sheetName").value=drawingMeta.author||"";
+  if(qs("sheetMaterial")) qs("sheetMaterial").value=drawingMeta.material||"";
+  if(qs("sheetDate")) qs("sheetDate").value=drawingMeta.date||"";
 }
 
 function drawGrid(w,h){
@@ -2000,29 +2002,35 @@ function svgShape(s,b,m){
   return "";
 }
 function buildSVG(){
-  const b=exportBounds(),margin=10,framePad=5,titleH=22;
+  const b=exportBounds(),margin=10,framePad=5,titleH=30;
   const geomW=Math.max(30,b.maxX-b.minX),geomH=Math.max(20,b.maxY-b.minY);
   const w=geomW+margin*2,h=geomH+margin*2+titleH;
   const shapesSvg=shapes.filter(isShapeVisible).map(s=>svgShape(s,b,margin)).join("");
   const titleY=h-titleH;
+  const splitX=w*0.55;
+  const row1=titleY+8,row2=titleY+16,row3=titleY+24;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}">
 <rect width="${w}" height="${h}" fill="white"/>
 <rect x="${framePad}" y="${framePad}" width="${w-framePad*2}" height="${h-framePad*2}" fill="none" stroke="#111" stroke-width="0.4"/>
 <g font-family="Arial, sans-serif">${shapesSvg}
 <line x1="${framePad}" y1="${titleY}" x2="${w-framePad}" y2="${titleY}" stroke="#111" stroke-width="0.4"/>
-<line x1="${w*0.55}" y1="${titleY}" x2="${w*0.55}" y2="${h-framePad}" stroke="#111" stroke-width="0.3"/>
-<text x="${framePad+3}" y="${titleY+7}" font-size="5" font-weight="bold">${xmlEscape(drawingMeta.title||"加工図")}</text>
-<text x="${framePad+3}" y="${titleY+14}" font-size="3.5">図番: ${xmlEscape(drawingMeta.drawingNo||"-")}</text>
-<text x="${w*0.55+3}" y="${titleY+7}" font-size="3.5">尺度: ${xmlEscape(drawingMeta.scale||"1:1")}</text>
-<text x="${w*0.55+3}" y="${titleY+14}" font-size="3.5">作成者: ${xmlEscape(drawingMeta.author||"-")}</text>
+<line x1="${splitX}" y1="${titleY}" x2="${splitX}" y2="${h-framePad}" stroke="#111" stroke-width="0.3"/>
+<line x1="${framePad}" y1="${titleY+10}" x2="${w-framePad}" y2="${titleY+10}" stroke="#111" stroke-width="0.2"/>
+<line x1="${framePad}" y1="${titleY+20}" x2="${w-framePad}" y2="${titleY+20}" stroke="#111" stroke-width="0.2"/>
+<text x="${framePad+3}" y="${row1}" font-size="3.7"><tspan font-weight="bold">品名:</tspan> ${xmlEscape(drawingMeta.title||"-")}</text>
+<text x="${splitX+3}" y="${row1}" font-size="3.7"><tspan font-weight="bold">図番:</tspan> ${xmlEscape(drawingMeta.drawingNo||"-")}</text>
+<text x="${framePad+3}" y="${row2}" font-size="3.7"><tspan font-weight="bold">材質:</tspan> ${xmlEscape(drawingMeta.material||"-")}</text>
+<text x="${splitX+3}" y="${row2}" font-size="3.7"><tspan font-weight="bold">尺度:</tspan> ${xmlEscape(drawingMeta.scale||"1:1")}</text>
+<text x="${framePad+3}" y="${row3}" font-size="3.7"><tspan font-weight="bold">作者:</tspan> ${xmlEscape(drawingMeta.author||"-")}</text>
+<text x="${splitX+3}" y="${row3}" font-size="3.7"><tspan font-weight="bold">日付:</tspan> ${xmlEscape(drawingMeta.date||"-")}</text>
 </g></svg>`;
 }
 function printDrawing(){
   const svg=buildSVG();
   const win=window.open("","_blank");
   if(!win){alert("ポップアップを許可してください");return;}
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${xmlEscape(drawingMeta.title||"加工図")}</title><style>body{margin:0;display:grid;place-items:center;background:#fff}svg{max-width:100vw;max-height:100vh}@media print{svg{width:100%;height:auto}}</style></head><body>${svg.replace(/^<\?xml[^>]*>\s*/,"")}<script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${xmlEscape(drawingMeta.title||"2D CAD")}</title><style>body{margin:0;display:grid;place-items:center;background:#fff}svg{max-width:100vw;max-height:100vh}@media print{svg{width:100%;height:auto}}</style></head><body>${svg.replace(/^<\?xml[^>]*>\s*/,"")}<script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
   win.document.close();
 }
 
@@ -2135,12 +2143,14 @@ qs("sheetBtn").addEventListener("click",()=>{syncSheetInputs();qs("sheetPanel").
 qs("closeSheetBtn").addEventListener("click",()=>qs("sheetPanel").classList.add("hidden"));
 qs("saveSheetBtn").addEventListener("click",()=>{
   drawingMeta={
-    title:qs("sheetTitle").value.trim()||"加工図",
+    title:qs("sheetTitle").value.trim(),
     drawingNo:qs("sheetNo").value.trim(),
     scale:qs("sheetScale").value.trim()||"1:1",
-    author:qs("sheetName").value.trim()
+    author:qs("sheetName").value.trim(),
+    material:qs("sheetMaterial").value.trim(),
+    date:qs("sheetDate").value
   };
-  autoSave();qs("sheetPanel").classList.add("hidden");hint.textContent="図枠設定を保存しました";
+  autoSave();qs("sheetPanel").classList.add("hidden");hint.textContent="図面情報を保存しました";
 });
 
 try{
@@ -2175,7 +2185,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=124",{updateViaCache:"none"})
+      .register("./sw.js?v=125",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

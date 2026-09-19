@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "name": "100x50 plate with two holes sample",
+  "units": "screen-pixel-demo",
+  "shapes": [
+    {"type":"rect","x1":80,"y1":80,"x2":380,"y2":230},
+    {"type":"circle","x1":160,"y1":155,"x2":178,"y2":155},
+    {"type":"circle","x1":300,"y1":155,"x2":318,"y2":155}
+  ]
+}

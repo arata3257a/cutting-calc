@@ -15,7 +15,7 @@
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v0.8 / mm</small>
+      <small>v0.9 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -41,6 +41,7 @@
       <button class="tool" data-tool="mirror">↔<span>ミラー</span></button>
       <button class="tool" data-tool="rotate">↻<span>回転</span></button>
       <button class="tool" data-tool="dimension">↕<span>寸法</span></button>
+      <button class="tool" data-tool="multi">☑<span>複数</span></button>
       <button class="tool" data-tool="pan">✋<span>移動</span></button>
     </section>
 
@@ -70,6 +71,13 @@
               <option value="寸法">寸法</option>
             </select>
           </label>
+          <label>寸法
+            <select id="dimensionModeSelect">
+              <option value="aligned">平行</option>
+              <option value="horizontal">水平</option>
+              <option value="vertical">垂直</option>
+            </select>
+          </label>
           <button id="layerVisibleBtn" title="現在レイヤーの表示切替">👁</button>
         </div>
 
@@ -96,6 +104,20 @@
           <button id="deleteSelectedBtn" class="danger">削除</button>
         </div>
       </aside>
+
+      <aside id="sheetPanel" class="panel hidden">
+        <div class="panel-title">
+          <strong>図枠・タイトル</strong>
+          <button id="closeSheetBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field"><label for="sheetTitle">図面名</label><input id="sheetTitle" value="加工図"></div>
+          <div class="field"><label for="sheetNo">図番</label><input id="sheetNo" value=""></div>
+          <div class="field"><label for="sheetScale">尺度</label><input id="sheetScale" value="1:1"></div>
+          <div class="field"><label for="sheetName">作成者</label><input id="sheetName" value=""></div>
+        </div>
+        <button id="saveSheetBtn" class="primary wide">図枠設定を保存</button>
+      </aside>
     </section>
 
     <section class="bottom-actions">
@@ -105,6 +127,9 @@
       <button id="dxfImportBtn">DXF読込</button>
       <button id="exportBtn">JSON出力</button>
       <button id="dxfBtn">DXF出力</button>
+      <button id="svgBtn">SVG出力</button>
+      <button id="sheetBtn">図枠</button>
+      <button id="printBtn">印刷/PDF</button>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>

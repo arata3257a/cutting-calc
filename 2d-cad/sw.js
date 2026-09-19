@@ -1,9 +1,9 @@
-const CACHE = "easy-2d-cad-v119";
+const CACHE = "easy-2d-cad-v120";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=119",
-  "./app.js?v=119",
+  "./style.css?v=120",
+  "./app.js?v=120",
   "./manifest.webmanifest",
   "./icon.svg",
   "./data/drawing.json"
@@ -26,7 +26,7 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request).then(response => {
+    fetch(event.request,{cache:["document","script","style"].includes(event.request.destination)?"no-store":"default"}).then(response => {
       const copy=response.clone();
       caches.open(CACHE).then(cache => cache.put(event.request,copy));
       return response;

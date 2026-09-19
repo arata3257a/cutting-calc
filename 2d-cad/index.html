@@ -9,13 +9,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=10">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v0.9 / mm</small>
+      <small>v1.0 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -25,52 +25,20 @@
   </header>
 
   <main>
-    <section class="toolbar" aria-label="作図ツール">
-      <button class="tool active" data-tool="select">↖<span>選択</span></button>
-      <button class="tool" data-tool="line">／<span>直線</span></button>
-      <button class="tool" data-tool="rect">□<span>四角</span></button>
-      <button class="tool" data-tool="circle">○<span>円</span></button>
-      <button class="tool" data-tool="hole">⌾<span>穴</span></button>
-      <button class="tool" data-tool="slot">▭<span>長穴</span></button>
-      <button class="tool" data-tool="arc">⌒<span>円弧</span></button>
-      <button class="tool" data-tool="trim">✂<span>トリム</span></button>
-      <button class="tool" data-tool="offset">⇆<span>オフセット</span></button>
-      <button class="tool" data-tool="chamfer">◩<span>面取り</span></button>
-      <button class="tool" data-tool="fillet">⌜<span>R</span></button>
-      <button class="tool" data-tool="copy">⧉<span>コピー</span></button>
-      <button class="tool" data-tool="mirror">↔<span>ミラー</span></button>
-      <button class="tool" data-tool="rotate">↻<span>回転</span></button>
-      <button class="tool" data-tool="dimension">↕<span>寸法</span></button>
-      <button class="tool" data-tool="multi">☑<span>複数</span></button>
-      <button class="tool" data-tool="pan">✋<span>移動</span></button>
-    </section>
-
     <section class="workspace">
       <div class="canvas-wrap">
         <canvas id="cadCanvas"></canvas>
 
-        <div class="view-controls">
-          <button id="zoomOutBtn">−</button>
-          <button id="fitBtn">全体</button>
-          <button id="zoomInBtn">＋</button>
+        <div class="snap-slider">
+          <div class="snap-head"><span>スナップ</span><strong id="snapValueLabel">5 mm</strong></div>
+          <input id="snapRange" type="range" min="0" max="4" step="1" value="3" aria-label="スナップ間隔">
+          <div class="snap-marks"><span>0.5</span><span>1</span><span>2</span><span>5</span><span>10</span></div>
         </div>
 
-        <div class="snap-control">
-          <label>スナップ
-            <select id="snapSelect">
-              <option value="1">1 mm</option>
-              <option value="5" selected>5 mm</option>
-              <option value="10">10 mm</option>
-            </select>
-          </label>
-          <label>レイヤー
-            <select id="layerSelect">
-              <option value="0">0</option>
-              <option value="外形">外形</option>
-              <option value="穴">穴</option>
-              <option value="寸法">寸法</option>
-            </select>
-          </label>
+        <button id="layerBtn" class="floating-btn layer-fab" title="レイヤー">▱<span>レイヤー</span></button>
+        <button id="fitBtn" class="floating-btn fit-fab" title="全体表示">⌗<span>全体</span></button>
+
+        <div id="dimensionModeDock" class="dimension-mode hidden">
           <label>寸法
             <select id="dimensionModeSelect">
               <option value="aligned">平行</option>
@@ -78,11 +46,55 @@
               <option value="vertical">垂直</option>
             </select>
           </label>
-          <button id="layerVisibleBtn" title="現在レイヤーの表示切替">👁</button>
         </div>
+
+        <nav class="edit-toolbar" aria-label="編集ツール">
+          <button class="tool edit-tool" data-tool="trim">✂<span>トリム</span></button>
+          <button class="tool edit-tool" data-tool="offset">⇆<span>オフセット</span></button>
+          <button class="tool edit-tool" data-tool="chamfer">◩<span>面取り</span></button>
+          <button class="tool edit-tool" data-tool="fillet">⌜<span>R</span></button>
+          <button class="tool edit-tool" data-tool="copy">⧉<span>コピー</span></button>
+          <button class="tool edit-tool" data-tool="mirror">↔<span>ミラー</span></button>
+          <button class="tool edit-tool" data-tool="rotate">↻<span>回転</span></button>
+          <button class="tool edit-tool" data-tool="dimension">↕<span>寸法</span></button>
+          <button class="tool edit-tool" data-tool="multi">☑<span>複数</span></button>
+          <button id="deleteToolBtn" class="tool edit-tool delete-tool">🗑<span>削除</span></button>
+        </nav>
+
+        <nav class="draw-toolbar" aria-label="作図ツール">
+          <button class="tool active" data-tool="select">↖<span>選択</span></button>
+          <button class="tool" data-tool="line">／<span>直線</span></button>
+          <button class="tool" data-tool="rect">□<span>四角</span></button>
+          <button class="tool" data-tool="circle">○<span>円</span></button>
+          <button class="tool" data-tool="hole">⌾<span>穴</span></button>
+          <button class="tool" data-tool="slot">▭<span>長穴</span></button>
+          <button class="tool" data-tool="arc">⌒<span>円弧</span></button>
+        </nav>
 
         <div id="hint">図形をタップして選択できます</div>
       </div>
+
+      <aside id="layerPanel" class="panel compact-panel hidden">
+        <div class="panel-title">
+          <strong>レイヤー</strong>
+          <button id="closeLayerBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label for="layerSelect">現在のレイヤー</label>
+            <select id="layerSelect">
+              <option value="0">0</option>
+              <option value="外形">外形</option>
+              <option value="穴">穴</option>
+              <option value="寸法">寸法</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>表示</label>
+            <button id="layerVisibleBtn">👁 表示中</button>
+          </div>
+        </div>
+      </aside>
 
       <aside id="quickPanel" class="panel hidden">
         <div class="panel-title">
@@ -135,6 +147,6 @@
     </section>
   </main>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=10"></script>
 </body>
 </html>

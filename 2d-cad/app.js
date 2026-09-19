@@ -513,8 +513,11 @@ canvas.addEventListener("pointerup",()=>{
         s.x1=snapValue(s.x1);s.y1=snapValue(s.y1);s.x2=snapValue(s.x2);s.y2=snapValue(s.y2);
       }else if(s.type==="rect"){
         s.x=snapValue(s.x);s.y=snapValue(s.y);
-      }else{
+      }else if(s.type==="circle"||s.type==="hole"||s.type==="arc"||s.type==="slot"){
         s.cx=snapValue(s.cx);s.cy=snapValue(s.cy);
+      }else if(s.type==="dim"){
+        s.x1=snapValue(s.x1);s.y1=snapValue(s.y1);s.x2=snapValue(s.x2);s.y2=snapValue(s.y2);
+        s.tx=snapValue(s.tx);s.ty=snapValue(s.ty);
       }
       snapshot();openProperty(s);
     }
@@ -1139,6 +1142,28 @@ function svgArcPath(s,b,m){
   const large=ccwSpan(s.a1,s.a2)>180?1:0;
   return `M ${p1.x} ${p1.y} A ${s.r} ${s.r} 0 ${large} 0 ${p2.x} ${p2.y}`;
 }
+function svgRectPath(s,b,m){
+  const r=rectNorm(s),c=s.corners||{},limit=maxCornerValue(s);
+  const val=k=>Math.min(c[k]?.value||0,limit);
+  const tl=val("tl"),tr=val("tr"),br=val("br"),bl=val("bl");
+  const P=(x,y)=>svgPoint(x,y,b,m);
+  const parts=[];
+  let p=P(r.x1+bl,r.y1);parts.push("M "+p.x+" "+p.y);
+  p=P(r.x2-br,r.y1);parts.push("L "+p.x+" "+p.y);
+  p=P(r.x2,r.y1+br);
+  if(br>EPS&&c.br?.type==="fillet")parts.push("A "+br+" "+br+" 0 0 0 "+p.x+" "+p.y);else parts.push("L "+p.x+" "+p.y);
+  p=P(r.x2,r.y2-tr);parts.push("L "+p.x+" "+p.y);
+  p=P(r.x2-tr,r.y2);
+  if(tr>EPS&&c.tr?.type==="fillet")parts.push("A "+tr+" "+tr+" 0 0 0 "+p.x+" "+p.y);else parts.push("L "+p.x+" "+p.y);
+  p=P(r.x1+tl,r.y2);parts.push("L "+p.x+" "+p.y);
+  p=P(r.x1,r.y2-tl);
+  if(tl>EPS&&c.tl?.type==="fillet")parts.push("A "+tl+" "+tl+" 0 0 0 "+p.x+" "+p.y);else parts.push("L "+p.x+" "+p.y);
+  p=P(r.x1,r.y1+bl);parts.push("L "+p.x+" "+p.y);
+  p=P(r.x1+bl,r.y1);
+  if(bl>EPS&&c.bl?.type==="fillet")parts.push("A "+bl+" "+bl+" 0 0 0 "+p.x+" "+p.y);else parts.push("L "+p.x+" "+p.y);
+  parts.push("Z");return parts.join(" ");
+}
+
 function svgShape(s,b,m){
   const stroke='stroke="#111" stroke-width="0.35" fill="none" vector-effect="non-scaling-stroke"';
   if(s.type==="line"){
@@ -1160,8 +1185,7 @@ function svgShape(s,b,m){
     return `<rect x="${p.x}" y="${p.y}" width="${s.length}" height="${s.width}" rx="${s.width/2}" ${stroke}/>`;
   }
   if(s.type==="rect"){
-    const r=rectNorm(s),p=svgPoint(r.x1,r.y2,b,m);
-    return `<rect x="${p.x}" y="${p.y}" width="${r.w}" height="${r.h}" ${stroke}/>`;
+    return `<path d="${svgRectPath(s,b,m)}" ${stroke}/>`;
   }
   if(s.type==="dim"){
     const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m),q=svgPoint(s.tx,s.ty,b,m),mode=s.mode||"aligned";

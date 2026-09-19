@@ -6,8 +6,9 @@ const propertyPanel = document.getElementById("propertyPanel");
 const quickFields = document.getElementById("quickFields");
 const propertyFields = document.getElementById("propertyFields");
 
-const STORAGE_KEY = "easy-2d-cad-drawing-v2";
-const VERSION = 2;
+const STORAGE_KEY = "easy-2d-cad-drawing-v3";
+const VERSION = 3;
+const EPS = 1e-8;
 
 let tool = "select";
 let shapes = [];
@@ -20,6 +21,8 @@ let scale = 4;
 let origin = {x:70,y:400};
 let drag = null;
 let nextId = 1;
+let opState = null;
+let arcDraft = null;
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -28,7 +31,54 @@ const newId = () => nextId++;
 const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
 
 function shapeLabel(type){
-  return {line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴"}[type] || type;
+  return {
+    line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
+    trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R"
+  }[type] || type;
+}
+
+function deg(v){ return v * 180 / Math.PI; }
+function rad(v){ return v * Math.PI / 180; }
+function normDeg(v){ v%=360; if(v<0) v+=360; return v; }
+function angleOf(cx,cy,p){ return normDeg(deg(Math.atan2(p.y-cy,p.x-cx))); }
+function ccwSpan(a1,a2){ return normDeg(a2-a1); }
+function angleOnArc(a,a1,a2){ return ccwSpan(a1,a) <= ccwSpan(a1,a2) + 1e-6; }
+
+function rectNorm(s){
+  const x1=Math.min(s.x,s.x+s.w), x2=Math.max(s.x,s.x+s.w);
+  const y1=Math.min(s.y,s.y+s.h), y2=Math.max(s.y,s.y+s.h);
+  return {x1,y1,x2,y2,w:x2-x1,h:y2-y1};
+}
+function maxCornerValue(s){
+  const r=rectNorm(s);
+  return Math.max(0,Math.min(r.w,r.h)/2-EPS);
+}
+function rectPath(s){
+  const r=rectNorm(s), c=s.corners||{}, limit=maxCornerValue(s);
+  const tl=Math.min(c.tl?.value||0,limit), tr=Math.min(c.tr?.value||0,limit);
+  const br=Math.min(c.br?.value||0,limit), bl=Math.min(c.bl?.value||0,limit);
+  const S=p=>worldToScreen(p);
+  let p=S({x:r.x1+bl,y:r.y1});
+  ctx.beginPath(); ctx.moveTo(p.x,p.y);
+  p=S({x:r.x2-br,y:r.y1}); ctx.lineTo(p.x,p.y); appendRectCorner("br",c.br,br,r,S);
+  p=S({x:r.x2,y:r.y2-tr}); ctx.lineTo(p.x,p.y); appendRectCorner("tr",c.tr,tr,r,S);
+  p=S({x:r.x1+tl,y:r.y2}); ctx.lineTo(p.x,p.y); appendRectCorner("tl",c.tl,tl,r,S);
+  p=S({x:r.x1,y:r.y1+bl}); ctx.lineTo(p.x,p.y); appendRectCorner("bl",c.bl,bl,r,S);
+  ctx.closePath();
+}
+function appendRectCorner(key,mod,v,r,S){
+  if(!mod || v<=EPS){
+    const raw={br:{x:r.x2,y:r.y1},tr:{x:r.x2,y:r.y2},tl:{x:r.x1,y:r.y2},bl:{x:r.x1,y:r.y1}}[key];
+    const p=S(raw); ctx.lineTo(p.x,p.y); return;
+  }
+  if(mod.type==="chamfer"){
+    const end={br:{x:r.x2,y:r.y1+v},tr:{x:r.x2-v,y:r.y2},tl:{x:r.x1,y:r.y2-v},bl:{x:r.x1+v,y:r.y1}}[key];
+    const p=S(end); ctx.lineTo(p.x,p.y); return;
+  }
+  const centers={br:{x:r.x2-v,y:r.y1+v},tr:{x:r.x2-v,y:r.y2-v},tl:{x:r.x1+v,y:r.y2-v},bl:{x:r.x1+v,y:r.y1+v}};
+  const angles={br:[270,360],tr:[0,90],tl:[90,180],bl:[180,270]};
+  const c=worldToScreen(centers[key]), a=angles[key];
+  ctx.arc(c.x,c.y,v*scale,rad(-a[0]),rad(-a[1]),true);
 }
 
 function snapValue(v){
@@ -142,12 +192,10 @@ function drawShape(s,isPreview=false){
   }
 
   if(s.type==="rect"){
-    const a=worldToScreen({x:s.x,y:s.y});
-    const b=worldToScreen({x:s.x+s.w,y:s.y+s.h});
-    const left=Math.min(a.x,b.x), top=Math.min(a.y,b.y);
-    ctx.strokeRect(left,top,Math.abs(b.x-a.x),Math.abs(b.y-a.y));
-    drawDimensionText(`${round(Math.abs(s.w))} × ${round(Math.abs(s.h))} mm`,
-      left+Math.abs(b.x-a.x)/2,top-7,selected);
+    rectPath(s); ctx.stroke();
+    const r=rectNorm(s);
+    const a=worldToScreen({x:r.x1,y:r.y2}), b=worldToScreen({x:r.x2,y:r.y2});
+    drawDimensionText(round(r.w)+" × "+round(r.h)+" mm",(a.x+b.x)/2,a.y-7,selected);
   }
 
   if(s.type==="circle" || s.type==="hole"){
@@ -167,9 +215,19 @@ function drawShape(s,isPreview=false){
   if(s.type==="slot"){
     drawSlotPath(s);
     ctx.stroke();
-    drawDimensionText(`${round(s.length)} × ${round(s.width)} mm`,
+    drawDimensionText(round(s.length)+" × "+round(s.width)+" mm",
       worldToScreen({x:s.cx,y:s.cy+s.width/2}).x,
       worldToScreen({x:s.cx,y:s.cy+s.width/2}).y-7,selected);
+  }
+
+  if(s.type==="arc"){
+    const c=worldToScreen({x:s.cx,y:s.cy});
+    ctx.beginPath();
+    ctx.arc(c.x,c.y,Math.abs(s.r*scale),rad(-s.a1),rad(-s.a2),true);
+    ctx.stroke();
+    const mid=normDeg(s.a1+ccwSpan(s.a1,s.a2)/2);
+    const p=worldToScreen({x:s.cx+s.r*Math.cos(rad(mid)),y:s.cy+s.r*Math.sin(rad(mid))});
+    drawDimensionText("R"+round(s.r),p.x,p.y-8,selected);
   }
 
   ctx.restore();
@@ -201,7 +259,7 @@ function draw(){
 function shapeFromPoints(a,b,allocateId=true){
   const id=allocateId ? newId() : -1;
   if(tool==="line") return {id,type:"line",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
-  if(tool==="rect") return {id,type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y};
+  if(tool==="rect") return {id,type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y,corners:{}};
   if(tool==="circle"){
     return {id,type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y))};
   }
@@ -230,6 +288,10 @@ function hitShape(s,p){
   const tol=8/scale;
   if(s.type==="line") return distancePointSegment(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol;
   if(s.type==="circle" || s.type==="hole") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
+  if(s.type==="arc"){
+    const d=Math.hypot(p.x-s.cx,p.y-s.cy);
+    return Math.abs(d-s.r)<=tol && angleOnArc(angleOf(s.cx,s.cy,p),s.a1,s.a2);
+  }
   if(s.type==="rect"){
     const x1=Math.min(s.x,s.x+s.w)-tol,x2=Math.max(s.x,s.x+s.w)+tol;
     const y1=Math.min(s.y,s.y+s.h)-tol,y2=Math.max(s.y,s.y+s.h)+tol;
@@ -252,7 +314,7 @@ function hitTest(p){
 function translateShape(s,dx,dy){
   if(s.type==="line"){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy}
   if(s.type==="rect"){s.x+=dx;s.y+=dy}
-  if(s.type==="circle" || s.type==="hole"){s.cx+=dx;s.cy+=dy}
+  if(s.type==="circle" || s.type==="hole" || s.type==="arc"){s.cx+=dx;s.cy+=dy}
   if(s.type==="slot"){s.cx+=dx;s.cy+=dy}
 }
 

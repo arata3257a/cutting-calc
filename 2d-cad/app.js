@@ -323,6 +323,11 @@ canvas.addEventListener("pointerdown",e=>{
   const raw=eventWorld(e);
   const p=snapPoint(raw);
 
+  if(tool==="trim"){ handleTrimTap(raw); return; }
+  if(tool==="offset"){ handleOffsetTap(raw); return; }
+  if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
+  if(tool==="arc"){ handleArcTap(p); return; }
+
   if(tool==="select"){
     const s=hitTest(raw);
     selectedId=s?.id ?? null;
@@ -356,6 +361,22 @@ canvas.addEventListener("pointerdown",e=>{
 
 canvas.addEventListener("pointermove",e=>{
   const raw=eventWorld(e);
+
+  if(tool==="arc" && arcDraft?.stage===1){
+    const p=snapPoint(raw);
+    preview={id:-1,type:"arc",cx:arcDraft.c.x,cy:arcDraft.c.y,
+      r:Math.max(.1,Math.hypot(p.x-arcDraft.c.x,p.y-arcDraft.c.y)),
+      a1:angleOf(arcDraft.c.x,arcDraft.c.y,p),
+      a2:normDeg(angleOf(arcDraft.c.x,arcDraft.c.y,p)+180)};
+    draw(); return;
+  }
+  if(tool==="arc" && arcDraft?.stage===2){
+    const p=snapPoint(raw);
+    preview={id:-1,type:"arc",cx:arcDraft.c.x,cy:arcDraft.c.y,r:arcDraft.r,
+      a1:arcDraft.a1,a2:angleOf(arcDraft.c.x,arcDraft.c.y,p)};
+    draw(); return;
+  }
+
   if(tool==="select" && drag){
     const s=selectedShape();
     if(!s) return;
@@ -389,12 +410,18 @@ canvas.addEventListener("pointerup",()=>{
 });
 
 function setTool(next){
-  tool=next;start=null;preview=null;drag=null;
+  tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
-  selectedId=null;closeProperty();
-  if(tool==="select"){
-    quickPanel.classList.add("hidden");
-    hint.textContent="図形をタップして選択できます";
+  selectedId=null;closeProperty();quickPanel.classList.add("hidden");
+
+  if(tool==="select") hint.textContent="図形をタップして選択できます";
+  else if(tool==="trim") hint.textContent="削る側の直線をタップ";
+  else if(tool==="offset") hint.textContent="オフセット元の図形をタップ";
+  else if(tool==="chamfer") hint.textContent="面取りする四角の角をタップ";
+  else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
+  else if(tool==="arc"){
+    openQuick(tool);
+    hint.textContent="中心→始点→終点の順にタップ、または数値入力";
   }else{
     openQuick(tool);
     hint.textContent="始点をタップ、または数値入力";
@@ -403,6 +430,121 @@ function setTool(next){
 }
 
 document.querySelectorAll(".tool").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
+
+function handleArcTap(p){
+  if(!arcDraft){
+    arcDraft={stage:1,c:p}; preview=null; hint.textContent="円弧の始点をタップ"; return;
+  }
+  if(arcDraft.stage===1){
+    arcDraft.r=Math.max(.1,Math.hypot(p.x-arcDraft.c.x,p.y-arcDraft.c.y));
+    arcDraft.a1=angleOf(arcDraft.c.x,arcDraft.c.y,p);
+    arcDraft.stage=2; hint.textContent="円弧の終点をタップ"; return;
+  }
+  const s={id:newId(),type:"arc",cx:arcDraft.c.x,cy:arcDraft.c.y,r:arcDraft.r,
+    a1:arcDraft.a1,a2:angleOf(arcDraft.c.x,arcDraft.c.y,p)};
+  shapes.push(s); selectedId=s.id; snapshot();
+  arcDraft=null; preview=null; hint.textContent="円弧を作成しました"; draw();
+}
+
+function lineIntersection(a,b){
+  const x1=a.x1,y1=a.y1,x2=a.x2,y2=a.y2,x3=b.x1,y3=b.y1,x4=b.x2,y4=b.y2;
+  const den=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
+  if(Math.abs(den)<EPS) return null;
+  const px=((x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4))/den;
+  const py=((x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4))/den;
+  const within=(v,a1,a2)=>v>=Math.min(a1,a2)-1e-6&&v<=Math.max(a1,a2)+1e-6;
+  if(!within(px,x1,x2)||!within(py,y1,y2)||!within(px,x3,x4)||!within(py,y3,y4)) return null;
+  return {x:px,y:py};
+}
+
+function handleTrimTap(p){
+  if(!opState){
+    const target=hitTest(p,s=>s.type==="line");
+    if(!target){ hint.textContent="トリムする直線をタップ"; return; }
+    opState={targetId:target.id,click:p}; selectedId=target.id;
+    hint.textContent="境界になる直線をタップ"; draw(); return;
+  }
+  const target=shapes.find(s=>s.id===opState.targetId);
+  const cutter=hitTest(p,s=>s.type==="line"&&s.id!==opState.targetId);
+  if(!target||!cutter){ hint.textContent="別の直線を境界としてタップ"; return; }
+  const ip=lineIntersection(target,cutter);
+  if(!ip){ hint.textContent="2本の線が交差していません"; opState=null; selectedId=null; draw(); return; }
+  const d1=Math.hypot(opState.click.x-target.x1,opState.click.y-target.y1);
+  const d2=Math.hypot(opState.click.x-target.x2,opState.click.y-target.y2);
+  if(d1<d2){target.x1=ip.x;target.y1=ip.y}else{target.x2=ip.x;target.y2=ip.y}
+  snapshot(); opState=null; selectedId=target.id; hint.textContent="トリムしました"; draw();
+}
+
+function handleOffsetTap(p){
+  const source=hitTest(p,s=>["line","rect","circle","hole","slot","arc"].includes(s.type));
+  if(!source){ hint.textContent="オフセット元の図形をタップ"; return; }
+  selectedId=source.id; opState={sourceId:source.id};
+  qs("quickTitle").textContent="オフセット";
+  quickFields.innerHTML=field("qOffset","距離（±で方向）",5);
+  qs("createByValueBtn").textContent="オフセット作成";
+  quickPanel.classList.remove("hidden");
+  hint.textContent="距離を入力してください"; draw();
+}
+
+function applyOffset(){
+  const source=shapes.find(s=>s.id===opState?.sourceId);
+  if(!source) return;
+  const d=num(qs("qOffset")?.value);
+  const s=JSON.parse(JSON.stringify(source)); s.id=newId();
+
+  if(s.type==="line"){
+    const dx=s.x2-s.x1,dy=s.y2-s.y1,len=Math.hypot(dx,dy);
+    if(len<EPS) return;
+    const nx=-dy/len,ny=dx/len;
+    s.x1+=nx*d;s.y1+=ny*d;s.x2+=nx*d;s.y2+=ny*d;
+  }else if(s.type==="rect"){
+    const r=rectNorm(s);
+    s.x=r.x1-d;s.y=r.y1-d;s.w=r.w+2*d;s.h=r.h+2*d;
+    if(s.w<=0||s.h<=0){alert("オフセット距離が大きすぎます");return;}
+  }else if(s.type==="circle"||s.type==="hole"||s.type==="arc"){
+    s.r+=d;if(s.r<=0){alert("半径が0以下になります");return;}
+  }else if(s.type==="slot"){
+    s.length+=2*d;s.width+=2*d;
+    if(s.width<=0||s.length<s.width){alert("オフセット距離が大きすぎます");return;}
+  }
+  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
+  hint.textContent="オフセットを作成しました";draw();
+}
+
+function nearestRectCorner(s,p){
+  const r=rectNorm(s);
+  const pts={bl:{x:r.x1,y:r.y1},br:{x:r.x2,y:r.y1},tr:{x:r.x2,y:r.y2},tl:{x:r.x1,y:r.y2}};
+  return Object.entries(pts).sort((a,b)=>
+    Math.hypot(p.x-a[1].x,p.y-a[1].y)-Math.hypot(p.x-b[1].x,p.y-b[1].y)
+  )[0][0];
+}
+
+function handleCornerTap(p){
+  const rect=hitTest(p,s=>s.type==="rect");
+  if(!rect){ hint.textContent=(tool==="chamfer"?"面取り":"R")+"を付ける四角の角をタップ"; return; }
+  const corner=nearestRectCorner(rect,p);
+  selectedId=rect.id;opState={sourceId:rect.id,corner,kind:tool};
+  qs("quickTitle").textContent=tool==="chamfer"?"面取り（C）":"角R";
+  quickFields.innerHTML=field("qCornerValue",tool==="chamfer"?"C寸法":"R寸法",5);
+  qs("createByValueBtn").textContent=tool==="chamfer"?"面取りを適用":"Rを適用";
+  quickPanel.classList.remove("hidden");
+  hint.textContent=corner.toUpperCase()+"角を選択中";draw();
+}
+
+function applyCornerMod(){
+  const s=shapes.find(x=>x.id===opState?.sourceId);
+  if(!s||s.type!=="rect") return;
+  const v=Math.abs(num(qs("qCornerValue")?.value)), max=maxCornerValue(s);
+  if(v<=0||v>max){alert("最大値は "+round(max)+" mm です");return;}
+  s.corners=s.corners||{};
+  s.corners[opState.corner]={type:opState.kind,value:v};
+  snapshot();quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";
+  hint.textContent=opState.kind==="chamfer"?"面取りを適用しました":"Rを適用しました";
+  opState=null;draw();
+}
+
 
 function field(name,label,value=0,step="any"){
   return `<div class="field"><label for="${name}">${label}</label><input id="${name}" type="number" inputmode="decimal" step="${step}" value="${round(num(value))}"></div>`;
@@ -418,6 +560,9 @@ function openQuick(type){
   }
   if(type==="circle"){
     quickFields.innerHTML=field("qX","中心 X",0)+field("qY","中心 Y",0)+field("qD","直径 Ø",20);
+  }
+  if(type==="arc"){
+    quickFields.innerHTML=field("qX","中心 X",0)+field("qY","中心 Y",0)+field("qR","半径 R",20)+field("qA1","開始角 °",0)+field("qA2","終了角 °",90);
   }
   if(type==="hole"){
     quickFields.innerHTML=
@@ -435,8 +580,12 @@ function openQuick(type){
 }
 
 qs("createByValueBtn").addEventListener("click",()=>{
+  if(tool==="offset") return applyOffset();
+  if(tool==="chamfer" || tool==="fillet") return applyCornerMod();
+
   let s=null;
   const x=num(qs("qX")?.value),y=num(qs("qY")?.value);
+  const id=newId();
   if(tool==="line"){
     const length=Math.abs(num(qs("qLength").value));
     const angle=num(qs("qAngle").value)*Math.PI/180;
@@ -447,6 +596,10 @@ qs("createByValueBtn").addEventListener("click",()=>{
   }
   if(tool==="circle"){
     s={id,type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2};
+  }
+  if(tool==="arc"){
+    s={id,type:"arc",cx:x,cy:y,r:Math.abs(num(qs("qR").value)),
+      a1:normDeg(num(qs("qA1").value)),a2:normDeg(num(qs("qA2").value))};
   }
   if(tool==="hole"){
     const holeKind=qs("qHoleType")?.value || "through";
@@ -481,6 +634,9 @@ function openProperty(s){
   if(s.type==="slot"){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pLength","全長",s.length)+field("pW","幅",s.width);
   }
+  if(s.type==="arc"){
+    html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pR","半径 R",s.r)+field("pA1","開始角 °",s.a1)+field("pA2","終了角 °",s.a2);
+  }
   propertyFields.innerHTML=html;
 }
 
@@ -503,6 +659,10 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   }
   if(s.type==="slot"){
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);const a=Math.abs(num(qs("pLength").value)),b=Math.abs(num(qs("pW").value));s.length=Math.max(a,b);s.width=Math.min(a,b);
+  }
+  if(s.type==="arc"){
+    s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.r=Math.abs(num(qs("pR").value));
+    s.a1=normDeg(num(qs("pA1").value));s.a2=normDeg(num(qs("pA2").value));
   }
   snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
 });

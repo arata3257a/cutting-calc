@@ -198,18 +198,19 @@ function draw(){
   if(preview) drawShape(preview,true);
 }
 
-function shapeFromPoints(a,b){
-  if(tool==="line") return {id:newId(),type:"line",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
-  if(tool==="rect") return {id:newId(),type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y};
+function shapeFromPoints(a,b,allocateId=true){
+  const id=allocateId ? newId() : -1;
+  if(tool==="line") return {id,type:"line",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
+  if(tool==="rect") return {id,type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y};
   if(tool==="circle"){
-    return {id:newId(),type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y))};
+    return {id,type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y))};
   }
   if(tool==="hole"){
-    return {id:newId(),type:"hole",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),holeKind:"through"};
+    return {id,type:"hole",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),holeKind:"through"};
   }
   if(tool==="slot"){
     const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
-    return {id:newId(),type:"slot",cx,cy,length:Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),width:Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y))};
+    return {id,type:"slot",cx,cy,length:Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),width:Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y))};
   }
   return null;
 }
@@ -303,8 +304,7 @@ canvas.addEventListener("pointermove",e=>{
   }
   if(start){
     const p=snapPoint(raw);
-    preview=shapeFromPoints(start,p);
-    if(preview) preview.id=-1;
+    preview=shapeFromPoints(start,p,false);
     draw();
   }
 });
@@ -359,7 +359,7 @@ function openQuick(type){
   }
   if(type==="hole"){
     quickFields.innerHTML=
-      '<div class="field"><label for="qHoleType">穴種</label><select id="qHoleType"><option value="through">通し穴</option><option value="M3">M3タップ</option><option value="M4">M4タップ</option><option value="M5">M5タップ</option><option value="M6">M6タップ</option><option value="M8">M8タップ</option><option value="M10">M10タップ</option><option value="M12">M12タップ</option></select></div>'+
+      '<div class="field"><label for="qHoleType">穴種</label><select id="qHoleType"><option value="through">通し穴</option><option value="M3">M3タップ（並目）</option><option value="M4">M4タップ（並目）</option><option value="M5">M5タップ（並目）</option><option value="M6">M6タップ（並目）</option><option value="M8">M8タップ（並目）</option><option value="M10">M10タップ（並目）</option><option value="M12">M12タップ（並目）</option></select></div>'+
       field("qD","穴径 Ø",10)+field("qX","中心 X",0)+field("qY","中心 Y",0);
     const tapDrill={M3:2.5,M4:3.3,M5:4.2,M6:5.0,M8:6.8,M10:8.5,M12:10.2};
     qs("qHoleType").addEventListener("change",e=>{
@@ -378,20 +378,21 @@ qs("createByValueBtn").addEventListener("click",()=>{
   if(tool==="line"){
     const length=Math.abs(num(qs("qLength").value));
     const angle=num(qs("qAngle").value)*Math.PI/180;
-    s={id:newId(),type:"line",x1:x,y1:y,x2:x+length*Math.cos(angle),y2:y+length*Math.sin(angle)};
+    s={id,type:"line",x1:x,y1:y,x2:x+length*Math.cos(angle),y2:y+length*Math.sin(angle)};
   }
   if(tool==="rect"){
-    s={id:newId(),type:"rect",x,y,w:num(qs("qW").value),h:num(qs("qH").value)};
+    s={id,type:"rect",x,y,w:num(qs("qW").value),h:num(qs("qH").value)};
   }
   if(tool==="circle"){
-    s={id:newId(),type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2};
+    s={id,type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2};
   }
   if(tool==="hole"){
     const holeKind=qs("qHoleType")?.value || "through";
-    s={id:newId(),type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind};
+    s={id,type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind};
   }
   if(tool==="slot"){
-    s={id:newId(),type:"slot",cx:x,cy:y,length:Math.abs(num(qs("qLength").value)),width:Math.abs(num(qs("qW").value))};
+    const a=Math.abs(num(qs("qLength").value)),b=Math.abs(num(qs("qW").value));
+    s={id,type:"slot",cx:x,cy:y,length:Math.max(a,b),width:Math.min(a,b)};
   }
   if(!s) return;
   shapes.push(s);selectedId=s.id;snapshot();fitView();draw();
@@ -439,7 +440,7 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.r=Math.abs(num(qs("pD").value))/2;
   }
   if(s.type==="slot"){
-    s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.length=Math.abs(num(qs("pLength").value));s.width=Math.abs(num(qs("pW").value));
+    s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);const a=Math.abs(num(qs("pLength").value)),b=Math.abs(num(qs("pW").value));s.length=Math.max(a,b);s.width=Math.min(a,b);
   }
   snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
 });

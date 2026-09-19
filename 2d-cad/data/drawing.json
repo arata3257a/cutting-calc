@@ -1,10 +1,10 @@
 {
-  "version": 1,
-  "name": "100x50 plate with two holes sample",
-  "units": "screen-pixel-demo",
+  "version": 2,
+  "name": "100x50 plate with two Ø10 holes",
+  "unit": "mm",
   "shapes": [
-    {"type":"rect","x1":80,"y1":80,"x2":380,"y2":230},
-    {"type":"circle","x1":160,"y1":155,"x2":178,"y2":155},
-    {"type":"circle","x1":300,"y1":155,"x2":318,"y2":155}
+    {"type":"rect","x":0,"y":0,"w":100,"h":50},
+    {"type":"circle","cx":25,"cy":25,"r":5},
+    {"type":"circle","cx":75,"cy":25,"r":5}
   ]
 }

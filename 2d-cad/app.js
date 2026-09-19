@@ -27,6 +27,10 @@ let dimDraft = null;
 let panDrag = null;
 let layerVisibility={"0":true,"外形":true,"穴":true,"寸法":true};
 let selectedIds=new Set();
+const SNAP_STEPS=[0.5,1,2,5,10];
+let activeTouchPointers=new Map();
+let touchGesture=null;
+let touchGestureActive=false;
 let drawingMeta={title:"加工図",drawingNo:"",scale:"1:1",author:""};
 
 const qs = id => document.getElementById(id);
@@ -103,8 +107,12 @@ function appendRectCorner(key,mod,v,r,S){
   ctx.arc(c.x,c.y,v*scale,rad(-a[0]),rad(-a[1]),true);
 }
 
+function currentSnapStep(){
+  const i=Math.max(0,Math.min(SNAP_STEPS.length-1,Math.round(num(qs("snapRange")?.value))));
+  return SNAP_STEPS[i];
+}
 function snapValue(v){
-  const step = num(qs("snapSelect").value) || 1;
+  const step=currentSnapStep();
   return Math.round(v / step) * step;
 }
 
@@ -410,6 +418,26 @@ function translateShape(s,dx,dy){
 
 canvas.addEventListener("pointerdown",e=>{
   canvas.setPointerCapture?.(e.pointerId);
+
+  if(e.pointerType==="touch"){
+    activeTouchPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activeTouchPointers.size>=2){
+      const pts=[...activeTouchPointers.values()].slice(0,2);
+      const r=canvas.getBoundingClientRect();
+      const mid={x:(pts[0].x+pts[1].x)/2-r.left,y:(pts[0].y+pts[1].y)/2-r.top};
+      const dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)||1;
+      touchGesture={
+        startDist:dist,startScale:scale,
+        worldAtMid:screenToWorld(mid)
+      };
+      touchGestureActive=true;
+      start=null;preview=null;drag=null;arcDraft=null;dimDraft=null;opState=null;
+      closeProperty();draw();
+      hint.textContent="2本指で移動・ピンチで拡大縮小";
+      return;
+    }
+  }
+
   const raw=eventWorld(e);
   const p=snapPoint(raw);
 
@@ -460,6 +488,24 @@ canvas.addEventListener("pointerdown",e=>{
 });
 
 canvas.addEventListener("pointermove",e=>{
+  if(e.pointerType==="touch" && activeTouchPointers.has(e.pointerId)){
+    activeTouchPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  }
+  if(touchGestureActive){
+    if(activeTouchPointers.size>=2 && touchGesture){
+      const pts=[...activeTouchPointers.values()].slice(0,2);
+      const r=canvas.getBoundingClientRect();
+      const mid={x:(pts[0].x+pts[1].x)/2-r.left,y:(pts[0].y+pts[1].y)/2-r.top};
+      const dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)||1;
+      const nextScale=Math.max(.3,Math.min(20,touchGesture.startScale*(dist/touchGesture.startDist)));
+      scale=nextScale;
+      origin.x=mid.x-touchGesture.worldAtMid.x*scale;
+      origin.y=mid.y+touchGesture.worldAtMid.y*scale;
+      draw();
+    }
+    return;
+  }
+
   if(tool==="pan" && panDrag){
     origin.x=panDrag.ox+(e.clientX-panDrag.sx);
     origin.y=panDrag.oy+(e.clientY-panDrag.sy);
@@ -504,7 +550,18 @@ canvas.addEventListener("pointermove",e=>{
   }
 });
 
-canvas.addEventListener("pointerup",()=>{
+canvas.addEventListener("pointerup",e=>{
+  if(e.pointerType==="touch"){
+    activeTouchPointers.delete(e.pointerId);
+    if(touchGestureActive){
+      if(activeTouchPointers.size<2) touchGesture=null;
+      if(activeTouchPointers.size===0){
+        touchGestureActive=false;
+        hint.textContent=tool==="select"?"図形をタップして選択できます":"操作を続けられます";
+      }
+      return;
+    }
+  }
   if(tool==="pan" && panDrag){panDrag=null;hint.textContent="画面をドラッグして移動";return;}
   if(tool==="select" && drag){
     const s=selectedShape();
@@ -527,6 +584,7 @@ canvas.addEventListener("pointerup",()=>{
 
 function setTool(next){
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;panDrag=null;
+  qs("dimensionModeDock")?.classList.toggle("hidden",tool!=="dimension");
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
   selectedId=null;
   if(tool!=="multi") selectedIds.clear();
@@ -984,23 +1042,49 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
 });
 
-qs("deleteSelectedBtn").addEventListener("click",()=>{
-  if(selectedId===null) return;
-  shapes=shapes.filter(s=>s.id!==selectedId);
-  selectedId=null;closeProperty();snapshot();draw();hint.textContent="削除しました";
-});
+function deleteCurrentSelection(){
+  if(selectedIds.size){
+    const count=selectedIds.size;
+    shapes=shapes.filter(s=>!selectedIds.has(s.id));
+    selectedIds.clear();selectedId=null;closeProperty();snapshot();draw();
+    hint.textContent=count+"個を削除しました";
+    if(tool==="multi") openMultiPanel();
+    return;
+  }
+  if(selectedId!==null){
+    shapes=shapes.filter(s=>s.id!==selectedId);
+    selectedId=null;closeProperty();snapshot();draw();hint.textContent="削除しました";
+    return;
+  }
+  hint.textContent="削除する図形を先に選択してください";
+}
+qs("deleteSelectedBtn").addEventListener("click",deleteCurrentSelection);
+qs("deleteToolBtn").addEventListener("click",deleteCurrentSelection);
 
+qs("layerBtn").addEventListener("click",()=>{
+  qs("layerPanel").classList.toggle("hidden");
+});
+qs("closeLayerBtn").addEventListener("click",()=>qs("layerPanel").classList.add("hidden"));
 qs("layerVisibleBtn").addEventListener("click",()=>{
   const layer=currentLayer();
   layerVisibility[layer]=!(layerVisibility[layer]!==false);
-  qs("layerVisibleBtn").textContent=layerVisibility[layer]?"👁":"🚫";
+  qs("layerVisibleBtn").textContent=layerVisibility[layer]?"👁 表示中":"🚫 非表示";
   hint.textContent=(layerVisibility[layer]?"表示: ":"非表示: ")+layer;
   draw();
 });
 qs("layerSelect").addEventListener("change",()=>{
   const layer=currentLayer();
-  qs("layerVisibleBtn").textContent=layerVisibility[layer]===false?"🚫":"👁";
+  qs("layerVisibleBtn").textContent=layerVisibility[layer]===false?"🚫 非表示":"👁 表示中";
 });
+
+function updateSnapSliderLabel(){
+  if(qs("snapValueLabel")) qs("snapValueLabel").textContent=currentSnapStep()+" mm";
+}
+qs("snapRange").addEventListener("input",()=>{
+  updateSnapSliderLabel();
+  hint.textContent="スナップ "+currentSnapStep()+" mm";
+});
+updateSnapSliderLabel();
 
 qs("undoBtn").addEventListener("click",()=>restoreHistory(historyIndex-1));
 qs("redoBtn").addEventListener("click",()=>restoreHistory(historyIndex+1));
@@ -1051,9 +1135,9 @@ function fitView(){
   origin.y=r.height/2+((b.minY+b.maxY)/2)*scale;
   draw();
 }
-qs("fitBtn").addEventListener("click",fitView);
-qs("zoomInBtn").addEventListener("click",()=>{scale=Math.min(20,scale*1.25);draw()});
-qs("zoomOutBtn").addEventListener("click",()=>{scale=Math.max(.3,scale/1.25);draw()});
+qs("fitBtn")?.addEventListener("click",fitView);
+qs("zoomInBtn")?.addEventListener("click",()=>{scale=Math.min(20,scale*1.25);draw()});
+qs("zoomOutBtn")?.addEventListener("click",()=>{scale=Math.max(.3,scale/1.25);draw()});
 
 canvas.addEventListener("wheel",e=>{
   e.preventDefault();

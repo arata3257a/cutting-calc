@@ -1078,7 +1078,11 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
     s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);s.tx=num(qs("pTX").value);s.ty=num(qs("pTY").value);
     s.mode=qs("pDimMode")?.value||s.mode||"aligned";
   }
-  snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
+  snapshot();
+  selectedId=null;
+  closeProperty();
+  draw();
+  hint.textContent="寸法を更新しました";
 });
 
 function deleteCurrentSelection(){

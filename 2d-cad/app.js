@@ -23,6 +23,8 @@ let drag = null;
 let nextId = 1;
 let opState = null;
 let arcDraft = null;
+let dimDraft = null;
+let panDrag = null;
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -33,7 +35,8 @@ const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
 function shapeLabel(type){
   return {
     line:"直線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
-    trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R",copy:"コピー",mirror:"ミラー"
+    trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R",copy:"コピー",mirror:"ミラー",
+    rotate:"回転",dimension:"寸法線",pan:"画面移動",dim:"寸法線"
   }[type] || type;
 }
 
@@ -238,6 +241,40 @@ function drawShape(s,isPreview=false){
     drawDimensionText("R"+round(s.r),p.x,p.y-8,selected);
   }
 
+  if(s.type==="dim"){
+    drawDimensionShape(s,selected,isPreview);
+  }
+
+  ctx.restore();
+}
+
+function drawDimensionShape(s,selected=false,isPreview=false){
+  const a=worldToScreen({x:s.x1,y:s.y1});
+  const b=worldToScreen({x:s.x2,y:s.y2});
+  const q=worldToScreen({x:s.tx,y:s.ty});
+  const vx=b.x-a.x,vy=b.y-a.y,len=Math.hypot(vx,vy)||1;
+  const nx=-vy/len,ny=vx/len;
+  const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+  const off=(q.x-mid.x)*nx+(q.y-mid.y)*ny;
+  const oa={x:a.x+nx*off,y:a.y+ny*off};
+  const ob={x:b.x+nx*off,y:b.y+ny*off};
+  ctx.save();
+  ctx.strokeStyle=isPreview?"#7c8792":selected?"#0b63ce":"#4d5965";
+  ctx.lineWidth=1.2;
+  if(isPreview)ctx.setLineDash([5,4]);
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);ctx.lineTo(oa.x,oa.y);
+  ctx.moveTo(b.x,b.y);ctx.lineTo(ob.x,ob.y);
+  ctx.moveTo(oa.x,oa.y);ctx.lineTo(ob.x,ob.y);
+  const ah=6;
+  const ux=(ob.x-oa.x)/(Math.hypot(ob.x-oa.x,ob.y-oa.y)||1),uy=(ob.y-oa.y)/(Math.hypot(ob.x-oa.x,ob.y-oa.y)||1);
+  ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah-uy*3,oa.y+uy*ah+ux*3);
+  ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah+uy*3,oa.y+uy*ah-ux*3);
+  ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah-uy*3,ob.y-uy*ah+ux*3);
+  ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah+uy*3,ob.y-uy*ah-ux*3);
+  ctx.stroke();
+  const value=Math.hypot(s.x2-s.x1,s.y2-s.y1);
+  drawDimensionText(round(value)+" mm",(oa.x+ob.x)/2,(oa.y+ob.y)/2-6,selected);
   ctx.restore();
 }
 
@@ -313,6 +350,10 @@ function hitShape(s,p){
     const halfL=s.length/2+tol, halfW=s.width/2+tol;
     return Math.abs(p.x-s.cx)<=halfL && Math.abs(p.y-s.cy)<=halfW;
   }
+  if(s.type==="dim"){
+    return distancePointSegment(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol*2 ||
+      Math.hypot(p.x-s.tx,p.y-s.ty)<=tol*2;
+  }
   return false;
 }
 
@@ -328,6 +369,7 @@ function translateShape(s,dx,dy){
   if(s.type==="rect"){s.x+=dx;s.y+=dy}
   if(s.type==="circle" || s.type==="hole" || s.type==="arc"){s.cx+=dx;s.cy+=dy}
   if(s.type==="slot"){s.cx+=dx;s.cy+=dy}
+  if(s.type==="dim"){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;s.tx+=dx;s.ty+=dy}
 }
 
 canvas.addEventListener("pointerdown",e=>{
@@ -335,11 +377,18 @@ canvas.addEventListener("pointerdown",e=>{
   const raw=eventWorld(e);
   const p=snapPoint(raw);
 
+  if(tool==="pan"){
+    panDrag={sx:e.clientX,sy:e.clientY,ox:origin.x,oy:origin.y};
+    hint.textContent="ドラッグして表示位置を移動";
+    return;
+  }
+  if(tool==="dimension"){ handleDimensionTap(p); return; }
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
   if(tool==="copy"){ handleCopyTap(raw); return; }
   if(tool==="mirror"){ handleMirrorTap(raw); return; }
+  if(tool==="rotate"){ handleRotateTap(raw); return; }
   if(tool==="arc"){ handleArcTap(p); return; }
 
   if(tool==="select"){
@@ -374,7 +423,18 @@ canvas.addEventListener("pointerdown",e=>{
 });
 
 canvas.addEventListener("pointermove",e=>{
+  if(tool==="pan" && panDrag){
+    origin.x=panDrag.ox+(e.clientX-panDrag.sx);
+    origin.y=panDrag.oy+(e.clientY-panDrag.sy);
+    draw(); return;
+  }
   const raw=eventWorld(e);
+
+  if(tool==="dimension" && dimDraft?.stage===2){
+    const p=snapPoint(raw);
+    preview={id:-1,type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,tx:p.x,ty:p.y};
+    draw();return;
+  }
 
   if(tool==="arc" && arcDraft?.stage===1){
     const p=snapPoint(raw);
@@ -407,6 +467,7 @@ canvas.addEventListener("pointermove",e=>{
 });
 
 canvas.addEventListener("pointerup",()=>{
+  if(tool==="pan" && panDrag){panDrag=null;hint.textContent="画面をドラッグして移動";return;}
   if(tool==="select" && drag){
     const s=selectedShape();
     if(s){
@@ -424,7 +485,7 @@ canvas.addEventListener("pointerup",()=>{
 });
 
 function setTool(next){
-  tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;
+  tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;panDrag=null;
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active",b.dataset.tool===tool));
   selectedId=null;closeProperty();quickPanel.classList.add("hidden");
   qs("createByValueBtn").textContent="この寸法で作成";
@@ -436,6 +497,9 @@ function setTool(next){
   else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
   else if(tool==="copy") hint.textContent="コピーする図形をタップ";
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ";
+  else if(tool==="rotate") hint.textContent="回転する図形をタップ";
+  else if(tool==="dimension") hint.textContent="寸法の始点をタップ";
+  else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
     openQuick(tool);
     hint.textContent="中心→始点→終点の順にタップ、または数値入力";
@@ -447,6 +511,13 @@ function setTool(next){
 }
 
 document.querySelectorAll(".tool").forEach(btn=>btn.addEventListener("click",()=>setTool(btn.dataset.tool)));
+
+function handleDimensionTap(p){
+  if(!dimDraft){dimDraft={stage:1,a:p};preview=null;hint.textContent="寸法の終点をタップ";return;}
+  if(dimDraft.stage===1){dimDraft.b=p;dimDraft.stage=2;hint.textContent="寸法を置く位置をタップ";return;}
+  const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,tx:p.x,ty:p.y,layer:"寸法"};
+  shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;preview=null;hint.textContent="寸法線を作成しました";draw();
+}
 
 function handleArcTap(p){
   if(!arcDraft){
@@ -574,6 +645,46 @@ function handleCopyTap(p){
   hint.textContent="移動量を入力してください";draw();
 }
 
+function handleRotateTap(p){
+  const source=hitTest(p,s=>s.type!=="dim");
+  if(!source){hint.textContent="回転する図形をタップ";return;}
+  selectedId=source.id;opState={sourceId:source.id};
+  qs("quickTitle").textContent="回転";
+  quickFields.innerHTML=field("qRotateAngle","角度 °",90)+field("qRotateX","基準 X",0)+field("qRotateY","基準 Y",0);
+  qs("createByValueBtn").textContent="回転作成";
+  quickPanel.classList.remove("hidden");
+  hint.textContent="角度と基準点を入力してください";draw();
+}
+
+function rotatePoint(p,c,a){
+  const ca=Math.cos(a),sa=Math.sin(a),dx=p.x-c.x,dy=p.y-c.y;
+  return {x:c.x+dx*ca-dy*sa,y:c.y+dx*sa+dy*ca};
+}
+
+function applyRotate(){
+  const source=shapes.find(s=>s.id===opState?.sourceId);if(!source)return;
+  const s=JSON.parse(JSON.stringify(source));s.id=newId();
+  const c={x:num(qs("qRotateX")?.value),y:num(qs("qRotateY")?.value)},a=rad(num(qs("qRotateAngle")?.value));
+  if(s.type==="line"){
+    let p=rotatePoint({x:s.x1,y:s.y1},c,a),q=rotatePoint({x:s.x2,y:s.y2},c,a);
+    s.x1=p.x;s.y1=p.y;s.x2=q.x;s.y2=q.y;
+  }else if(s.type==="circle"||s.type==="hole"||s.type==="slot"){
+    const p=rotatePoint({x:s.cx,y:s.cy},c,a);s.cx=p.x;s.cy=p.y;
+  }else if(s.type==="arc"){
+    const p=rotatePoint({x:s.cx,y:s.cy},c,a);s.cx=p.x;s.cy=p.y;s.a1=normDeg(s.a1+deg(a));s.a2=normDeg(s.a2+deg(a));
+  }else if(s.type==="rect"){
+    const r=rectNorm(s),pts=[
+      rotatePoint({x:r.x1,y:r.y1},c,a),rotatePoint({x:r.x2,y:r.y1},c,a),
+      rotatePoint({x:r.x2,y:r.y2},c,a),rotatePoint({x:r.x1,y:r.y2},c,a)
+    ];
+    const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+    s.x=Math.min(...xs);s.y=Math.min(...ys);s.w=Math.max(...xs)-s.x;s.h=Math.max(...ys)-s.y;
+    s.corners={};
+  }
+  shapes.push(s);selectedId=s.id;snapshot();opState=null;quickPanel.classList.add("hidden");
+  qs("createByValueBtn").textContent="この寸法で作成";hint.textContent="回転コピーしました";draw();
+}
+
 function handleMirrorTap(p){
   const source=hitTest(p);
   if(!source){hint.textContent="ミラーする図形をタップ";return;}
@@ -680,6 +791,7 @@ qs("createByValueBtn").addEventListener("click",()=>{
   if(tool==="chamfer" || tool==="fillet") return applyCornerMod();
   if(tool==="copy") return applyCopy();
   if(tool==="mirror") return applyMirror();
+  if(tool==="rotate") return applyRotate();
 
   let s=null;
   const x=num(qs("qX")?.value),y=num(qs("qY")?.value);
@@ -739,6 +851,9 @@ function openProperty(s){
   if(s.type==="arc"){
     html+=field("pCX","中心 X",s.cx)+field("pCY","中心 Y",s.cy)+field("pR","半径 R",s.r)+field("pA1","開始角 °",s.a1)+field("pA2","終了角 °",s.a2);
   }
+  if(s.type==="dim"){
+    html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2)+field("pTX","表示 X",s.tx)+field("pTY","表示 Y",s.ty);
+  }
   propertyFields.innerHTML=html;
 }
 
@@ -770,6 +885,9 @@ qs("applyPropertyBtn").addEventListener("click",()=>{
   if(s.type==="arc"){
     s.cx=num(qs("pCX").value);s.cy=num(qs("pCY").value);s.r=Math.abs(num(qs("pR").value));
     s.a1=normDeg(num(qs("pA1").value));s.a2=normDeg(num(qs("pA2").value));
+  }
+  if(s.type==="dim"){
+    s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);s.tx=num(qs("pTX").value);s.ty=num(qs("pTY").value);
   }
   snapshot();openProperty(s);draw();hint.textContent="寸法を更新しました";
 });
@@ -803,6 +921,10 @@ function getBounds(){
     if(s.type==="slot"){
       minX=Math.min(minX,s.cx-s.length/2);maxX=Math.max(maxX,s.cx+s.length/2);
       minY=Math.min(minY,s.cy-s.width/2);maxY=Math.max(maxY,s.cy+s.width/2);
+    }
+    if(s.type==="dim"){
+      minX=Math.min(minX,s.x1,s.x2,s.tx);maxX=Math.max(maxX,s.x1,s.x2,s.tx);
+      minY=Math.min(minY,s.y1,s.y2,s.ty);maxY=Math.max(maxY,s.y1,s.y2,s.ty);
     }
     if(s.type==="arc"){
       const add=(x,y)=>{minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);};

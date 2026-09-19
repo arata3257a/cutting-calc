@@ -617,7 +617,7 @@ function setTool(next){
   else if(tool==="mirror") hint.textContent="ミラーする図形をタップ → 軸を2点で指定";
   else if(tool==="rotate") hint.textContent="回転する図形をタップ → 回転中心を選択";
   else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
-  else if(tool==="multi"){hint.textContent="複数の図形をタップして選択";openMultiPanel();}
+  else if(tool==="multi"){hint.textContent="移動する図形をタップして選択";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="arc"){
     openQuick(tool);
@@ -875,12 +875,12 @@ function handleDimensionTap(p){
 }
 
 function openMultiPanel(){
-  qs("quickTitle").textContent="複数選択";
+  qs("quickTitle").textContent="図形を移動";
   quickFields.innerHTML=
-    '<div class="multi-count">選択: '+selectedIds.size+'個</div>'+
+    '<div class="multi-count">移動する図形: '+selectedIds.size+'個</div>'+
     field("qMultiDX","X移動",0)+field("qMultiDY","Y移動",0)+
     '<button id="multiDeleteBtn" class="danger" type="button">選択を削除</button>';
-  qs("createByValueBtn").textContent="まとめて移動";
+  qs("createByValueBtn").textContent="選択した図形を移動";
   quickPanel.classList.remove("hidden");
   qs("multiDeleteBtn").addEventListener("click",deleteMultiSelected);
 }

@@ -2168,6 +2168,7 @@ function safeFileBaseName(value){
 let exportFormat="";
 let exportDirectoryHandle=null;
 let exportFileHandle=null;
+let pdfPreviewUrl="";
 
 function exportExtension(format){
   if(format==="json") return ".json";
@@ -2207,9 +2208,11 @@ function resetExportLocation(message="未選択"){
 function openExportSavePanel(format){
   exportFormat=format;
   resetExportLocation();
+  closePdfPreview(false);
   const label=format==="json"?"編集データ":format.toUpperCase();
   if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=format==="json"?"編集データを保存":label+"出力";
   if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName(format);
+  if(qs("confirmExportBtn")) qs("confirmExportBtn").textContent=format==="pdf"?"プレビュー":"決定";
   qs("fileSavePanel")?.classList.remove("hidden");
   setTimeout(()=>qs("exportFileName")?.select(),0);
 }
@@ -2342,6 +2345,52 @@ function downloadBlob(name,blob){
   setTimeout(()=>URL.revokeObjectURL(a.href),1200);
 }
 
+function closePdfPreview(showSavePanel=false){
+  if(pdfPreviewUrl){
+    URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl="";
+  }
+  const img=qs("pdfPreviewImage");
+  if(img) img.removeAttribute("src");
+  qs("pdfPreviewPanel")?.classList.add("hidden");
+  if(showSavePanel) qs("fileSavePanel")?.classList.remove("hidden");
+}
+
+async function showPdfPreview(){
+  if(exportFormat!=="pdf") return;
+
+  const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
+  if(qs("exportFileName")) qs("exportFileName").value=fileName;
+
+  if(!exportDirectoryHandle && !exportFileHandle && qs("exportSaveLocation")?.value==="未選択"){
+    const chosen=await chooseExportLocation();
+    if(!chosen) return;
+  }
+
+  const btn=qs("confirmExportBtn");
+  if(btn){btn.disabled=true;btn.textContent="作成中…"}
+  try{
+    closePdfPreview(false);
+    const previewSvg=buildSVG(true);
+    pdfPreviewUrl=URL.createObjectURL(new Blob([previewSvg],{type:"image/svg+xml;charset=utf-8"}));
+    if(qs("pdfPreviewImage")) qs("pdfPreviewImage").src=pdfPreviewUrl;
+    qs("fileSavePanel")?.classList.add("hidden");
+    qs("pdfPreviewPanel")?.classList.remove("hidden");
+  }catch(err){
+    alert("PDFプレビューを作成できませんでした。");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="プレビュー"}
+  }
+}
+
+async function handleExportDecision(){
+  if(exportFormat==="pdf"){
+    await showPdfPreview();
+    return;
+  }
+  await confirmExportSave();
+}
+
 async function confirmExportSave(){
   if(!exportFormat) return;
   const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
@@ -2371,6 +2420,7 @@ async function confirmExportSave(){
     }
 
     qs("fileSavePanel")?.classList.add("hidden");
+    closePdfPreview(false);
     hint.textContent=exportFormat==="json"?"編集データを保存しました":exportFormat.toUpperCase()+"を保存しました";
   }catch(err){
     alert("保存できませんでした。もう一度お試しください。");
@@ -2384,8 +2434,14 @@ qs("exportFileName")?.addEventListener("input",()=>{
   if(exportFileHandle) resetExportLocation("ファイル名変更後、保存先を再選択してください");
 });
 qs("chooseExportLocationBtn").addEventListener("click",chooseExportLocation);
-qs("confirmExportBtn").addEventListener("click",confirmExportSave);
-qs("closeFileSaveBtn").addEventListener("click",()=>qs("fileSavePanel").classList.add("hidden"));
+qs("confirmExportBtn").addEventListener("click",handleExportDecision);
+qs("closeFileSaveBtn").addEventListener("click",()=>{
+  qs("fileSavePanel").classList.add("hidden");
+  closePdfPreview(false);
+});
+qs("backPdfPreviewBtn").addEventListener("click",()=>closePdfPreview(true));
+qs("closePdfPreviewBtn").addEventListener("click",()=>closePdfPreview(true));
+qs("savePdfPreviewBtn").addEventListener("click",confirmExportSave);
 
 qs("dxfBtn").addEventListener("click",()=>{
   closeTransferMenus();
@@ -2402,6 +2458,7 @@ qs("printBtn").addEventListener("click",()=>{
 qs("sheetBtn").addEventListener("click",()=>{
   closeTransferMenus();
   qs("fileSavePanel")?.classList.add("hidden");
+  closePdfPreview(false);
   syncSheetInputs();
   qs("sheetPanel").classList.remove("hidden");
 });

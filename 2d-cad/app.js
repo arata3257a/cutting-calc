@@ -327,23 +327,38 @@ function drawDimensionShape(s,selected=false,isPreview=false){
   ctx.strokeStyle=isPreview?"#7c8792":selected?"#0b63ce":"#4d5965";
   ctx.lineWidth=1.2;
   if(isPreview)ctx.setLineDash([5,4]);
+  const dimLabel=round(value)+" mm";
+  const span=Math.hypot(ob.x-oa.x,ob.y-oa.y)||1;
+  const ux=(ob.x-oa.x)/span,uy=(ob.y-oa.y)/span,ah=6;
+  const textX=(oa.x+ob.x)/2;
+  const textY=(oa.y+ob.y)/2;
+
+  ctx.font="12px system-ui";
+  const labelWidth=ctx.measureText(dimLabel).width;
+  const maxGapHalf=Math.max(0,span/2-ah-2);
+  const gapHalf=Math.min(labelWidth/2+6,maxGapHalf);
+  const g1={x:textX-ux*gapHalf,y:textY-uy*gapHalf};
+  const g2={x:textX+ux*gapHalf,y:textY+uy*gapHalf};
+
   ctx.beginPath();
   ctx.moveTo(a.x,a.y);ctx.lineTo(oa.x,oa.y);
   ctx.moveTo(b.x,b.y);ctx.lineTo(ob.x,ob.y);
-  ctx.moveTo(oa.x,oa.y);ctx.lineTo(ob.x,ob.y);
-  const span=Math.hypot(ob.x-oa.x,ob.y-oa.y)||1;
-  const ux=(ob.x-oa.x)/span,uy=(ob.y-oa.y)/span,ah=6;
+  if(gapHalf>0){
+    ctx.moveTo(oa.x,oa.y);ctx.lineTo(g1.x,g1.y);
+    ctx.moveTo(g2.x,g2.y);ctx.lineTo(ob.x,ob.y);
+  }else{
+    ctx.moveTo(oa.x,oa.y);ctx.lineTo(ob.x,ob.y);
+  }
   ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah-uy*3,oa.y+uy*ah+ux*3);
   ctx.moveTo(oa.x,oa.y);ctx.lineTo(oa.x+ux*ah+uy*3,oa.y+uy*ah-ux*3);
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah-uy*3,ob.y-uy*ah+ux*3);
   ctx.moveTo(ob.x,ob.y);ctx.lineTo(ob.x-ux*ah+uy*3,ob.y-uy*ah-ux*3);
   ctx.stroke();
-  const textX=(oa.x+ob.x)/2;
-  const textY=(oa.y+ob.y)/2;
+
   if(mode==="vertical"){
-    drawDimensionText(round(value)+" mm",textX,textY,selected,-Math.PI/2);
+    drawDimensionText(dimLabel,textX,textY,selected,-Math.PI/2);
   }else{
-    drawDimensionText(round(value)+" mm",textX,textY-6,selected);
+    drawDimensionText(dimLabel,textX,textY,selected);
   }
   ctx.restore();
 }
@@ -2024,10 +2039,21 @@ function svgShape(s,b,m,pdfMode=false){
     if(mode==="vertical"){oa={x:q.x,y:a.y};ob={x:q.x,y:d.y};value=Math.abs(s.y2-s.y1)}
     else{oa={x:a.x,y:q.y};ob={x:d.x,y:q.y};value=Math.abs(s.x2-s.x1)}
     const mx=(oa.x+ob.x)/2,my=(oa.y+ob.y)/2;
+    const label=round(value)+" mm";
+    const fontSize=3.5;
+    const span=Math.hypot(ob.x-oa.x,ob.y-oa.y)||1;
+    const ux=(ob.x-oa.x)/span,uy=(ob.y-oa.y)/span;
+    const estimatedTextWidth=label.length*fontSize*0.58;
+    const gapHalf=Math.min(estimatedTextWidth/2+1.6,Math.max(0,span/2-1));
+    const g1={x:mx-ux*gapHalf,y:my-uy*gapHalf};
+    const g2={x:mx+ux*gapHalf,y:my+uy*gapHalf};
+    const dimLine=gapHalf>0
+      ? `<line x1="${oa.x}" y1="${oa.y}" x2="${g1.x}" y2="${g1.y}"/><line x1="${g2.x}" y1="${g2.y}" x2="${ob.x}" y2="${ob.y}"/>`
+      : `<line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/>`;
     const dimText=mode==="vertical"
-      ? `<text x="${mx}" y="${my}" font-size="3.5" text-anchor="middle" dominant-baseline="middle" fill="${dimTextColor}" transform="rotate(-90 ${mx} ${my})">${round(value)} mm</text>`
-      : `<text x="${mx}" y="${my-1.5}" font-size="3.5" text-anchor="middle" fill="${dimTextColor}">${round(value)} mm</text>`;
-    return `<g stroke="${dimColor}" stroke-width="${dimWidth}" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/><line x1="${oa.x}" y1="${oa.y}" x2="${ob.x}" y2="${ob.y}"/></g>${dimText}`;
+      ? `<text x="${mx}" y="${my}" font-size="${fontSize}" text-anchor="middle" dominant-baseline="middle" fill="${dimTextColor}" transform="rotate(-90 ${mx} ${my})">${label}</text>`
+      : `<text x="${mx}" y="${my}" font-size="${fontSize}" text-anchor="middle" dominant-baseline="middle" fill="${dimTextColor}">${label}</text>`;
+    return `<g stroke="${dimColor}" stroke-width="${dimWidth}" fill="none"><line x1="${a.x}" y1="${a.y}" x2="${oa.x}" y2="${oa.y}"/><line x1="${d.x}" y1="${d.y}" x2="${ob.x}" y2="${ob.y}"/>${dimLine}</g>${dimText}`;
   }
   return "";
 }
@@ -2514,7 +2540,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=133",{updateViaCache:"none"})
+      .register("./sw.js?v=134",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

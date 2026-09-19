@@ -63,7 +63,7 @@ function isShapeVisible(s){return layerVisibility[s.layer||"0"]!==false;}
 
 function shapeLabel(type){
   return {
-    line:"直線",parallel:"平行線",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
+    line:"直線",parallel:"平行線",point:"点",rect:"四角",circle:"円",hole:"穴",slot:"長穴",arc:"円弧",
     trim:"トリム",offset:"オフセット",chamfer:"面取り",fillet:"R",copy:"コピー",mirror:"ミラー",
     rotate:"回転",dimension:"寸法線",pan:"画面移動",dim:"寸法線"
   }[type] || type;
@@ -219,6 +219,15 @@ function drawShape(s,isPreview=false){
   ctx.lineWidth = selected ? 3 : 2;
   if(isPreview) ctx.setLineDash([6,5]);
 
+  if(s.type==="point"){
+    const p=worldToScreen({x:s.x,y:s.y});
+    ctx.fillStyle=selected?"#0b63ce":"#111820";
+    ctx.beginPath();ctx.arc(p.x,p.y,selected?5:4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(p.x-8,p.y);ctx.lineTo(p.x+8,p.y);
+    ctx.moveTo(p.x,p.y-8);ctx.lineTo(p.x,p.y+8);ctx.stroke();
+  }
+
   if(s.type==="line"){
     const a=worldToScreen({x:s.x1,y:s.y1});
     const b=worldToScreen({x:s.x2,y:s.y2});
@@ -348,7 +357,7 @@ function draw(){
   shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
   movePreviewShapes.forEach(s=>drawShape(s,true));
   if(preview) drawShape(preview,true);
-  if(["dimension","copy","mirror","rotate","multi"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
+  if(["dimension","copy","mirror","rotate","multi","point"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
@@ -408,6 +417,7 @@ function distancePointSegment(p,a,b){
 
 function hitShape(s,p){
   const tol=8/scale;
+  if(s.type==="point") return Math.hypot(p.x-s.x,p.y-s.y)<=10/scale;
   if(s.type==="line") return distancePointSegment(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol;
   if(s.type==="circle") return Math.abs(Math.hypot(p.x-s.cx,p.y-s.cy)-Math.abs(s.r))<=tol || Math.hypot(p.x-s.cx,p.y-s.cy)<=tol;
   if(s.type==="hole"){
@@ -442,6 +452,7 @@ function hitTest(p,filter=null){
 }
 
 function translateShape(s,dx,dy){
+  if(s.type==="point"){s.x+=dx;s.y+=dy}
   if(s.type==="line"){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy}
   if(s.type==="rect"){s.x+=dx;s.y+=dy}
   if(s.type==="circle" || s.type==="hole" || s.type==="arc"){s.cx+=dx;s.cy+=dy}
@@ -571,6 +582,7 @@ canvas.addEventListener("pointerdown",e=>{
   if(tool==="trim"){ handleTrimTap(raw); return; }
   if(tool==="offset"){ handleOffsetTap(raw); return; }
   if(tool==="parallel"){ handleParallelTap(raw); return; }
+  if(tool==="point"){ handlePointTap(raw); return; }
   if(tool==="chamfer" || tool==="fillet"){ handleCornerTap(raw); return; }
   if(tool==="copy"){ handleCopyTap(raw); return; }
   if(tool==="mirror"){ handleMirrorTap(raw); return; }
@@ -636,6 +648,12 @@ canvas.addEventListener("pointermove",e=>{
 
   if(tool==="multi" && moveDrag){
     updateMoveDrag(raw);return;
+  }
+
+  if(tool==="point"){
+    const snap=findPointPlacementSnap(raw);
+    dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
+    draw();return;
   }
 
   if(transformToolNeedsSnap()){
@@ -717,6 +735,7 @@ function setTool(next){
   else if(tool==="trim") hint.textContent="削る側の直線をタップ";
   else if(tool==="offset") hint.textContent="オフセット元の図形をタップ";
   else if(tool==="parallel") hint.textContent="平行線の元になる直線をタップ";
+  else if(tool==="point") hint.textContent="端点・中点・中心・交点・円の頂点をタップ";
   else if(tool==="chamfer") hint.textContent="面取りする四角の角をタップ";
   else if(tool==="fillet") hint.textContent="Rを付ける四角の角をタップ";
   else if(tool==="copy") hint.textContent="コピーする図形をタップ（移動量／点から点）";
@@ -725,8 +744,8 @@ function setTool(next){
   else if(tool==="dimension") hint.textContent="端点・交点・円の頂点をタップ";
   else if(tool==="multi"){hint.textContent="図形を選択 → 端点・中点・中心・交点をドラッグ";openMultiPanel();}
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
-  else if(tool==="parallel"){
-    // 元の直線を選ぶまでは入力パネルを出さない
+  else if(tool==="parallel" || tool==="point"){
+    // 元図形やスナップ点を選ぶまでは入力パネルを出さない
   }else if(tool==="arc"){
     openQuick(tool);
     hint.textContent="中心→始点→終点の順にタップ、または数値入力";
@@ -906,7 +925,9 @@ function transformSnapCandidates(excludeIds=null){
   const add=(p,kind)=>pushUniquePoint(pts,{x:p.x,y:p.y},kind);
   for(const s of shapes){
     if(!isShapeVisible(s) || s.type==="dim" || excludeIds?.has(s.id)) continue;
-    if(s.type==="line"){
+    if(s.type==="point"){
+      add({x:s.x,y:s.y},"点");
+    }else if(s.type==="line"){
       add({x:s.x1,y:s.y1},"端点");
       add({x:s.x2,y:s.y2},"端点");
       add({x:(s.x1+s.x2)/2,y:(s.y1+s.y2)/2},"中点");
@@ -957,6 +978,33 @@ function transformToolNeedsSnap(){
   if(tool==="mirror") return opState?.stage==="axis1" || opState?.stage==="axis2";
   if(tool==="rotate") return opState?.stage==="center";
   return false;
+}
+
+function findPointPlacementSnap(p,maxPx=24){
+  const tol=maxPx/scale;
+  let best=null,bestD=Infinity;
+  for(const c of transformSnapCandidates()){
+    if(c.kind==="点") continue;
+    const d=Math.hypot(p.x-c.x,p.y-c.y);
+    if(d<=tol && d<bestD){best=c;bestD=d}
+  }
+  return best;
+}
+
+function handlePointTap(p){
+  const snap=findPointPlacementSnap(p);
+  if(!snap){
+    hint.textContent="端点・中点・中心・交点・円の頂点にだけ点を打てます";
+    dimSnapHover=null;draw();return;
+  }
+  const exists=shapes.some(s=>s.type==="point"&&Math.hypot(s.x-snap.x,s.y-snap.y)<1e-7);
+  if(exists){
+    hint.textContent="この位置にはすでに点があります";
+    return;
+  }
+  const s={id:newId(),type:"point",x:snap.x,y:snap.y,layer:currentLayer()};
+  shapes.push(s);selectedId=s.id;dimSnapHover={x:snap.x,y:snap.y};
+  snapshot();hint.textContent=snap.kind+"に点を作成しました";draw();
 }
 
 function handleDimensionTap(p){
@@ -1578,6 +1626,9 @@ function openProperty(s){
     Array.from({length:11},(_,i)=>'<option value="'+i+'">'+i+'</option>').join('')+
     '</select></div>';
   setTimeout(()=>{if(qs("pLayer"))qs("pLayer").value=ensureLayer(s.layer)},0);
+  if(s.type==="point"){
+    html+=field("pX","X",s.x)+field("pY","Y",s.y);
+  }
   if(s.type==="line"){
     const length=Math.hypot(s.x2-s.x1,s.y2-s.y1);
     const angle=normDeg(deg(Math.atan2(s.y2-s.y1,s.x2-s.x1)));
@@ -1624,6 +1675,9 @@ qs("closeQuickBtn").addEventListener("click",()=>{
 qs("applyPropertyBtn").addEventListener("click",()=>{
   const s=selectedShape(); if(!s) return;
   if(qs("pLayer")) s.layer=ensureLayer(qs("pLayer").value.trim()||"0");
+  if(s.type==="point"){
+    s.x=num(qs("pX").value);s.y=num(qs("pY").value);
+  }
   if(s.type==="line"){
     const x1=num(qs("pX1").value),y1=num(qs("pY1").value);
     const length=Math.abs(num(qs("pLength").value));
@@ -1824,7 +1878,8 @@ function exportBounds(){
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   const add=(x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
   visible.forEach(s=>{
-    if(s.type==="line"||s.type==="dim"){add(s.x1,s.y1);add(s.x2,s.y2);if(s.type==="dim")add(s.tx,s.ty)}
+    if(s.type==="point"){add(s.x,s.y)}
+    else if(s.type==="line"||s.type==="dim"){add(s.x1,s.y1);add(s.x2,s.y2);if(s.type==="dim")add(s.tx,s.ty)}
     else if(s.type==="rect"){const r=rectNorm(s);add(r.x1,r.y1);add(r.x2,r.y2)}
     else if(s.type==="circle"||s.type==="hole"){const rr=s.type==="hole"?Math.max(s.r,(s.counterD||0)/2):s.r;add(s.cx-rr,s.cy-rr);add(s.cx+rr,s.cy+rr)}
     else if(s.type==="slot"){add(s.cx-s.length/2,s.cy-s.width/2);add(s.cx+s.length/2,s.cy+s.width/2)}
@@ -1867,6 +1922,10 @@ function svgRectPath(s,b,m){
 
 function svgShape(s,b,m){
   const stroke='stroke="#111" stroke-width="0.35" fill="none" vector-effect="non-scaling-stroke"';
+  if(s.type==="point"){
+    const p=svgPoint(s.x,s.y,b,m);
+    return '<circle cx="'+p.x+'" cy="'+p.y+'" r="0.8" fill="#111"/>';
+  }
   if(s.type==="line"){
     const a=svgPoint(s.x1,s.y1,b,m),d=svgPoint(s.x2,s.y2,b,m);
     return `<line x1="${a.x}" y1="${a.y}" x2="${d.x}" y2="${d.y}" ${stroke}/>`;
@@ -1925,6 +1984,9 @@ function printDrawing(){
 }
 
 function dxfPair(code,value){return `${code}\n${value}\n`}
+function dxfPoint(s){
+  return dxfPair(0,"POINT")+dxfPair(8,0)+dxfPair(10,s.x)+dxfPair(20,s.y)+dxfPair(30,0);
+}
 function dxfLine(s){
   return dxfPair(0,"LINE")+dxfPair(8,0)+dxfPair(10,s.x1)+dxfPair(20,s.y1)+dxfPair(30,0)+dxfPair(11,s.x2)+dxfPair(21,s.y2)+dxfPair(31,0);
 }
@@ -1963,6 +2025,7 @@ function dxfCorner(key,mod,v,r){
 function toDXF(){
   let body="";
   for(const s of shapes){
+    if(s.type==="point") body+=dxfPoint(s);
     if(s.type==="line") body+=dxfLine(s);
     if(s.type==="circle" || s.type==="hole") body+=dxfCircle(s.cx,s.cy,Math.abs(s.r));
     if(s.type==="hole" && s.counterD && s.counterD>s.r*2) body+=dxfCircle(s.cx,s.cy,Math.abs(s.counterD/2));
@@ -2069,7 +2132,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=117",{updateViaCache:"none"})
+      .register("./sw.js?v=120",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

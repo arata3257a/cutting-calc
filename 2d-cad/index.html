@@ -62,6 +62,15 @@
               <option value="10">10 mm</option>
             </select>
           </label>
+          <label>レイヤー
+            <select id="layerSelect">
+              <option value="0">0</option>
+              <option value="外形">外形</option>
+              <option value="穴">穴</option>
+              <option value="寸法">寸法</option>
+            </select>
+          </label>
+          <button id="layerVisibleBtn" title="現在レイヤーの表示切替">👁</button>
         </div>
 
         <div id="hint">図形をタップして選択できます</div>
@@ -93,9 +102,11 @@
       <button id="newBtn">新規</button>
       <button id="sampleBtn">サンプル</button>
       <button id="importBtn">JSON読込</button>
+      <button id="dxfImportBtn">DXF読込</button>
       <button id="exportBtn">JSON出力</button>
       <button id="dxfBtn">DXF出力</button>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
+      <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
   </main>
 

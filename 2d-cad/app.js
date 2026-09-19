@@ -25,12 +25,29 @@ let opState = null;
 let arcDraft = null;
 let dimDraft = null;
 let panDrag = null;
+let layerVisibility={"0":true,"外形":true,"穴":true,"寸法":true};
 
 const qs = id => document.getElementById(id);
 const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 const round = (v,d=2) => Number(v.toFixed(d));
 const newId = () => nextId++;
 const selectedShape = () => shapes.find(s => s.id === selectedId) || null;
+const currentLayer = () => qs("layerSelect")?.value || "0";
+function ensureLayer(name){
+  name=String(name||"0");
+  if(!(name in layerVisibility)) layerVisibility[name]=true;
+  const sel=qs("layerSelect");
+  if(sel && ![...sel.options].some(o=>o.value===name)){
+    const o=document.createElement("option");o.value=name;o.textContent=name;sel.appendChild(o);
+  }
+  return name;
+}
+function assignLayer(s,fallback=null){
+  if(!s.layer) s.layer=fallback||currentLayer();
+  s.layer=ensureLayer(s.layer);
+  return s;
+}
+function isShapeVisible(s){return layerVisibility[s.layer||"0"]!==false;}
 
 function shapeLabel(type){
   return {
@@ -297,23 +314,23 @@ function draw(){
   const r=canvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
   drawGrid(r.width,r.height);
-  shapes.forEach(s=>drawShape(s));
+  shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
   if(preview) drawShape(preview,true);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
-  const id=allocateId ? newId() : -1;
-  if(tool==="line") return {id,type:"line",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
-  if(tool==="rect") return {id,type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y,corners:{}};
+  const id=allocateId ? newId() : -1, layer=currentLayer();
+  if(tool==="line") return {id,type:"line",x1:a.x,y1:a.y,x2:b.x,y2:b.y,layer};
+  if(tool==="rect") return {id,type:"rect",x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y,corners:{},layer};
   if(tool==="circle"){
-    return {id,type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y))};
+    return {id,type:"circle",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),layer};
   }
   if(tool==="hole"){
-    return {id,type:"hole",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),holeKind:"through"};
+    return {id,type:"hole",cx:a.x,cy:a.y,r:Math.max(.1,Math.hypot(b.x-a.x,b.y-a.y)),holeKind:"through",layer};
   }
   if(tool==="slot"){
     const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
-    return {id,type:"slot",cx,cy,length:Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),width:Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y))};
+    return {id,type:"slot",cx,cy,length:Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),width:Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y)),layer};
   }
   return null;
 }
@@ -359,7 +376,7 @@ function hitShape(s,p){
 
 function hitTest(p,filter=null){
   for(let i=shapes.length-1;i>=0;i--){
-    if((!filter || filter(shapes[i])) && hitShape(shapes[i],p)) return shapes[i];
+    if(isShapeVisible(shapes[i]) && (!filter || filter(shapes[i])) && hitShape(shapes[i],p)) return shapes[i];
   }
   return null;
 }
@@ -516,6 +533,7 @@ function handleDimensionTap(p){
   if(!dimDraft){dimDraft={stage:1,a:p};preview=null;hint.textContent="寸法の終点をタップ";return;}
   if(dimDraft.stage===1){dimDraft.b=p;dimDraft.stage=2;hint.textContent="寸法を置く位置をタップ";return;}
   const s={id:newId(),type:"dim",x1:dimDraft.a.x,y1:dimDraft.a.y,x2:dimDraft.b.x,y2:dimDraft.b.y,tx:p.x,ty:p.y,layer:"寸法"};
+  ensureLayer("寸法");
   shapes.push(s);selectedId=s.id;snapshot();dimDraft=null;preview=null;hint.textContent="寸法線を作成しました";draw();
 }
 
@@ -529,7 +547,7 @@ function handleArcTap(p){
     arcDraft.stage=2; hint.textContent="円弧の終点をタップ"; return;
   }
   const s={id:newId(),type:"arc",cx:arcDraft.c.x,cy:arcDraft.c.y,r:arcDraft.r,
-    a1:arcDraft.a1,a2:angleOf(arcDraft.c.x,arcDraft.c.y,p)};
+    a1:arcDraft.a1,a2:angleOf(arcDraft.c.x,arcDraft.c.y,p),layer:currentLayer()};
   shapes.push(s); selectedId=s.id; snapshot();
   arcDraft=null; preview=null; hint.textContent="円弧を作成しました"; draw();
 }
@@ -795,30 +813,30 @@ qs("createByValueBtn").addEventListener("click",()=>{
 
   let s=null;
   const x=num(qs("qX")?.value),y=num(qs("qY")?.value);
-  const id=newId();
+  const id=newId(),layer=currentLayer();
   if(tool==="line"){
     const length=Math.abs(num(qs("qLength").value));
     const angle=num(qs("qAngle").value)*Math.PI/180;
-    s={id,type:"line",x1:x,y1:y,x2:x+length*Math.cos(angle),y2:y+length*Math.sin(angle)};
+    s={id,type:"line",x1:x,y1:y,x2:x+length*Math.cos(angle),y2:y+length*Math.sin(angle),layer};
   }
   if(tool==="rect"){
-    s={id,type:"rect",x,y,w:num(qs("qW").value),h:num(qs("qH").value)};
+    s={id,type:"rect",x,y,w:num(qs("qW").value),h:num(qs("qH").value),corners:{},layer};
   }
   if(tool==="circle"){
-    s={id,type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2};
+    s={id,type:"circle",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,layer};
   }
   if(tool==="arc"){
     s={id,type:"arc",cx:x,cy:y,r:Math.abs(num(qs("qR").value)),
-      a1:normDeg(num(qs("qA1").value)),a2:normDeg(num(qs("qA2").value))};
+      a1:normDeg(num(qs("qA1").value)),a2:normDeg(num(qs("qA2").value)),layer};
   }
   if(tool==="hole"){
     const holeKind=qs("qHoleType")?.value || "through";
     const outerD=(holeKind==="counterbore"||holeKind==="countersink")?Math.abs(num(qs("qOuterD")?.value)):0;
-    s={id,type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind,counterD:outerD};
+    s={id,type:"hole",cx:x,cy:y,r:Math.abs(num(qs("qD").value))/2,holeKind,counterD:outerD,layer};
   }
   if(tool==="slot"){
     const a=Math.abs(num(qs("qLength").value)),b=Math.abs(num(qs("qW").value));
-    s={id,type:"slot",cx:x,cy:y,length:Math.max(a,b),width:Math.min(a,b)};
+    s={id,type:"slot",cx:x,cy:y,length:Math.max(a,b),width:Math.min(a,b),layer};
   }
   if(!s) return;
   shapes.push(s);selectedId=s.id;snapshot();fitView();draw();
@@ -829,6 +847,7 @@ function openProperty(s){
   quickPanel.classList.add("hidden");
   propertyPanel.classList.remove("hidden");
   let html=`<div class="field"><label>種類</label><input value="${shapeLabel(s.type)}" disabled></div>`;
+  html+=`<div class="field"><label>レイヤー</label><input id="pLayer" value="${s.layer||"0"}"></div>`;
   if(s.type==="line"){
     html+=field("pX1","始点 X",s.x1)+field("pY1","始点 Y",s.y1)+field("pX2","終点 X",s.x2)+field("pY2","終点 Y",s.y2);
   }
@@ -869,6 +888,7 @@ qs("closeQuickBtn").addEventListener("click",()=>{
 
 qs("applyPropertyBtn").addEventListener("click",()=>{
   const s=selectedShape(); if(!s) return;
+  if(qs("pLayer")) s.layer=ensureLayer(qs("pLayer").value.trim()||"0");
   if(s.type==="line"){
     s.x1=num(qs("pX1").value);s.y1=num(qs("pY1").value);s.x2=num(qs("pX2").value);s.y2=num(qs("pY2").value);
   }
@@ -896,6 +916,18 @@ qs("deleteSelectedBtn").addEventListener("click",()=>{
   if(selectedId===null) return;
   shapes=shapes.filter(s=>s.id!==selectedId);
   selectedId=null;closeProperty();snapshot();draw();hint.textContent="削除しました";
+});
+
+qs("layerVisibleBtn").addEventListener("click",()=>{
+  const layer=currentLayer();
+  layerVisibility[layer]=!(layerVisibility[layer]!==false);
+  qs("layerVisibleBtn").textContent=layerVisibility[layer]?"👁":"🚫";
+  hint.textContent=(layerVisibility[layer]?"表示: ":"非表示: ")+layer;
+  draw();
+});
+qs("layerSelect").addEventListener("change",()=>{
+  const layer=currentLayer();
+  qs("layerVisibleBtn").textContent=layerVisibility[layer]===false?"🚫":"👁";
 });
 
 qs("undoBtn").addEventListener("click",()=>restoreHistory(historyIndex-1));
@@ -985,7 +1017,7 @@ qs("importInput").addEventListener("change",async e=>{
   try{
     const data=JSON.parse(await f.text());
     if(!Array.isArray(data.shapes)) throw new Error();
-    shapes=data.shapes.map(s=>({...s,id:s.id??newId()}));
+    shapes=data.shapes.map(s=>assignLayer({...s,id:s.id??newId()},"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
     selectedId=null;snapshot();fitView();hint.textContent="図面を読み込みました";
   }catch{alert("このJSONファイルは読み込めませんでした")}
@@ -996,7 +1028,7 @@ qs("sampleBtn").addEventListener("click",async()=>{
   try{
     const r=await fetch("./data/drawing.json",{cache:"no-store"});
     const data=await r.json();
-    shapes=(data.shapes||[]).map(convertOldShape).map(s=>({...s,id:newId()}));
+    shapes=(data.shapes||[]).map(convertOldShape).map(s=>assignLayer({...s,id:newId()},"0"));
     selectedId=null;snapshot();fitView();hint.textContent="サンプルを読み込みました";
   }catch{hint.textContent="サンプルを読み込めませんでした"}
 });
@@ -1066,12 +1098,54 @@ function toDXF(){
   return dxfPair(0,"SECTION")+dxfPair(2,"HEADER")+dxfPair(0,"ENDSEC")+
     dxfPair(0,"SECTION")+dxfPair(2,"ENTITIES")+body+dxfPair(0,"ENDSEC")+dxfPair(0,"EOF");
 }
+function parseDXF(text){
+  const lines=text.replace(/\r/g,"").split("\n");
+  const pairs=[];
+  for(let i=0;i+1<lines.length;i+=2)pairs.push({code:parseInt(lines[i].trim(),10),value:lines[i+1].trim()});
+  const out=[];let inEntities=false,i=0;
+  while(i<pairs.length){
+    const p=pairs[i];
+    if(p.code===0&&p.value==="SECTION"&&pairs[i+1]?.code===2&&pairs[i+1]?.value==="ENTITIES"){inEntities=true;i+=2;continue;}
+    if(inEntities&&p.code===0&&p.value==="ENDSEC")break;
+    if(!inEntities||p.code!==0){i++;continue;}
+    const type=p.value;const vals=[];i++;
+    while(i<pairs.length&&pairs[i].code!==0){vals.push(pairs[i]);i++;}
+    const one=code=>vals.find(x=>x.code===code)?.value;
+    const nums=code=>vals.filter(x=>x.code===code).map(x=>num(x.value));
+    const layer=ensureLayer(one(8)||"0");
+    if(type==="LINE"){
+      out.push({id:newId(),type:"line",x1:num(one(10)),y1:num(one(20)),x2:num(one(11)),y2:num(one(21)),layer});
+    }else if(type==="CIRCLE"){
+      out.push({id:newId(),type:"circle",cx:num(one(10)),cy:num(one(20)),r:Math.abs(num(one(40))),layer});
+    }else if(type==="ARC"){
+      out.push({id:newId(),type:"arc",cx:num(one(10)),cy:num(one(20)),r:Math.abs(num(one(40))),a1:normDeg(num(one(50))),a2:normDeg(num(one(51))),layer});
+    }else if(type==="LWPOLYLINE"){
+      const xs=nums(10),ys=nums(20),n=Math.min(xs.length,ys.length);
+      for(let k=0;k<n-1;k++)out.push({id:newId(),type:"line",x1:xs[k],y1:ys[k],x2:xs[k+1],y2:ys[k+1],layer});
+      const closed=(parseInt(one(70)||"0",10)&1)!==0;
+      if(closed&&n>2)out.push({id:newId(),type:"line",x1:xs[n-1],y1:ys[n-1],x2:xs[0],y2:ys[0],layer});
+    }
+  }
+  return out;
+}
+
+qs("dxfImportBtn").addEventListener("click",()=>qs("dxfInput").click());
+qs("dxfInput").addEventListener("change",async e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  try{
+    const imported=parseDXF(await f.text());
+    if(!imported.length)throw new Error("no supported entities");
+    shapes.push(...imported);snapshot();fitView();hint.textContent="DXFを読み込みました: "+imported.length+"要素";
+  }catch(err){alert("DXFを読み込めませんでした。対応: LINE / CIRCLE / ARC / LWPOLYLINE");}
+  e.target.value="";
+});
+
 qs("dxfBtn").addEventListener("click",()=>downloadText("2d-cad-drawing.dxf",toDXF(),"application/dxf"));
 
 try{
   const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
   if(saved && Array.isArray(saved.shapes)){
-    shapes=saved.shapes;
+    shapes=saved.shapes.map(s=>assignLayer(s,"0"));
     nextId=Math.max(1,...shapes.map(s=>num(s.id)+1));
   }
 }catch{}

@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est10">
+  <link rel="stylesheet" href="./style.css?v=est11">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.9 / v1.34ベース</small>
+      <small>試作 v1.0 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -233,7 +233,7 @@
 
       <aside id="pdfPreviewPanel" class="pdf-preview-panel hidden">
         <div class="panel-title">
-          <strong>PDFプレビュー</strong>
+          <strong id="pdfPreviewTitle">PDFプレビュー</strong>
           <button id="closePdfPreviewBtn" class="icon-btn">×</button>
         </div>
         <div class="pdf-preview-stage">
@@ -241,7 +241,7 @@
         </div>
         <div class="row pdf-preview-actions">
           <button id="backPdfPreviewBtn" type="button">戻る</button>
-          <button id="savePdfPreviewBtn" class="primary" type="button">保存</button>
+          <button id="savePdfPreviewBtn" class="primary" type="button">保存確定</button>
         </div>
       </aside>
 
@@ -275,7 +275,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est10"></script>
-  <script src="./estimator.js?v=est10"></script>
+  <script src="./app.js?v=est11"></script>
+  <script src="./estimator.js?v=est11"></script>
 </body>
 </html>

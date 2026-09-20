@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 const el = id => document.getElementById(id);
 const frontInput = el('frontInput');
@@ -8,6 +9,7 @@ const previewWrap = el('previewWrap');
 const quickBtn = el('quickBtn');
 const aiBtn = el('aiBtn');
 const savePngBtn = el('savePngBtn');
+const saveGlbBtn = el('saveGlbBtn');
 const statusText = el('statusText');
 const progress = el('progress');
 const depthStrength = el('depthStrength');
@@ -20,6 +22,7 @@ let sourceFile = null;
 let sourceUrl = null;
 let deferredPrompt = null;
 let scene, camera, renderer, controls, relief;
+let lastStrength = .75;
 
 function setStatus(text, value = null) {
   statusText.textContent = text;
@@ -42,11 +45,12 @@ function initThree() {
   controls.minDistance = 1.2;
   controls.maxDistance = 7;
 
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x203050, 2.0);
-  scene.add(hemi);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x203050, 2.0));
+
   const key = new THREE.DirectionalLight(0xffffff, 2.8);
   key.position.set(2.5, 3.5, 4);
   scene.add(key);
+
   const rim = new THREE.DirectionalLight(0x78d7ff, 1.8);
   rim.position.set(-3, 1, -2);
   scene.add(rim);
@@ -113,6 +117,7 @@ function createRelief(textureImage, depthCanvas, strength = .75, segments = 160)
   if (relief) {
     scene.remove(relief);
     relief.geometry.dispose();
+    relief.material.map?.dispose();
     relief.material.dispose();
   }
 
@@ -131,9 +136,9 @@ function createRelief(textureImage, depthCanvas, strength = .75, segments = 160)
     const py = Math.min(depthCanvas.height-1, Math.max(0, Math.floor((1-v)*(depthCanvas.height-1))));
     const idx = (py*depthCanvas.width+px)*4;
     const d = depthData[idx] / 255;
-    const z = (d - .42) * strength;
-    pos.setZ(i, z);
+    pos.setZ(i, (d - .42) * strength);
   }
+
   pos.needsUpdate = true;
   geometry.computeVertexNormals();
 
@@ -150,10 +155,15 @@ function createRelief(textureImage, depthCanvas, strength = .75, segments = 160)
   });
 
   relief = new THREE.Mesh(geometry, material);
+  relief.name = 'GeneratedRelief';
   relief.rotation.x = -.05;
+  relief.userData.originalStrength = strength;
+  lastStrength = strength;
   scene.add(relief);
+
   viewerHint.style.display = 'none';
   savePngBtn.disabled = false;
+  saveGlbBtn.disabled = false;
   resetView();
 }
 
@@ -165,7 +175,7 @@ async function quickRelief(){
   const d = drawImageFit(img, size, size, true);
   const ctx = d.getContext('2d', {willReadFrequently:true});
   const id = ctx.getImageData(0,0,d.width,d.height);
-  // 中央をやや手前にして、明暗だけに依存し過ぎない簡易形状を作る
+
   for(let y=0;y<d.height;y++){
     for(let x=0;x<d.width;x++){
       const i=(y*d.width+x)*4;
@@ -176,6 +186,7 @@ async function quickRelief(){
       id.data[i]=id.data[i+1]=id.data[i+2]=Math.round(val*255);
     }
   }
+
   ctx.putImageData(id,0,0);
   setStatus('立体メッシュ生成中', 70);
   createRelief(img, d, Number(depthStrength.value), size);
@@ -186,13 +197,17 @@ async function quickRelief(){
 async function aiRelief(){
   if(!sourceFile) return;
   aiBtn.disabled = true; quickBtn.disabled = true;
+
   try {
     setStatus('AIモデル読込み中（初回は時間がかかります）', 10);
     const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     env.allowLocalModels = false;
+
     const depthEstimator = await pipeline('depth-estimation', 'Xenova/dpt-hybrid-midas', {
       progress_callback: p => {
-        if (p && typeof p.progress === 'number') setStatus('AIモデル読込み中', Math.min(55, 10 + p.progress*.45));
+        if (p && typeof p.progress === 'number') {
+          setStatus('AIモデル読込み中', Math.min(55, 10 + p.progress*.45));
+        }
       }
     });
 
@@ -206,8 +221,9 @@ async function aiRelief(){
     c.width = size; c.height = size;
     const x = c.getContext('2d', {willReadFrequently:true});
 
-    let depthSource = result.depth || result.predicted_depth;
+    const depthSource = result.depth || result.predicted_depth;
     let depthImage = null;
+
     if (depthSource && typeof depthSource.toCanvas === 'function') {
       depthImage = await depthSource.toCanvas();
     } else if (depthSource && depthSource.data && depthSource.dims) {
@@ -217,20 +233,27 @@ async function aiRelief(){
       const tx = temp.getContext('2d');
       const im = tx.createImageData(dw, dh);
       let min=Infinity,max=-Infinity;
+
       for(const v of depthSource.data){ if(v<min)min=v; if(v>max)max=v; }
       const span = Math.max(1e-6,max-min);
+
       for(let i=0;i<depthSource.data.length;i++){
         const g = Math.round(((depthSource.data[i]-min)/span)*255);
-        im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=g; im.data[i*4+3]=255;
+        im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=g;
+        im.data[i*4+3]=255;
       }
-      tx.putImageData(im,0,0); depthImage=temp;
+      tx.putImageData(im,0,0);
+      depthImage=temp;
     }
 
     if (!depthImage) throw new Error('深度データの形式を認識できませんでした');
+
     x.drawImage(depthImage,0,0,size,size);
     setStatus('3Dメッシュ生成中', 92);
     createRelief(img, c, Number(depthStrength.value), size);
     setStatus('AI立体化 完了', 100);
+    URL.revokeObjectURL(url);
+
   } catch (e) {
     console.error(e);
     setStatus('AI深度に失敗：簡易立体化は使用できます', 0);
@@ -241,12 +264,53 @@ async function aiRelief(){
   }
 }
 
-frontInput.addEventListener('change', async e => {
+function downloadBlob(blob, filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function saveGlb(){
+  if(!relief) return;
+
+  const oldRot=relief.rotation.clone();
+  relief.rotation.set(0,0,0);
+
+  try{
+    setStatus('GLBを書き出し中', 92);
+    const exporter=new GLTFExporter();
+    exporter.parse(
+      relief,
+      result=>{
+        const blob = result instanceof ArrayBuffer
+          ? new Blob([result],{type:'model/gltf-binary'})
+          : new Blob([JSON.stringify(result)],{type:'model/gltf+json'});
+        downloadBlob(blob,'ai-3d-maker.glb');
+        setStatus('GLB保存 完了',100);
+      },
+      err=>{
+        console.error(err);
+        setStatus('GLB保存に失敗',0);
+        alert('GLBの保存に失敗しました。');
+      },
+      {binary:true,onlyVisible:true,maxTextureSize:2048}
+    );
+  } finally {
+    relief.rotation.copy(oldRot);
+  }
+}
+
+frontInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
   if(!f) return;
+
   sourceFile = f;
   if(sourceUrl) URL.revokeObjectURL(sourceUrl);
   sourceUrl = URL.createObjectURL(f);
+
   sourcePreview.src = sourceUrl;
   previewWrap.classList.remove('empty');
   quickBtn.disabled = false;
@@ -255,9 +319,13 @@ frontInput.addEventListener('change', async e => {
 });
 
 depthStrength.addEventListener('input', () => {
-  depthOut.value = Number(depthStrength.value).toFixed(2);
-  if(relief) relief.scale.z = Number(depthStrength.value)/.75;
+  const val=Number(depthStrength.value);
+  depthOut.value = val.toFixed(2);
+  if(relief){
+    relief.scale.z = val / Math.max(.001,lastStrength);
+  }
 });
+
 quickBtn.addEventListener('click', quickRelief);
 aiBtn.addEventListener('click', aiRelief);
 el('resetViewBtn').addEventListener('click', resetView);
@@ -270,15 +338,24 @@ savePngBtn.addEventListener('click', () => {
   a.click();
 });
 
+saveGlbBtn.addEventListener('click', saveGlb);
+
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); deferredPrompt=e;
+  e.preventDefault();
+  deferredPrompt=e;
   el('installBtn').hidden=false;
 });
+
 el('installBtn').addEventListener('click', async()=>{
   if(!deferredPrompt) return;
-  deferredPrompt.prompt(); await deferredPrompt.userChoice;
-  deferredPrompt=null; el('installBtn').hidden=true;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  el('installBtn').hidden=true;
 });
 
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
 initThree();

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>AI 3D Maker</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">CARD / ILLUSTRATION → 3D</div>
+      <h1>AI 3D Maker <span>v0.1</span></h1>
+    </div>
+    <button id="installBtn" class="ghost" hidden>アプリ追加</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel controls">
+      <div class="step active"><b>1</b><span>画像</span></div>
+      <div class="step"><b>2</b><span>深度</span></div>
+      <div class="step"><b>3</b><span>立体</span></div>
+
+      <label class="upload">
+        <input id="frontInput" type="file" accept="image/*" />
+        <strong>正面画像を選ぶ</strong>
+        <small>カード写真・イラスト・PNG/JPG</small>
+      </label>
+
+      <div id="previewWrap" class="preview-wrap empty">
+        <img id="sourcePreview" alt="読み込み画像" />
+        <div id="emptyText">画像を読み込むとここに表示されます</div>
+      </div>
+
+      <div class="grid2">
+        <label>立体の強さ
+          <input id="depthStrength" type="range" min="0.05" max="1.8" step="0.05" value="0.75" />
+          <output id="depthOut">0.75</output>
+        </label>
+        <label>メッシュ密度
+          <select id="meshSize">
+            <option value="96">軽い</option>
+            <option value="160" selected>標準</option>
+            <option value="224">高精細</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="quickBtn" disabled>すぐ立体化</button>
+        <button id="aiBtn" class="accent" disabled>AI深度で立体化</button>
+      </div>
+
+      <details>
+        <summary>AI深度について</summary>
+        <p>端末内で深度推定モデルを読み込みます。初回だけモデル読込みに時間と通信量がかかります。画像自体を外部APIへ送信する設計ではありません。</p>
+      </details>
+
+      <div class="status">
+        <div class="statusline"><span>状態</span><strong id="statusText">画像待ち</strong></div>
+        <progress id="progress" max="100" value="0"></progress>
+      </div>
+    </section>
+
+    <section class="panel viewer-panel">
+      <div class="viewer-head">
+        <div>
+          <h2>3Dプレビュー</h2>
+          <p>指1本：回転 / 2本：拡大・移動</p>
+        </div>
+        <div class="viewer-actions">
+          <button id="resetViewBtn" class="ghost">視点リセット</button>
+          <button id="savePngBtn" class="ghost" disabled>PNG保存</button>
+        </div>
+      </div>
+      <div id="viewer">
+        <div id="viewerHint">立体化するとここに表示されます</div>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot ready"></i>現在：2.5D深度メッシュ</span>
+        <span><i class="dot next"></i>次段階：多視点→完全3D</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>画像は端末内処理を基本にしています。</span>
+    <span>© AI 3D Maker</span>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

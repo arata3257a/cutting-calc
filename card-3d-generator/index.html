@@ -20,7 +20,7 @@
   <header class="topbar">
     <div>
       <div class="eyebrow">CARD / ILLUSTRATION → 3D</div>
-      <h1>AI 3D Maker <span>v0.2</span></h1>
+      <h1>AI 3D Maker <span>v0.3</span></h1>
     </div>
     <button id="installBtn" class="ghost" hidden>アプリ追加</button>
   </header>
@@ -49,21 +49,21 @@
         </label>
         <label>メッシュ密度
           <select id="meshSize">
-            <option value="96">軽い</option>
-            <option value="160" selected>標準</option>
-            <option value="224">高精細</option>
+            <option value="64" selected>軽い（おすすめ）</option>
+            <option value="96">標準</option>
+            <option value="144">高精細</option>
           </select>
         </label>
       </div>
 
       <div class="actions">
-        <button id="quickBtn" disabled>すぐ立体化</button>
-        <button id="aiBtn" class="accent" disabled>AI深度で立体化</button>
+        <button id="quickBtn" class="accent" disabled>軽量で立体化</button>
+        <button id="aiBtn" disabled>AI高精度（重い）</button>
       </div>
 
       <details>
         <summary>AI深度について</summary>
-        <p>端末内で深度推定モデルを読み込みます。初回だけモデル読込みに時間と通信量がかかります。画像自体を外部APIへ送信する設計ではありません。</p>
+        <p>通常は「軽量で立体化」をおすすめします。AI高精度は端末内で大きな深度推定モデルを動かすため、スマホでは重くなります。</p>
       </details>
 
       <div class="status">
@@ -89,7 +89,7 @@
       </div>
 
       <div class="legend">
-        <span><i class="dot ready"></i>現在：AI深度メッシュ + GLB出力</span>
+        <span><i class="dot ready"></i>現在：軽量3D + 必要時だけAI深度</span>
         <span><i class="dot next"></i>次段階：多視点→完全3D</span>
       </div>
     </section>

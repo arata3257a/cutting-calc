@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est9">
+  <link rel="stylesheet" href="./style.css?v=est10">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.8 / v1.34ベース</small>
+      <small>試作 v0.9 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -150,18 +150,13 @@
           <div class="estimate-legend"><span class="hole-mark">■ 穴</span><span class="tap-mark">■ ネジ穴</span><span>未指定は自動判定</span></div>
         </div>
 
-        <div class="row">
-          <button id="scanEstimateBtn" class="primary">図面から再認識</button>
-          <button id="saveEstimateSettingsBtn">設定保存</button>
-        </div>
-
         <div class="estimate-section-title">図面から認識した加工量</div>
         <div class="fields">
           <div class="field"><label for="estHoleCount">穴数</label><input id="estHoleCount" type="number" value="0" min="0" step="1"></div>
           <div class="field"><label for="estTapCount">ネジ穴数</label><input id="estTapCount" type="number" value="0" min="0" step="1"></div>
           <div class="field"><label for="estOuterLength">外形周長（mm）</label><input id="estOuterLength" type="number" value="0" min="0" step="0.1"></div>
           <div class="field"><label for="estGrooveLength">溝加工長（mm）</label><input id="estGrooveLength" type="number" value="0" min="0" step="0.1"></div>
-          <div id="estimateDetectNote" class="field-note">「図面から再認識」で現在の図面を集計します。</div>
+          <div id="estimateDetectNote" class="field-note">図形の指定内容から加工量を自動集計します。数値は手動修正できます。</div>
         </div>
 
         <div class="estimate-result">
@@ -173,6 +168,7 @@
           <div class="estimate-total-time"><span>推定加工時間</span><strong id="estTotalTime">0.0分</strong></div>
           <div class="estimate-cost"><span>概算加工費</span><strong id="estCost">¥0</strong></div>
         </div>
+        <button id="saveEstimatePdfBtn" class="primary estimate-pdf-save" type="button">図形＋金額をPDF保存</button>
         <div class="estimate-warning">※ 概算用です。材料費、工具交換、測定、治具、仕上げ、難易度などは含みません。</div>
       </aside>
 
@@ -279,7 +275,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est9"></script>
-  <script src="./estimator.js?v=est9"></script>
+  <script src="./app.js?v=est10"></script>
+  <script src="./estimator.js?v=est10"></script>
 </body>
 </html>

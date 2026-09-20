@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est6">
+  <link rel="stylesheet" href="./style.css?v=est7">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.5 / v1.34ベース</small>
+      <small>試作 v0.6 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -121,9 +121,8 @@
           <div class="field"><label for="estTapMin">ネジ穴1個（分）</label><input id="estTapMin" type="number" value="1.5" min="0" step="0.1"></div>
           <div class="field"><label for="estOuterSpeed">外形速度（mm/min）</label><input id="estOuterSpeed" type="number" value="120" min="1" step="5"></div>
           <div class="field"><label for="estGrooveSpeed">溝速度（mm/min）</label><input id="estGrooveSpeed" type="number" value="100" min="1" step="5"></div>
-          <div class="field"><label for="estHoleMaxD">穴判定 最大径（mm）</label><input id="estHoleMaxD" type="number" value="30" min="0.1" step="1"></div>
           <div class="field"><label for="estTapTolerance">タップ下穴公差（±mm）</label><input id="estTapTolerance" type="number" value="0.12" min="0" step="0.01"></div>
-          <div class="field-note">穴・ネジ穴・外形は素材厚み、溝加工は掘込み深さで加工時間を補正します。10mmを1.0倍の目安として計算します。</div>
+          <div class="field-note">穴・ネジ穴・外形は素材厚み、溝加工は掘込み深さで加工時間を補正します。未指定の円は穴として扱い、代表的なタップ下穴径に近い場合だけネジ穴候補にします。</div>
         </div>
 
         <div class="estimate-section-title">線加工の指定</div>
@@ -279,7 +278,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est6"></script>
-  <script src="./estimator.js?v=est6"></script>
+  <script src="./app.js?v=est7"></script>
+  <script src="./estimator.js?v=est7"></script>
 </body>
 </html>

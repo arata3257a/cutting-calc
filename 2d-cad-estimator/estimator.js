@@ -2,7 +2,7 @@ const ESTIMATOR_SETTINGS_KEY="easy-2d-cad-estimator-settings-v1";
 const EST_TAP_DRILLS={M3:2.5,M4:3.3,M5:4.2,M6:5.0,M8:6.8,M10:8.5,M12:10.2};
 const EST_SETTING_IDS=[
   "estHourlyRate","estThickness","estCutDepth","estSetupMin",
-  "estHoleMin","estTapMin","estOuterSpeed","estGrooveSpeed","estHoleMaxD","estTapTolerance"
+  "estHoleMin","estTapMin","estOuterSpeed","estGrooveSpeed","estTapTolerance"
 ];
 const EST_VALUE_IDS=["estHoleCount","estTapCount","estOuterLength","estGrooveLength"];
 
@@ -11,7 +11,7 @@ function estNum(id,fallback=0){
   return Number.isFinite(v)?v:fallback;
 }
 function loadEstimatorSettings(){
-  const defaults={estHourlyRate:6000,estThickness:10,estCutDepth:5,estSetupMin:15,estHoleMin:.6,estTapMin:1.5,estOuterSpeed:120,estGrooveSpeed:100,estHoleMaxD:30,estTapTolerance:.12};
+  const defaults={estHourlyRate:6000,estThickness:10,estCutDepth:5,estSetupMin:15,estHoleMin:.6,estTapMin:1.5,estOuterSpeed:120,estGrooveSpeed:100,estTapTolerance:.12};
   let saved={};
   try{saved=JSON.parse(localStorage.getItem(ESTIMATOR_SETTINGS_KEY))||{}}catch{}
   for(const id of EST_SETTING_IDS) if(qs(id)) qs(id).value=(id in saved?saved[id]:defaults[id]);
@@ -240,7 +240,6 @@ function markEstimateHoleKind(kind){
 }
 
 function scanDrawingForEstimate(){
-  const holeMaxD=Math.max(.1,estNum("estHoleMaxD",30));
   const tapTolerance=Math.max(0,estNum("estTapTolerance",.12));
   const visible=shapes.filter(isShapeVisible);
   let holeCount=0,tapCount=0,manualOuterLength=0,manualGrooveLength=0,autoGrooveLength=0;
@@ -304,11 +303,12 @@ function scanDrawingForEstimate(){
       continue;
     }
     const ds=group.map(s=>Math.abs(Number(s.r)||0)*2).sort((a,b)=>a-b),minD=ds[0]||0;
-    if(minD<=holeMaxD){
-      const tap=estTapMatch(minD,tapTolerance);
-      if(tap){tapCount++;tapBreakdown[tap]=(tapBreakdown[tap]||0)+1}else holeCount++;
+    const tap=estTapMatch(minD,tapTolerance);
+    if(tap){
+      tapCount++;
+      tapBreakdown[tap]=(tapBreakdown[tap]||0)+1;
     }else{
-      for(const d of ds)autoClosedLoops.push(Math.PI*d);
+      holeCount++;
     }
   }
 

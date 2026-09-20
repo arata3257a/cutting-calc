@@ -1,74 +1,41 @@
 # AI 3D Maker v2
 
-旧版の「1枚画像を深度で曲げる2.5D方式」をやめ、完全3D向けに作り直したフロントエンドです。
+旧版の「1枚画像を深度で曲げる2.5D方式」をやめ、実際の3Dメッシュ生成へ切り替えた版です。
 
-## 現在のv2.0
+## 現在のv2.1
 - 正面画像アップロード
 - スマホ向け軽量トリミング
-- AI切り抜きAPI接続口
-- 正面/左/右/背面の4方向管理
-- 手動で左右/背面画像を追加
-- 4方向ターンテーブルプレビュー
-- 多視点生成API接続口
-- 3D再構築API接続口
+- AI切り抜きAPI接続
+- 正面1枚からTRELLISで3D再構築
+- 左/右/背面画像の任意追加
+- 複数画像がある場合はTRELLISのmulti-image conditioningを使用
 - ジョブ進捗ポーリング
 - GLB結果保存
 - PWA対応
 
-## 方針
-完全3Dはスマホ内で無理に生成せず、GPUバックエンド側で処理します。
-フロントは軽く保ちます。
+## 重要な変更
+4方向画像は必須ではありません。
+TRELLISは1枚画像から直接3D生成できます。
+追加の左右・背面画像がある場合だけmulti-image入力として使います。
 
-## API契約
+## バックエンド
+`backend/main.py` にFastAPI + TRELLIS接続を追加済みです。
 
-### GET /health
-200を返せば接続OK。
+- `GET /health`
+- `POST /extract`
+- `POST /reconstruct`
+- `GET /jobs/:id`
+- `GET /models/:file.glb`
 
-### POST /extract
-入力:
-```json
-{"image":"data:image/jpeg;base64,..."}
-```
-出力:
-```json
-{"image":"data:image/png;base64,..."}
-```
+`POST /multiview` は次段階で接続します。
 
-### POST /multiview
-入力:
-```json
-{"front":"data:image/jpeg;base64,..."}
-```
-出力:
-```json
-{"left":"...","right":"...","back":"..."}
-```
-
-### POST /reconstruct
-入力:
-```json
-{"front":"...","left":"...","right":"...","back":"..."}
-```
-出力:
-```json
-{"jobId":"abc123"}
-```
-
-### GET /jobs/:id
-処理中:
-```json
-{"status":"running","progress":55}
-```
-
-完了:
-```json
-{"status":"completed","progress":100,"resultUrl":"https://.../model.glb"}
-```
+## GPU
+TRELLIS公式READMEではLinux環境とNVIDIA GPU 16GB以上が必要です。
 
 ## 次の開発
-1. GPUバックエンド選定
-2. キャラクター抽出モデル接続
-3. 多視点生成モデル接続
-4. 3D再構築モデル接続
-5. GLB軽量化
-6. STL/OBJ出力
+1. GPUサーバーへbackendを実配置
+2. スマホからAPI接続
+3. 実カード画像でTRELLIS生成テスト
+4. 結果に応じて切り抜き改善
+5. 必要なら多視点生成モデル追加
+6. GLB軽量化 / STL / OBJ出力

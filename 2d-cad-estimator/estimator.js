@@ -28,12 +28,11 @@ function loadEstimatorSettings(){
   if(!("estGrooveDepth" in migrated)) migrated.estGrooveDepth=("estCutDepth" in saved?saved.estCutDepth:defaults.estGrooveDepth);
   for(const id of EST_SETTING_IDS) if(qs(id)) qs(id).value=(id in migrated?migrated[id]:defaults[id]);
 }
-function saveEstimatorSettings(){
+function saveEstimatorSettings(silent=false){
   const data={};
   for(const id of EST_SETTING_IDS) data[id]=estNum(id);
   localStorage.setItem(ESTIMATOR_SETTINGS_KEY,JSON.stringify(data));
-  hint.textContent="見積設定を保存しました";
-  calculateEstimate();
+  if(!silent) hint.textContent="見積設定を保存しました";
 }
 function estRectPerimeter(s){
   const r=rectNorm(s);
@@ -431,6 +430,50 @@ function exitEstimatorSelectionMode(){
   draw();
 }
 
+function buildEstimatePdfSvg(){
+  calculateEstimate();
+  const base=buildSVG(true);
+  const size=base.match(/width="([0-9.]+)mm" height="([0-9.]+)mm"/);
+  const baseW=size?Number(size[1]):210;
+  const baseH=size?Number(size[2]):148;
+  const pageW=297,pageH=210;
+  const drawX=10,drawY=8,drawW=277,drawH=156;
+  const scaleToFit=Math.min(drawW/baseW,drawH/baseH);
+  const shownW=baseW*scaleToFit,shownH=baseH*scaleToFit;
+  const tx=drawX+(drawW-shownW)/2;
+  const ty=drawY+(drawH-shownH)/2;
+  const inner=base
+    .replace(/^<\?xml[^>]*>\s*/,"")
+    .replace(/^<svg[^>]*>/,"")
+    .replace(/<\/svg>\s*$/,"");
+  const cost=xmlEscape(qs("estCost")?.textContent||"¥0");
+  const totalTime=xmlEscape(qs("estTotalTime")?.textContent||"0.0分");
+  const title=xmlEscape(drawingMeta.title||"加工費見積");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${pageW}mm" height="${pageH}mm" viewBox="0 0 ${pageW} ${pageH}">
+<rect width="${pageW}" height="${pageH}" fill="white"/>
+<g transform="translate(${tx} ${ty}) scale(${scaleToFit})">${inner}</g>
+<g font-family="Arial, 'Noto Sans JP', sans-serif">
+  <rect x="10" y="169" width="277" height="31" rx="2" fill="#f7f9fa" stroke="#222" stroke-width="0.5"/>
+  <text x="17" y="179" font-size="5" fill="#333">${title}</text>
+  <text x="17" y="190" font-size="4.5" fill="#555">推定加工時間  ${totalTime}</text>
+  <text x="280" y="190" font-size="7" font-weight="bold" text-anchor="end" fill="#111">概算加工費  ${cost}</text>
+  <text x="17" y="197" font-size="3.2" fill="#666">※ 概算用。材料費・工具交換・測定・治具・仕上げ・難易度などは含みません。</text>
+</g>
+</svg>`;
+}
+
+window.buildEstimatePdfBlob=async function(){
+  return await buildPdfBlobFromSvg(buildEstimatePdfSvg());
+};
+
+async function saveEstimatePdf(){
+  saveEstimatorSettings(true);
+  calculateEstimate();
+  closeEstimatePanel();
+  openExportSavePanel("estimatepdf");
+}
+
 function closeEstimatePanel(){
   qs("estimatePanel")?.classList.add("hidden");
   qs("estimateBtn")?.classList.remove("active");
@@ -458,9 +501,12 @@ qs("clearEstimateKindBtn")?.addEventListener("click",()=>markEstimateKind(null))
 qs("markHoleBtn")?.addEventListener("click",()=>markEstimateHoleKind("hole"));
 qs("markTapBtn")?.addEventListener("click",()=>markEstimateHoleKind("tap"));
 qs("clearEstimateHoleBtn")?.addEventListener("click",()=>markEstimateHoleKind(null));
-qs("scanEstimateBtn")?.addEventListener("click",scanDrawingForEstimate);
-qs("saveEstimateSettingsBtn")?.addEventListener("click",saveEstimatorSettings);
-for(const id of [...EST_SETTING_IDS,...EST_VALUE_IDS])qs(id)?.addEventListener("input",calculateEstimate);
+for(const id of EST_SETTING_IDS) qs(id)?.addEventListener("input",()=>{
+  saveEstimatorSettings(true);
+  calculateEstimate();
+});
+for(const id of EST_VALUE_IDS) qs(id)?.addEventListener("input",calculateEstimate);
+qs("saveEstimatePdfBtn")?.addEventListener("click",saveEstimatePdf);
  qs("sheetBtn")?.addEventListener("click",closeEstimatePanel);
 loadEstimatorSettings();
 calculateEstimate();

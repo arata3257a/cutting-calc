@@ -4,66 +4,60 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#08111f" />
-  <title>AI 3D Maker v2</title>
+  <title>AI 3D Maker v2.2</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">IMAGE → MULTI VIEW → 3D</div>
-      <h1>AI 3D Maker <span>v2.1</span></h1>
+      <div class="eyebrow">FREE LOCAL IMAGE → 3D</div>
+      <h1>AI 3D Maker <span>v2.2 無料ローカル版</span></h1>
     </div>
     <button id="installBtn" class="ghost small" hidden>アプリ追加</button>
   </header>
 
   <main>
-    <nav class="steps" aria-label="進行状況">
-      <button class="step active" data-step="upload"><b>1</b><span>正面</span></button>
+    <nav class="steps">
+      <button class="step active" data-step="upload"><b>1</b><span>画像</span></button>
       <button class="step" data-step="extract"><b>2</b><span>切り抜き</span></button>
-      <button class="step" data-step="multiview"><b>3</b><span>追加画像</span></button>
-      <button class="step" data-step="build"><b>4</b><span>3D化</span></button>
+      <button class="step" data-step="build"><b>3</b><span>3D化</span></button>
     </nav>
 
     <section class="card stage active" id="stage-upload">
-      <div class="card-head">
-        <div>
-          <p class="kicker">STEP 1</p>
-          <h2>正面画像を入れる</h2>
-          <p>まずは元画像を読み込みます。カード写真でも開始できます。</p>
-        </div>
-      </div>
+      <p class="kicker">STEP 1</p>
+      <h2>正面画像を選ぶ</h2>
+      <p class="sub">1枚の画像から、見えていない側面・背面をAIが推定して3D化します。</p>
+
       <label class="upload-box">
         <input id="frontInput" type="file" accept="image/*" />
         <span class="upload-icon">＋</span>
         <strong>画像を選ぶ</strong>
         <small>JPG / PNG / WEBP</small>
       </label>
+
       <div id="frontPreviewWrap" class="image-box empty">
         <img id="frontPreview" alt="正面画像" />
         <span>まだ画像がありません</span>
       </div>
+
       <div class="row end">
-        <button id="toExtractBtn" class="primary" disabled>次へ：切り抜き</button>
+        <button id="toExtractBtn" class="primary" disabled>次へ</button>
       </div>
     </section>
 
     <section class="card stage" id="stage-extract">
-      <div class="card-head">
-        <div>
-          <p class="kicker">STEP 2</p>
-          <h2>キャラクターを切り抜く</h2>
-          <p>軽量版ではトリミングを行います。AI APIを接続するとキャラクター抽出へ置き換えられます。</p>
-        </div>
-      </div>
+      <p class="kicker">STEP 2</p>
+      <h2>キャラクターを切り抜く</h2>
+      <p class="sub">枠・文字・背景を減らすほど3D化しやすくなります。</p>
 
       <div class="editor-grid">
         <div class="canvas-wrap">
-          <canvas id="cropCanvas" width="768" height="768"></canvas>
+          <canvas id="cropCanvas" width="640" height="640"></canvas>
         </div>
         <div class="controls">
           <label>拡大
-            <input id="cropScale" type="range" min="0.6" max="2.4" value="1" step="0.02" />
+            <input id="cropScale" type="range" min="0.6" max="2.8" value="1" step="0.02" />
           </label>
           <label>左右
             <input id="cropX" type="range" min="-1" max="1" value="0" step="0.01" />
@@ -72,99 +66,40 @@
             <input id="cropY" type="range" min="-1" max="1" value="0" step="0.01" />
           </label>
           <button id="resetCropBtn" class="ghost">位置をリセット</button>
-          <button id="aiExtractBtn" class="ghost" disabled>AI切り抜き（API）</button>
+          <button id="removeBgBtn" class="ghost" disabled>背景を自動除去（PC）</button>
         </div>
       </div>
 
       <div class="notice">
-        <strong>重要</strong>
-        <span>完全3Dには「カード全体」ではなく、キャラクターだけの画像が理想です。</span>
+        <strong>ポイント</strong>
+        <span>キャラクターが中央に大きく入るように調整してください。</span>
       </div>
 
       <div class="row between">
         <button class="ghost back" data-target="upload">戻る</button>
-        <button id="confirmExtractBtn" class="primary">この画像で進む</button>
-      </div>
-    </section>
-
-    <section class="card stage" id="stage-multiview">
-      <div class="card-head">
-        <div>
-          <p class="kicker">STEP 3</p>
-          <h2>追加画像は任意</h2>
-          <p>正面1枚でもTRELLISで3D生成できます。左右・背面があれば精度アップに使います。</p>
-        </div>
-      </div>
-
-      <div class="view-grid">
-        <article class="view-card">
-          <div class="badge">FRONT</div>
-          <img id="viewFront" alt="正面" />
-          <span>正面</span>
-        </article>
-        <article class="view-card">
-          <div class="badge">LEFT</div>
-          <img id="viewLeft" alt="左" />
-          <label class="mini-upload"><input id="leftInput" type="file" accept="image/*" />左画像を追加</label>
-        </article>
-        <article class="view-card">
-          <div class="badge">RIGHT</div>
-          <img id="viewRight" alt="右" />
-          <label class="mini-upload"><input id="rightInput" type="file" accept="image/*" />右画像を追加</label>
-        </article>
-        <article class="view-card">
-          <div class="badge">BACK</div>
-          <img id="viewBack" alt="背面" />
-          <label class="mini-upload"><input id="backInput" type="file" accept="image/*" />背面画像を追加</label>
-        </article>
-      </div>
-
-      <button id="generateViewsBtn" class="primary wide" disabled>AIで左・右・背面を生成（次段階）</button>
-      <p id="multiHint" class="hint">正面1枚のまま「次へ：3D化」へ進めます。追加画像がある場合だけ登録してください。</p>
-
-      <div class="turntable">
-        <div class="turntable-head">
-          <div>
-            <h3>4方向プレビュー</h3>
-            <p>左右にドラッグすると登録済み画像を切り替えます。</p>
-          </div>
-          <button id="autoRotateBtn" class="ghost small" disabled>自動回転</button>
-        </div>
-        <div id="turntableArea" class="turntable-area">
-          <img id="turntableImg" alt="回転プレビュー" />
-          <span id="turntableLabel">FRONT</span>
-        </div>
-      </div>
-
-      <div class="row between">
-        <button class="ghost back" data-target="extract">戻る</button>
-        <button id="toBuildBtn" class="primary" disabled>次へ：3D化</button>
+        <button id="confirmExtractBtn" class="primary">この画像で3D化へ</button>
       </div>
     </section>
 
     <section class="card stage" id="stage-build">
-      <div class="card-head">
-        <div>
-          <p class="kicker">STEP 4</p>
-          <h2>完全3Dを生成</h2>
-          <p>GPU側のTRELLISで3D再構築します。正面1枚でも生成でき、複数方向があれば追加条件として使います。</p>
-        </div>
-      </div>
+      <p class="kicker">STEP 3</p>
+      <h2>無料ローカル3D生成</h2>
+      <p class="sub">外部の有料APIは使いません。自分のPCでTripoSRを動かします。</p>
 
       <div class="build-box">
         <div class="cube">3D</div>
         <div>
-          <strong id="buildStatus">生成待ち</strong>
-          <p id="buildDetail">正面画像とAI API接続を確認してください。</p>
+          <strong id="buildStatus">PC接続待ち</strong>
+          <p id="buildDetail">下の「PC連携設定」で接続確認してください。</p>
         </div>
       </div>
-      <progress id="buildProgress" max="100" value="0"></progress>
 
+      <progress id="buildProgress" max="100" value="0"></progress>
       <button id="build3dBtn" class="primary wide" disabled>3D生成を開始</button>
 
       <div id="resultBox" class="result-box" hidden>
         <h3>3D生成完了</h3>
-        <p id="resultText"></p>
+        <p>GLB形式で保存できます。</p>
         <div class="row">
           <a id="glbLink" class="primary link-btn" href="#" download>GLBを保存</a>
           <button id="newProjectBtn" class="ghost">新しく作る</button>
@@ -172,30 +107,33 @@
       </div>
 
       <div class="row">
-        <button class="ghost back" data-target="multiview">戻る</button>
+        <button class="ghost back" data-target="extract">戻る</button>
       </div>
     </section>
 
-    <section class="card api-card">
-      <details>
-        <summary>AI API接続設定</summary>
-        <div class="api-inner">
-          <p>バックエンドを接続すると「AI切り抜き → TRELLIS 3D再構築」が有効になります。3方向生成は次段階です。</p>
-          <label>APIベースURL
-            <input id="apiBase" type="url" placeholder="https://example.com/api" />
+    <section class="card connect-card">
+      <details open>
+        <summary>PC連携設定（無料）</summary>
+        <div class="connect-inner">
+          <p><b>外部API料金：0円。</b> 3D生成は自分のPCで処理します。</p>
+          <label>PCのアドレス
+            <input id="localBase" type="url" placeholder="http://192.168.x.x:8000" />
           </label>
           <div class="row">
-            <button id="saveApiBtn" class="ghost">保存</button>
-            <button id="testApiBtn" class="ghost">接続確認</button>
+            <button id="saveLocalBtn" class="ghost">保存</button>
+            <button id="testLocalBtn" class="ghost">接続確認</button>
           </div>
-          <small id="apiStatus">未接続</small>
+          <small id="localStatus">未接続</small>
+          <div id="mixedWarning" class="warning" hidden>
+            GitHub Pages（HTTPS）からPCのHTTPへは接続できない場合があります。生成時はPCサーバーのURLをスマホで直接開いてください。
+          </div>
         </div>
       </details>
     </section>
   </main>
 
   <footer>
-    <span>v2は「画像を曲げる方式」ではなく、TRELLISで実際の3Dメッシュを生成する構成です。</span>
+    <span>外部有料APIなし / TripoSRローカル実行</span>
   </footer>
 
   <script type="module" src="./app.js"></script>

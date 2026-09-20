@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#07101d" />
+  <title>AI 3D Maker Mobile</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.webgpu.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">SMARTPHONE ONLY / NO PAID API</div>
+    <h1>AI 3D Maker <span>Mobile v0.1</span></h1>
+  </header>
+
+  <main>
+    <section class="card hero">
+      <h2>スマホだけで3D化する</h2>
+      <p>外部API・PCは使わず、WebGPUでスマホ内処理する実験版です。</p>
+      <div class="badges">
+        <span>API 0円</span><span>画像アップロードなし</span><span>WebGPU</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">STEP 1</p>
+          <h2>スマホ対応チェック</h2>
+        </div>
+        <span id="gpuBadge" class="status idle">未確認</span>
+      </div>
+      <button id="checkBtn" class="primary wide">WebGPUを確認</button>
+      <div class="info-grid">
+        <div><small>WebGPU</small><strong id="webgpuText">-</strong></div>
+        <div><small>ブラウザ</small><strong id="browserText">-</strong></div>
+        <div><small>端末メモリ</small><strong id="memoryText">-</strong></div>
+        <div><small>GPU上限</small><strong id="limitText">-</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">STEP 2</p>
+          <h2>TripoSRモデル読込みテスト</h2>
+        </div>
+        <span id="modelBadge" class="status idle">未読込</span>
+      </div>
+      <p class="sub">初回だけ約485MBのモデルを読み込みます。成功すれば、スマホ単体3D生成へ進めます。</p>
+      <button id="loadModelBtn" class="primary wide" disabled>モデルを読み込む</button>
+      <progress id="progress" max="100" value="0"></progress>
+      <p id="progressText" class="progress-text">待機中</p>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">STEP 3</p>
+          <h2>画像テスト</h2>
+        </div>
+      </div>
+      <label class="upload">
+        <input id="imageInput" type="file" accept="image/*" />
+        <b>画像を選ぶ</b>
+        <small>モデル読込み成功後に使います</small>
+      </label>
+      <div id="previewWrap" class="preview empty">
+        <img id="preview" alt="入力画像" />
+        <span>画像なし</span>
+      </div>
+      <button id="prepareBtn" class="ghost wide" disabled>512px / 灰背景に前処理</button>
+      <canvas id="prepCanvas" width="512" height="512" hidden></canvas>
+      <div id="prepWrap" class="preview empty">
+        <img id="prepPreview" alt="前処理画像" />
+        <span>前処理後の画像</span>
+      </div>
+    </section>
+
+    <section class="card note">
+      <h3>現在の目的</h3>
+      <p>まず「このスマホで約485MBのTripoSR WebGPUモデルが実際にロードできるか」を確認します。ここが通れば、次に推論 → メッシュ抽出 → GLB保存を追加します。</p>
+    </section>
+  </main>
+
+  <footer>AI 3D Maker Mobile · no paid API</footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

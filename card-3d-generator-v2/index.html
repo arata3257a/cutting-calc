@@ -12,7 +12,7 @@
   <header class="topbar">
     <div>
       <div class="eyebrow">IMAGE → MULTI VIEW → 3D</div>
-      <h1>AI 3D Maker <span>v2.0</span></h1>
+      <h1>AI 3D Maker <span>v2.1</span></h1>
     </div>
     <button id="installBtn" class="ghost small" hidden>アプリ追加</button>
   </header>
@@ -21,7 +21,7 @@
     <nav class="steps" aria-label="進行状況">
       <button class="step active" data-step="upload"><b>1</b><span>正面</span></button>
       <button class="step" data-step="extract"><b>2</b><span>切り抜き</span></button>
-      <button class="step" data-step="multiview"><b>3</b><span>4方向</span></button>
+      <button class="step" data-step="multiview"><b>3</b><span>追加画像</span></button>
       <button class="step" data-step="build"><b>4</b><span>3D化</span></button>
     </nav>
 
@@ -147,7 +147,7 @@
         <div>
           <p class="kicker">STEP 4</p>
           <h2>完全3Dを生成</h2>
-          <p>ここからはGPU側で3D再構築します。フロント画面はすでに接続準備済みです。</p>
+          <p>GPU側のTRELLISで3D再構築します。正面1枚でも生成でき、複数方向があれば追加条件として使います。</p>
         </div>
       </div>
 
@@ -155,7 +155,7 @@
         <div class="cube">3D</div>
         <div>
           <strong id="buildStatus">生成待ち</strong>
-          <p id="buildDetail">4方向画像とAI API接続を確認してください。</p>
+          <p id="buildDetail">正面画像とAI API接続を確認してください。</p>
         </div>
       </div>
       <progress id="buildProgress" max="100" value="0"></progress>
@@ -180,7 +180,7 @@
       <details>
         <summary>AI API接続設定</summary>
         <div class="api-inner">
-          <p>バックエンドを接続すると「AI切り抜き → 3方向生成 → 3D再構築」が有効になります。</p>
+          <p>バックエンドを接続すると「AI切り抜き → TRELLIS 3D再構築」が有効になります。3方向生成は次段階です。</p>
           <label>APIベースURL
             <input id="apiBase" type="url" placeholder="https://example.com/api" />
           </label>
@@ -195,7 +195,7 @@
   </main>
 
   <footer>
-    <span>v2は「画像を曲げる方式」ではなく、多視点から3Dを作る構成です。</span>
+    <span>v2は「画像を曲げる方式」ではなく、TRELLISで実際の3Dメッシュを生成する構成です。</span>
   </footer>
 
   <script type="module" src="./app.js"></script>

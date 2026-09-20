@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est4">
+  <link rel="stylesheet" href="./style.css?v=est5">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.3 / v1.34ベース</small>
+      <small>試作 v0.4 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -135,6 +135,17 @@
             <button id="clearEstimateKindBtn" type="button">指定解除</button>
           </div>
           <div class="estimate-legend"><span class="outer-mark">■ 外形</span><span class="groove-mark">■ 溝</span><span>未指定は自動判定</span></div>
+        </div>
+
+        <div class="estimate-section-title">穴加工の指定</div>
+        <div class="estimate-classify">
+          <div id="estimateHoleSelectionNote" class="field-note">円・穴を選択して、普通の穴かネジ穴かを指定します。</div>
+          <div class="estimate-classify-buttons">
+            <button id="markHoleBtn" type="button">穴に指定</button>
+            <button id="markTapBtn" type="button">ネジ穴に指定</button>
+            <button id="clearEstimateHoleBtn" type="button">指定解除</button>
+          </div>
+          <div class="estimate-legend"><span class="hole-mark">■ 穴</span><span class="tap-mark">■ ネジ穴</span><span>未指定は自動判定</span></div>
         </div>
 
         <div class="row">
@@ -268,7 +279,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est4"></script>
-  <script src="./estimator.js?v=est4"></script>
+  <script src="./app.js?v=est5"></script>
+  <script src="./estimator.js?v=est5"></script>
 </body>
 </html>

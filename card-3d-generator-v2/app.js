@@ -27,7 +27,7 @@ stepEls.forEach(btn => btn.addEventListener("click", () => {
   if(target === "upload") return go(target);
   if(target === "extract" && state.originalUrl) return go(target);
   if(target === "multiview" && state.front) return go(target);
-  if(target === "build" && hasFourViews()) return go(target);
+  if(target === "build" && state.front) return go(target);
 }));
 
 document.querySelectorAll(".back").forEach(btn => btn.addEventListener("click",()=>go(btn.dataset.target)));
@@ -144,7 +144,7 @@ function updateViews(){
   });
   const av=availableViews();
   $("autoRotateBtn").disabled=av.length<2;
-  $("toBuildBtn").disabled=!hasFourViews();
+  $("toBuildBtn").disabled=!state.front;
   showTurntable(av.includes(order[turnIndex]) ? order[turnIndex] : (av[0]||"front"));
 }
 function showTurntable(key){
@@ -216,7 +216,7 @@ function refreshApiUi(){
   const connected=Boolean(state.apiBase);
   $("aiExtractBtn").disabled=!connected||!state.originalUrl;
   $("generateViewsBtn").disabled=!connected||!state.front;
-  $("build3dBtn").disabled=!connected||!hasFourViews();
+  $("build3dBtn").disabled=!connected||!state.front;
   if(!connected) apiStatus.textContent="未接続";
   else if(apiStatus.textContent==="未接続") apiStatus.textContent="URL保存済み（未確認）";
 }
@@ -253,16 +253,16 @@ $("generateViewsBtn").addEventListener("click",async()=>{
   }catch(err){
     $("multiHint").textContent="生成に失敗しました："+err.message;
   }finally{
-    setButtonBusy($("generateViewsBtn"),false,"AIで左・右・背面を生成");
+    setButtonBusy($("generateViewsBtn"),false,"AIで左・右・背面を生成（次段階）");
   }
 });
 
 $("build3dBtn").addEventListener("click",async()=>{
-  if(!state.apiBase||!hasFourViews()) return;
+  if(!state.apiBase||!state.front) return;
   const btn=$("build3dBtn");
   setButtonBusy(btn,true,"3D生成を開始中...");
   $("buildStatus").textContent="送信中";
-  $("buildDetail").textContent="4方向画像を3D再構築サーバーへ送っています。";
+  $("buildDetail").textContent=hasFourViews()?"4方向画像をTRELLISへ送っています。":"正面1枚をTRELLISへ送っています。見えない面はAIが推定します。";
   $("buildProgress").value=3;
   try{
     const data=await postJson("/reconstruct",{

@@ -1,53 +1,44 @@
-# AI 3D Maker v2 Backend
+# AI 3D Maker v2.2 無料ローカル版
 
-GPU側でTRELLISを動かすFastAPIバックエンドです。
+外部の有料3D APIは使いません。
 
-## 役割
-- `GET /health`
-- `POST /extract` : rembgで背景除去
-- `POST /reconstruct` : 正面1枚または複数方向画像から3D生成
-- `GET /jobs/:id` : 進捗取得
-- `GET /models/:file.glb` : 完成GLB
+スマホは操作画面だけを担当し、3D生成は自分のPCで **TripoSR** を実行します。
 
-`POST /multiview` は次段階で接続します。
-TRELLIS自体は正面1枚から直接3D化できるため、v2では先にそこを動かす方針です。
+## 費用
+- 外部API利用料: 0円
+- TripoSR: オープンソース
+- 生成処理: 自分のPC
 
-## TRELLIS
+インターネットは初回セットアップ・モデル取得などに使います。
+
+## TripoSR
 公式:
-https://github.com/microsoft/TRELLIS
+https://github.com/VAST-AI-Research/TripoSR
 
-公式READMEではLinux + NVIDIA GPU 16GB以上が必要です。
-TRELLIS-image-largeを標準ターゲットにしています。
+公式のrun.pyはCUDAが無い場合CPUへフォールバックします。
+GPU利用時の標準設定は単一画像で約6GB VRAMが目安と公式READMEに記載されています。
 
-## セットアップ概略
+## 起動の考え方
 
-1. TRELLIS公式手順で環境を作る
-2. TRELLIS環境内でAPI依存を追加
+1. PCにTripoSRをセットアップ
+2. このbackendをPCで起動
+3. スマホとPCを同じWi-Fiに接続
+4. スマホで `http://PCのIP:8000/` を開く
+5. 画像を選んで3D生成
+6. GLBを保存
 
-```bash
-pip install -r requirements-api.txt
-```
+GitHub Pages版は確認用です。
+実生成時はPCが配信する画面をスマホで直接開く方が、HTTPS/HTTPの制約を避けられます。
 
-3. TRELLISの場所を指定
+## backend API
+- `GET /health`
+- `POST /extract`
+- `POST /reconstruct`
+- `GET /jobs/:id`
+- `GET /models/:file.glb`
 
-```bash
-export TRELLIS_REPO_PATH=/path/to/TRELLIS
-export TRELLIS_MODEL=microsoft/TRELLIS-image-large
-```
-
-4. 起動
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## フロントとの接続
-AI 3D Maker v2の「AI API接続設定」に
-
-```
-https://あなたのGPUサーバー
-```
-
-を入れます。
-
-ローカルPCで試す場合は同一LANやトンネル経由でスマホから到達できるURLが必要です。
+## 環境変数
+- `TRIPOSR_PATH`: TripoSRフォルダー
+- `TRIPOSR_DEVICE`: 既定 `cuda:0`
+- `TRIPOSR_MC_RESOLUTION`: 既定 `192`
+- `PORT`: 既定 `8000`

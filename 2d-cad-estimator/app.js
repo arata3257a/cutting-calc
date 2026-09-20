@@ -2238,6 +2238,7 @@ function exportMime(format){
 
 function exportDescription(format){
   if(format==="json") return "編集データ";
+  if(format==="estimatepdf") return "加工費見積PDF";
   return format==="dxf"?"DXF CADファイル":format==="svg"?"SVG画像ファイル":"PDF図面";
 }
 
@@ -2252,7 +2253,7 @@ function normalizeExportFileName(value,format){
 
 function defaultExportFileName(format){
   const base=safeFileBaseName(drawingMeta.drawingNo || drawingMeta.title || "2d-cad-drawing");
-  return normalizeExportFileName(base,format);
+  return normalizeExportFileName(format==="estimatepdf"?base+"-見積":base,format);
 }
 
 function resetExportLocation(message="未選択"){
@@ -2265,8 +2266,8 @@ function openExportSavePanel(format){
   exportFormat=format;
   resetExportLocation();
   closePdfPreview(false);
-  const label=format==="json"?"編集データ":format.toUpperCase();
-  if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=format==="json"?"編集データを保存":label+"出力";
+  const label=format==="json"?"編集データ":format==="estimatepdf"?"見積PDF":format.toUpperCase();
+  if(qs("fileSaveTitle")) qs("fileSaveTitle").textContent=format==="json"?"編集データを保存":format==="estimatepdf"?"見積PDFを保存":label+"出力";
   if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName(format);
   if(qs("confirmExportBtn")) qs("confirmExportBtn").textContent=format==="pdf"?"プレビュー":"決定";
   qs("fileSavePanel")?.classList.remove("hidden");
@@ -2350,8 +2351,7 @@ function makeJpegPdf(jpegBytes,pixelW,pixelH,pageWpt,pageHpt){
   return new Blob([concatByteArrays(parts)],{type:"application/pdf"});
 }
 
-async function buildPdfBlob(){
-  const svg=buildSVG(true);
+async function buildPdfBlobFromSvg(svg){
   const size=svg.match(/width="([0-9.]+)mm" height="([0-9.]+)mm"/);
   const mmW=size?Number(size[1]):210;
   const mmH=size?Number(size[2]):297;
@@ -2383,6 +2383,10 @@ async function buildPdfBlob(){
   }
 }
 
+async function buildPdfBlob(){
+  return buildPdfBlobFromSvg(buildSVG(true));
+}
+
 async function buildExportBlob(format){
   if(format==="json") return new Blob([JSON.stringify({
     version:VERSION,unit:"mm",shapes,drawingMeta,layerVisibility
@@ -2390,6 +2394,7 @@ async function buildExportBlob(format){
   if(format==="dxf") return new Blob([toDXF()],{type:"application/dxf"});
   if(format==="svg") return new Blob([buildSVG()],{type:"image/svg+xml;charset=utf-8"});
   if(format==="pdf") return await buildPdfBlob();
+  if(format==="estimatepdf" && typeof window.buildEstimatePdfBlob==="function") return await window.buildEstimatePdfBlob();
   throw new Error("unknown export format");
 }
 
@@ -2558,7 +2563,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=est9",{updateViaCache:"none"})
+      .register("./sw.js?v=est10",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

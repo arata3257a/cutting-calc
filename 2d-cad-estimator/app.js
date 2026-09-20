@@ -235,7 +235,11 @@ function drawDimensionText(text,x,y,selected=false,angle=0){
 function drawShape(s,isPreview=false){
   const selected = !isPreview && (s.id===selectedId || selectedIds.has(s.id));
   ctx.save();
-  const estimateStroke=s.estimateKind==="outer"?"#207a45":s.estimateKind==="groove"?"#b36a16":"#111820";
+  const estimateStroke=
+    s.estimateHoleKind==="hole"?"#2468a8":
+    s.estimateHoleKind==="tap"?"#8a3f98":
+    s.estimateKind==="outer"?"#207a45":
+    s.estimateKind==="groove"?"#b36a16":"#111820";
   ctx.strokeStyle = isPreview ? "#7c8792" : selected ? "#0b63ce" : estimateStroke;
   ctx.lineWidth = selected ? 3 : 2;
   if(isPreview) ctx.setLineDash([6,5]);
@@ -2541,7 +2545,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=est4",{updateViaCache:"none"})
+      .register("./sw.js?v=est5",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

@@ -1,10 +1,10 @@
-const CACHE = "easy-2d-cad-estimator-v8";
+const CACHE = "easy-2d-cad-estimator-v9";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=est8",
-  "./app.js?v=est8",
-  "./estimator.js?v=est8",
+  "./style.css?v=est9",
+  "./app.js?v=est9",
+  "./estimator.js?v=est9",
   "./manifest.webmanifest",
   "./icon.svg",
   "./data/drawing.json"

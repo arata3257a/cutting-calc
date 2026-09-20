@@ -6,6 +6,7 @@ on:
     paths:
       - "2d-cad/**"
       - "card-3d-generator/**"
+      - "card-3d-generator-v2/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

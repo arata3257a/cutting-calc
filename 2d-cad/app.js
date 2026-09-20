@@ -398,7 +398,7 @@ function draw(){
   shapes.filter(isShapeVisible).forEach(s=>drawShape(s));
   movePreviewShapes.forEach(s=>drawShape(s,true));
   if(preview) drawShape(preview,true);
-  if(["dimension","copy","mirror","rotate","multi","point"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
+  if(["line","dimension","copy","mirror","rotate","multi","point"].includes(tool) && dimSnapHover) drawDimensionSnapMarker(dimSnapHover);
 }
 
 function shapeFromPoints(a,b,allocateId=true){
@@ -604,7 +604,17 @@ canvas.addEventListener("pointerdown",e=>{
   }
 
   const raw=eventWorld(e);
-  const p=snapPoint(raw);
+  let p=snapPoint(raw);
+  let lineSnap=null;
+  if(tool==="line"){
+    lineSnap=findTransformSnap(raw);
+    if(lineSnap){
+      p={x:lineSnap.x,y:lineSnap.y};
+      dimSnapHover={x:lineSnap.x,y:lineSnap.y};
+    }else{
+      dimSnapHover=null;
+    }
+  }
 
   if(tool==="pan"){
     panDrag={sx:e.clientX,sy:e.clientY,ox:origin.x,oy:origin.y};
@@ -647,7 +657,10 @@ canvas.addEventListener("pointerdown",e=>{
 
   if(!start){
     start=p;
-    hint.textContent="終点をタップしてください";
+    hint.textContent=lineSnap
+      ? lineSnap.kind+"から開始。終点の端点・中点・中心・頂点をタップ"
+      : "終点をタップしてください";
+    draw();
   }else{
     const shape=shapeFromPoints(start,p);
     if(shape){
@@ -655,8 +668,10 @@ canvas.addEventListener("pointerdown",e=>{
       selectedId=shape.id;
       snapshot();
     }
-    start=null;preview=null;
-    hint.textContent="続けて作図できます";
+    start=null;preview=null;dimSnapHover=null;
+    hint.textContent=lineSnap
+      ? lineSnap.kind+"まで線を作成しました"
+      : "続けて作図できます";
     draw();
   }
 });
@@ -689,6 +704,16 @@ canvas.addEventListener("pointermove",e=>{
 
   if(tool==="multi" && moveDrag){
     updateMoveDrag(raw);return;
+  }
+
+  if(tool==="line"){
+    const snap=findTransformSnap(raw);
+    dimSnapHover=snap?{x:snap.x,y:snap.y}:null;
+    if(start){
+      const p=snap?{x:snap.x,y:snap.y}:snapPoint(raw);
+      preview=shapeFromPoints(start,p,false);
+    }
+    draw();return;
   }
 
   if(tool==="point"){
@@ -788,6 +813,9 @@ function setTool(next){
   else if(tool==="pan") hint.textContent="画面をドラッグして移動";
   else if(tool==="parallel" || tool==="point"){
     // 元図形やスナップ点を選ぶまでは入力パネルを出さない
+  }else if(tool==="line"){
+    openQuick(tool);
+    hint.textContent="端点・中点・中心・頂点をつないで作図、または数値入力";
   }else if(tool==="arc"){
     openQuick(tool);
     hint.textContent="中心→始点→終点の順にタップ、または数値入力";
@@ -2540,7 +2568,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=134",{updateViaCache:"none"})
+      .register("./sw.js?v=135",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

@@ -1,41 +1,29 @@
-# AI 3D Maker v2
+# AI 3D Maker v2.2
 
-旧版の「1枚画像を深度で曲げる2.5D方式」をやめ、実際の3Dメッシュ生成へ切り替えた版です。
+完全3Dを目指す無料ローカル版です。
 
-## 現在のv2.1
-- 正面画像アップロード
-- スマホ向け軽量トリミング
-- AI切り抜きAPI接続
-- 正面1枚からTRELLISで3D再構築
-- 左/右/背面画像の任意追加
-- 複数画像がある場合はTRELLISのmulti-image conditioningを使用
-- ジョブ進捗ポーリング
-- GLB結果保存
-- PWA対応
+## 方針
+外部の有料APIは使いません。
 
-## 重要な変更
-4方向画像は必須ではありません。
-TRELLISは1枚画像から直接3D生成できます。
-追加の左右・背面画像がある場合だけmulti-image入力として使います。
+- スマホ: 画像選択・トリミング・操作
+- PC: TripoSRによる3D生成
+- 出力: GLB
 
-## バックエンド
-`backend/main.py` にFastAPI + TRELLIS接続を追加済みです。
+旧版のような「画像を板状に変形する2.5D」ではなく、TripoSRが1枚画像から3Dメッシュを生成します。
 
-- `GET /health`
-- `POST /extract`
-- `POST /reconstruct`
-- `GET /jobs/:id`
-- `GET /models/:file.glb`
+## 現在実装済み
+- 画像アップロード
+- トリミング
+- PC側rembg背景除去
+- PC接続確認
+- TripoSR生成ジョブ
+- 進捗取得
+- GLB保存
+- PWA
 
-`POST /multiview` は次段階で接続します。
+## 重要
+スマホ単体だけで完全3D生成する構成にはしていません。
+処理負荷が大きいため、PCで生成してスマホから操作する方式です。
 
-## GPU
-TRELLIS公式READMEではLinux環境とNVIDIA GPU 16GB以上が必要です。
-
-## 次の開発
-1. GPUサーバーへbackendを実配置
-2. スマホからAPI接続
-3. 実カード画像でTRELLIS生成テスト
-4. 結果に応じて切り抜き改善
-5. 必要なら多視点生成モデル追加
-6. GLB軽量化 / STL / OBJ出力
+## PC側
+`backend/` を参照してください。

@@ -533,3 +533,10 @@ body.estimator-mode #estimateBtn{
 body.estimator-mode #cadCanvas{
   cursor:crosshair;
 }
+
+.estimate-pdf-save{
+  width:100%;
+  margin-top:10px;
+  min-height:44px;
+  font-weight:800;
+}

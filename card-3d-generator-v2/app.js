@@ -243,5 +243,10 @@ $("installBtn").addEventListener("click",async()=>{
 });
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
+if(isGithubPages){
+  $("buildStatus").textContent="GitHub版は確認用";
+  $("buildDetail").textContent="3D生成はPCで start_windows.bat を起動し、PC版の画面から行ってください。";
+  $("localStatus").textContent="GitHub Pages単体では3D生成できません";
+}
 refreshButtons();
 go("upload");

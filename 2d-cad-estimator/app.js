@@ -2418,7 +2418,7 @@ function closePdfPreview(showSavePanel=false){
 }
 
 async function showPdfPreview(){
-  if(exportFormat!=="pdf") return;
+  if(exportFormat!=="pdf" && exportFormat!=="estimatepdf") return;
 
   const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
   if(qs("exportFileName")) qs("exportFileName").value=fileName;
@@ -2427,11 +2427,17 @@ async function showPdfPreview(){
   if(btn){btn.disabled=true;btn.textContent="作成中…"}
   try{
     closePdfPreview(false);
-    const previewSvg=buildSVG(true);
+    const previewSvg=exportFormat==="estimatepdf"
+      ? (typeof window.buildEstimatePdfSvg==="function" ? window.buildEstimatePdfSvg() : "")
+      : buildSVG(true);
+    if(!previewSvg) throw new Error("estimate preview unavailable");
     pdfPreviewUrl=URL.createObjectURL(new Blob([previewSvg],{type:"image/svg+xml;charset=utf-8"}));
     if(qs("pdfPreviewImage")) qs("pdfPreviewImage").src=pdfPreviewUrl;
+    if(qs("pdfPreviewTitle")) qs("pdfPreviewTitle").textContent=exportFormat==="estimatepdf"?"見積PDFプレビュー":"PDFプレビュー";
+    if(qs("savePdfPreviewBtn")) qs("savePdfPreviewBtn").textContent="保存確定";
     qs("fileSavePanel")?.classList.add("hidden");
     qs("pdfPreviewPanel")?.classList.remove("hidden");
+    hint.textContent=exportFormat==="estimatepdf"?"見積PDFを確認して「保存確定」を押してください":"PDFを確認して「保存確定」を押してください";
   }catch(err){
     alert("PDFプレビューを作成できませんでした。");
   }finally{
@@ -2440,12 +2446,20 @@ async function showPdfPreview(){
 }
 
 async function handleExportDecision(){
-  if(exportFormat==="pdf"){
+  if(exportFormat==="pdf" || exportFormat==="estimatepdf"){
     await showPdfPreview();
     return;
   }
   await confirmExportSave();
 }
+
+window.openEstimatePdfPreview=async function(){
+  exportFormat="estimatepdf";
+  resetExportLocation();
+  if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName("estimatepdf");
+  qs("fileSavePanel")?.classList.add("hidden");
+  await showPdfPreview();
+};
 
 async function confirmExportSave(){
   if(!exportFormat) return;
@@ -2457,7 +2471,8 @@ async function confirmExportSave(){
     if(!chosen) return;
   }
 
-  const btn=qs("confirmExportBtn");
+  const previewOpen=!qs("pdfPreviewPanel")?.classList.contains("hidden");
+  const btn=previewOpen?qs("savePdfPreviewBtn"):qs("confirmExportBtn");
   if(btn){btn.disabled=true;btn.textContent="保存中…"}
   try{
     const blob=await buildExportBlob(exportFormat);
@@ -2477,11 +2492,14 @@ async function confirmExportSave(){
 
     qs("fileSavePanel")?.classList.add("hidden");
     closePdfPreview(false);
-    hint.textContent=exportFormat==="json"?"編集データを保存しました":exportFormat.toUpperCase()+"を保存しました";
+    hint.textContent=exportFormat==="json"?"編集データを保存しました":exportFormat==="estimatepdf"?"見積PDFを保存しました":exportFormat.toUpperCase()+"を保存しました";
   }catch(err){
     alert("保存できませんでした。もう一度お試しください。");
   }finally{
-    if(btn){btn.disabled=false;btn.textContent="決定"}
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=previewOpen?"保存確定":"決定";
+    }
   }
 }
 
@@ -2495,8 +2513,13 @@ qs("closeFileSaveBtn").addEventListener("click",()=>{
   qs("fileSavePanel").classList.add("hidden");
   closePdfPreview(false);
 });
-qs("backPdfPreviewBtn").addEventListener("click",()=>closePdfPreview(true));
-qs("closePdfPreviewBtn").addEventListener("click",()=>closePdfPreview(true));
+function backFromPdfPreview(){
+  const isEstimate=exportFormat==="estimatepdf";
+  closePdfPreview(!isEstimate);
+  if(isEstimate && typeof window.reopenEstimatePanel==="function") window.reopenEstimatePanel();
+}
+qs("backPdfPreviewBtn").addEventListener("click",backFromPdfPreview);
+qs("closePdfPreviewBtn").addEventListener("click",backFromPdfPreview);
 qs("savePdfPreviewBtn").addEventListener("click",confirmExportSave);
 
 qs("dxfBtn").addEventListener("click",()=>{
@@ -2563,7 +2586,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=est10",{updateViaCache:"none"})
+      .register("./sw.js?v=est11",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

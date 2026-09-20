@@ -471,3 +471,30 @@ main{
 @media(max-width:520px){
   .estimate-panel{width:calc(100% - 76px);max-height:72%}
 }
+
+.estimate-classify{
+  margin:4px 0 10px;
+}
+.estimate-classify-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:6px;
+  margin-top:7px;
+}
+.estimate-classify-buttons button{
+  min-height:42px;
+  padding:7px 5px;
+  font-size:12px;
+}
+#markOuterBtn{border-color:#7bb98e;background:#eef9f1;color:#185c34}
+#markGrooveBtn{border-color:#d7ab72;background:#fff7ec;color:#8a4d0b}
+.estimate-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 12px;
+  margin-top:7px;
+  font-size:10px;
+  color:#66717d;
+}
+.outer-mark{color:#207a45}
+.groove-mark{color:#b36a16}

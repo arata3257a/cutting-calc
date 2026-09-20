@@ -1,0 +1,19 @@
+{
+  "name": "2D CAD 加工費見積版",
+  "short_name": "CAD見積",
+  "description": "図面から加工量を自動認識して概算加工費を計算する2D CAD試作版",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

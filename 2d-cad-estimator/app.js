@@ -609,6 +609,15 @@ canvas.addEventListener("pointerdown",e=>{
   }
 
   const raw=eventWorld(e);
+
+  // 見積モード中はCAD編集ではなく、見積対象の選択だけを行う。
+  if(window.estimatorSelectionActive===true){
+    if(typeof window.handleEstimatorCanvasTap==="function"){
+      window.handleEstimatorCanvasTap(raw,e);
+    }
+    return;
+  }
+
   const p=snapPoint(raw);
 
   if(tool==="pan"){
@@ -766,6 +775,10 @@ canvas.addEventListener("pointercancel",e=>{
 });
 
 function setTool(next){
+  if(window.estimatorSelectionActive===true){
+    hint.textContent="見積モード中です。図形をタップして加工種類を指定してください";
+    return;
+  }
   cancelMoveDrag();
   tool=next;start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;dimSnapHover=null;panDrag=null;
   quickCreatedId=null;
@@ -2545,7 +2558,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=est5",{updateViaCache:"none"})
+      .register("./sw.js?v=est6",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

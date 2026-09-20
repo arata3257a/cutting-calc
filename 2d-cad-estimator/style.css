@@ -503,3 +503,22 @@ main{
 #markTapBtn{border-color:#bb8bc4;background:#fbf2fd;color:#73337e}
 .hole-mark{color:#2468a8}
 .tap-mark{color:#8a3f98}
+
+body.estimator-mode .draw-toolbar .tool,
+body.estimator-mode .edit-toolbar .tool:not(#estimateBtn){
+  pointer-events:none;
+  opacity:.30;
+  filter:grayscale(.7);
+}
+body.estimator-mode #estimateBtn{
+  pointer-events:auto;
+  opacity:1;
+  filter:none;
+  background:#dcefe3;
+  border-color:#4f9a68;
+  color:#155b31;
+  outline:3px solid rgba(79,154,104,.24);
+}
+body.estimator-mode #cadCanvas{
+  cursor:crosshair;
+}

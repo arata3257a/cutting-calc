@@ -84,12 +84,103 @@ function estTapMatch(d,tolerance){
   }
   return best;
 }
+function estShapeLength(s){
+  if(s.type==="line") return Math.hypot((Number(s.x2)||0)-(Number(s.x1)||0),(Number(s.y2)||0)-(Number(s.y1)||0));
+  if(s.type==="arc") return estArcEdge(s).length;
+  if(s.type==="rect") return estRectPerimeter(s);
+  if(s.type==="slot") return estSlotPerimeter(s);
+  if(s.type==="circle") return Math.PI*Math.abs(Number(s.r)||0)*2;
+  return 0;
+}
+
+function estShapeEndpoints(s){
+  if(s.type==="line") return [
+    {x:Number(s.x1)||0,y:Number(s.y1)||0},
+    {x:Number(s.x2)||0,y:Number(s.y2)||0}
+  ];
+  if(s.type==="arc"){
+    const a=estArcEdge(s);
+    return [a.p1,a.p2];
+  }
+  return [];
+}
+
+function estConnectedShapeIds(seedIds,tol=.05){
+  const lineShapes=shapes.filter(s=>isShapeVisible(s)&&["line","arc"].includes(s.type));
+  const byId=new Map(lineShapes.map(s=>[s.id,s]));
+  const selected=new Set([...seedIds].filter(id=>byId.has(id)));
+  if(!selected.size) return selected;
+  const near=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<=tol;
+  const queue=[...selected];
+  while(queue.length){
+    const id=queue.shift(),base=byId.get(id);
+    if(!base)continue;
+    const ep=estShapeEndpoints(base);
+    for(const other of lineShapes){
+      if(selected.has(other.id))continue;
+      const op=estShapeEndpoints(other);
+      if(ep.some(a=>op.some(b=>near(a,b)))){
+        selected.add(other.id);
+        queue.push(other.id);
+      }
+    }
+  }
+  return selected;
+}
+
+function estimatorSelectedIds(){
+  const ids=new Set(selectedIds||[]);
+  if(selectedId!==null&&selectedId!==undefined) ids.add(selectedId);
+  return ids;
+}
+
+function updateEstimateSelectionNote(){
+  const note=qs("estimateSelectionNote");
+  if(!note)return;
+  const ids=estimatorSelectedIds();
+  if(!ids.size){
+    note.textContent="図形を選択して、外形加工か溝加工かを指定します。線・円弧は、つながった輪郭をまとめて指定します。";
+    return;
+  }
+  const targets=shapes.filter(s=>ids.has(s.id));
+  const kinds=new Set(targets.map(s=>s.estimateKind||"auto"));
+  const label=kinds.size===1?(kinds.has("outer")?"外形":kinds.has("groove")?"溝":"未指定"):"混在";
+  note.textContent="選択中: "+targets.length+"要素 / 現在の指定: "+label;
+}
+
+function markEstimateKind(kind){
+  const ids=estimatorSelectedIds();
+  if(!ids.size){
+    hint.textContent="先に図形を選択してください";
+    updateEstimateSelectionNote();
+    return;
+  }
+  const connected=estConnectedShapeIds(ids);
+  const targetIds=connected.size?new Set([...ids,...connected]):ids;
+  let count=0;
+  for(const s of shapes){
+    if(!targetIds.has(s.id))continue;
+    if(!["line","arc","rect","circle","slot"].includes(s.type))continue;
+    if(kind) s.estimateKind=kind; else delete s.estimateKind;
+    count++;
+  }
+  if(!count){
+    hint.textContent="外形・溝として指定できる図形を選択してください";
+    return;
+  }
+  snapshot();
+  draw();
+  updateEstimateSelectionNote();
+  scanDrawingForEstimate();
+  hint.textContent=kind==="outer"?"外形加工に指定しました":kind==="groove"?"溝加工に指定しました":"加工指定を解除しました";
+}
+
 function scanDrawingForEstimate(){
   const holeMaxD=Math.max(.1,estNum("estHoleMaxD",30));
   const tapTolerance=Math.max(0,estNum("estTapTolerance",.12));
   const visible=shapes.filter(isShapeVisible);
-  let holeCount=0,tapCount=0,grooveLength=0;
-  const tapBreakdown={},closedLoops=[],networkEdges=[],genericCircleGroups=new Map();
+  let holeCount=0,tapCount=0,manualOuterLength=0,manualGrooveLength=0,autoGrooveLength=0;
+  const tapBreakdown={},autoClosedLoops=[],autoNetworkEdges=[],genericCircleGroups=new Map();
   const centerTol=.05,centerKey=s=>Math.round(s.cx/centerTol)+","+Math.round(s.cy/centerTol);
 
   for(const s of visible){
@@ -100,19 +191,33 @@ function scanDrawingForEstimate(){
       }else holeCount++;
       continue;
     }
+
+    if(s.estimateKind==="outer"){
+      manualOuterLength+=estShapeLength(s);
+      continue;
+    }
+    if(s.estimateKind==="groove"){
+      manualGrooveLength+=estShapeLength(s);
+      continue;
+    }
+
     if(s.type==="circle"){
       const k=centerKey(s);
       if(!genericCircleGroups.has(k))genericCircleGroups.set(k,[]);
       genericCircleGroups.get(k).push(s);
       continue;
     }
-    if(s.type==="rect"){closedLoops.push(estRectPerimeter(s));continue}
-    if(s.type==="slot"){grooveLength+=estSlotPerimeter(s);continue}
+    if(s.type==="rect"){autoClosedLoops.push(estRectPerimeter(s));continue}
+    if(s.type==="slot"){autoGrooveLength+=estSlotPerimeter(s);continue}
     if(s.type==="line"){
-      networkEdges.push({p1:{x:Number(s.x1)||0,y:Number(s.y1)||0},p2:{x:Number(s.x2)||0,y:Number(s.y2)||0},length:Math.hypot((Number(s.x2)||0)-(Number(s.x1)||0),(Number(s.y2)||0)-(Number(s.y1)||0))});
+      autoNetworkEdges.push({
+        p1:{x:Number(s.x1)||0,y:Number(s.y1)||0},
+        p2:{x:Number(s.x2)||0,y:Number(s.y2)||0},
+        length:estShapeLength(s)
+      });
       continue;
     }
-    if(s.type==="arc"){networkEdges.push(estArcEdge(s));continue}
+    if(s.type==="arc"){autoNetworkEdges.push(estArcEdge(s));continue}
   }
 
   for(const group of genericCircleGroups.values()){
@@ -120,22 +225,34 @@ function scanDrawingForEstimate(){
     if(minD<=holeMaxD){
       const tap=estTapMatch(minD,tapTolerance);
       if(tap){tapCount++;tapBreakdown[tap]=(tapBreakdown[tap]||0)+1}else holeCount++;
-    }else for(const d of ds)closedLoops.push(Math.PI*d);
+    }else{
+      for(const d of ds)autoClosedLoops.push(Math.PI*d);
+    }
   }
 
-  const net=estNetwork(networkEdges);
-  closedLoops.push(...net.closedLengths.filter(v=>v>EPS));
-  grooveLength+=net.openLength;
-  closedLoops.sort((a,b)=>b-a);
-  const outerLength=closedLoops.length?closedLoops[0]:0;
-  if(closedLoops.length>1)grooveLength+=closedLoops.slice(1).reduce((a,b)=>a+b,0);
+  const net=estNetwork(autoNetworkEdges);
+  autoClosedLoops.push(...net.closedLengths.filter(v=>v>EPS));
+  autoGrooveLength+=net.openLength;
+  autoClosedLoops.sort((a,b)=>b-a);
+
+  const autoOuterLength=autoClosedLoops.length?autoClosedLoops[0]:0;
+  if(autoClosedLoops.length>1) autoGrooveLength+=autoClosedLoops.slice(1).reduce((a,b)=>a+b,0);
+
+  const outerLength=manualOuterLength+autoOuterLength;
+  const grooveLength=manualGrooveLength+autoGrooveLength;
 
   qs("estHoleCount").value=String(holeCount);
   qs("estTapCount").value=String(tapCount);
   qs("estOuterLength").value=round(outerLength,1);
   qs("estGrooveLength").value=round(grooveLength,1);
+
   const taps=Object.entries(tapBreakdown).map(([k,v])=>k+"×"+v).join(" / ");
-  qs("estimateDetectNote").textContent="表示中の図形を自動集計。"+(taps?" タップ候補: "+taps+"。":"")+" 数値は手動修正できます。";
+  const manualCount=visible.filter(s=>s.estimateKind==="outer"||s.estimateKind==="groove").length;
+  qs("estimateDetectNote").textContent=
+    "指定済み "+manualCount+"要素を優先。未指定のみ自動判定。"+
+    (taps?" タップ候補: "+taps+"。":"")+
+    " 数値は手動修正できます。";
+  updateEstimateSelectionNote();
   calculateEstimate();
 }
 function calculateEstimate(){
@@ -179,6 +296,7 @@ function openEstimatePanel(){
   qs("estimatePanel")?.classList.remove("hidden");
   qs("estimateBtn")?.classList.add("active");
   scanDrawingForEstimate();
+  updateEstimateSelectionNote();
   enableDirectNumberEntry(qs("estimatePanel"));
 }
 qs("estimateBtn")?.addEventListener("click",()=>{
@@ -186,6 +304,9 @@ qs("estimateBtn")?.addEventListener("click",()=>{
   if(open)closeEstimatePanel();else openEstimatePanel();
 });
 qs("closeEstimateBtn")?.addEventListener("click",closeEstimatePanel);
+qs("markOuterBtn")?.addEventListener("click",()=>markEstimateKind("outer"));
+qs("markGrooveBtn")?.addEventListener("click",()=>markEstimateKind("groove"));
+qs("clearEstimateKindBtn")?.addEventListener("click",()=>markEstimateKind(null));
 qs("scanEstimateBtn")?.addEventListener("click",scanDrawingForEstimate);
 qs("saveEstimateSettingsBtn")?.addEventListener("click",saveEstimatorSettings);
 for(const id of [...EST_SETTING_IDS,...EST_VALUE_IDS])qs(id)?.addEventListener("input",calculateEstimate);

@@ -498,3 +498,8 @@ main{
 }
 .outer-mark{color:#207a45}
 .groove-mark{color:#b36a16}
+
+#markHoleBtn{border-color:#80acd3;background:#eef6fd;color:#1f5f96}
+#markTapBtn{border-color:#bb8bc4;background:#fbf2fd;color:#73337e}
+.hole-mark{color:#2468a8}
+.tap-mark{color:#8a3f98}

@@ -23,6 +23,8 @@ let sourceUrl = null;
 let deferredPrompt = null;
 let scene, camera, renderer, controls, relief;
 let lastStrength = .75;
+let renderQueued = false;
+let depthEstimatorCache = null;
 
 function setStatus(text, value = null) {
   statusText.textContent = text;
@@ -34,14 +36,14 @@ function initThree() {
   camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
   camera.position.set(0, 0.15, 3.1);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+  const mobile = matchMedia('(max-width: 800px)').matches;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1 : 1.35));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   viewer.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = .07;
+  controls.enableDamping = false;
   controls.minDistance = 1.2;
   controls.maxDistance = 7;
 
@@ -51,12 +53,8 @@ function initThree() {
   key.position.set(2.5, 3.5, 4);
   scene.add(key);
 
-  const rim = new THREE.DirectionalLight(0x78d7ff, 1.8);
-  rim.position.set(-3, 1, -2);
-  scene.add(rim);
-
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(1.15, 64),
+    new THREE.CircleGeometry(1.15, 24),
     new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: .72, metalness: .1, transparent: true, opacity: .72 })
   );
   ground.rotation.x = -Math.PI / 2;
@@ -68,21 +66,29 @@ function initThree() {
     camera.aspect = rect.width / Math.max(1, rect.height);
     camera.updateProjectionMatrix();
     renderer.setSize(rect.width, rect.height, false);
+    requestRender();
   };
   new ResizeObserver(resize).observe(viewer);
   resize();
 
-  (function loop(){
-    requestAnimationFrame(loop);
-    controls.update();
+  controls.addEventListener('change', requestRender);
+  requestRender();
+}
+
+function requestRender(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(()=>{
+    renderQueued = false;
     renderer.render(scene, camera);
-  })();
+  });
 }
 
 function resetView(){
   camera.position.set(0, .15, 3.1);
   controls.target.set(0, 0, 0);
   controls.update();
+  requestRender();
 }
 
 async function fileToImage(file) {
@@ -113,7 +119,7 @@ function drawImageFit(img, w, h, gray = false) {
   return c;
 }
 
-function createRelief(textureImage, depthCanvas, strength = .75, segments = 160) {
+function createRelief(textureImage, depthCanvas, strength = .75, segments = 64) {
   if (relief) {
     scene.remove(relief);
     relief.geometry.dispose();
@@ -142,7 +148,8 @@ function createRelief(textureImage, depthCanvas, strength = .75, segments = 160)
   pos.needsUpdate = true;
   geometry.computeVertexNormals();
 
-  const texCanvas = drawImageFit(textureImage, 1024, Math.max(256, Math.round(1024/aspect)));
+  const maxTex = matchMedia('(max-width: 800px)').matches ? 512 : 768;
+  const texCanvas = drawImageFit(textureImage, maxTex, Math.max(192, Math.round(maxTex/aspect)));
   const texture = new THREE.CanvasTexture(texCanvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -165,6 +172,7 @@ function createRelief(textureImage, depthCanvas, strength = .75, segments = 160)
   savePngBtn.disabled = false;
   saveGlbBtn.disabled = false;
   resetView();
+  requestRender();
 }
 
 async function quickRelief(){
@@ -199,21 +207,24 @@ async function aiRelief(){
   aiBtn.disabled = true; quickBtn.disabled = true;
 
   try {
-    setStatus('AIモデル読込み中（初回は時間がかかります）', 10);
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-    env.allowLocalModels = false;
-
-    const depthEstimator = await pipeline('depth-estimation', 'Xenova/dpt-hybrid-midas', {
-      progress_callback: p => {
-        if (p && typeof p.progress === 'number') {
-          setStatus('AIモデル読込み中', Math.min(55, 10 + p.progress*.45));
+    setStatus('AIモデル準備中（スマホでは重い処理です）', 10);
+    if(!depthEstimatorCache){
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      env.allowLocalModels = false;
+      depthEstimatorCache = await pipeline('depth-estimation', 'Xenova/dpt-hybrid-midas', {
+        progress_callback: p => {
+          if (p && typeof p.progress === 'number') {
+            setStatus('AIモデル読込み中', Math.min(55, 10 + p.progress*.45));
+          }
         }
-      }
-    });
+      });
+    }
 
     const {img, url} = await fileToImage(sourceFile);
+    const aiCanvas = drawImageFit(img, 384, 384, false);
+    const aiInput = aiCanvas.toDataURL('image/jpeg', .82);
     setStatus('AIで奥行きを解析中', 62);
-    const result = await depthEstimator(url);
+    const result = await depthEstimatorCache(aiInput);
     setStatus('深度マップ変換中', 78);
 
     const size = Number(meshSize.value);
@@ -257,7 +268,7 @@ async function aiRelief(){
   } catch (e) {
     console.error(e);
     setStatus('AI深度に失敗：簡易立体化は使用できます', 0);
-    alert('AI深度処理を完了できませんでした。端末や通信環境によってはモデル読込みに失敗する場合があります。「すぐ立体化」は利用できます。');
+    alert('AI高精度処理を完了できませんでした。通常は「軽量で立体化」を使ってください。');
   } finally {
     aiBtn.disabled = !sourceFile;
     quickBtn.disabled = !sourceFile;
@@ -323,6 +334,7 @@ depthStrength.addEventListener('input', () => {
   depthOut.value = val.toFixed(2);
   if(relief){
     relief.scale.z = val / Math.max(.001,lastStrength);
+    requestRender();
   }
 });
 

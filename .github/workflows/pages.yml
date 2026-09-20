@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "2d-cad/**"
+      - "2d-cad-estimator/**"
       - "card-3d-generator/**"
       - "card-3d-generator-v2/**"
       - "card-3d-generator-mobile/**"

@@ -435,9 +435,12 @@ main{
   outline:3px solid rgba(57,131,75,.25)!important;
 }
 .estimate-panel{
+  top:auto;
+  bottom:84px;
   width:min(390px,calc(100% - 84px));
-  max-height:calc(100% - 16px);
+  max-height:52%;
   overflow:auto;
+  overscroll-behavior:contain;
 }
 .estimate-section-title{
   margin:12px 0 7px;
@@ -469,7 +472,15 @@ main{
 .estimate-cost strong{font-size:20px}
 .estimate-warning{margin-top:8px;font-size:10px;line-height:1.45;color:#68737e}
 @media(max-width:520px){
-  .estimate-panel{width:calc(100% - 76px);max-height:72%}
+  .estimate-panel{
+    top:auto;
+    bottom:74px;
+    right:66px;
+    width:calc(100% - 72px);
+    max-height:45%;
+    overflow:auto;
+    border-radius:14px 14px 10px 10px;
+  }
 }
 
 .estimate-classify{

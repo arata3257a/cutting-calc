@@ -463,6 +463,7 @@ function buildEstimatePdfSvg(){
 </svg>`;
 }
 
+window.buildEstimatePdfSvg=buildEstimatePdfSvg;
 window.buildEstimatePdfBlob=async function(){
   return await buildPdfBlobFromSvg(buildEstimatePdfSvg());
 };
@@ -470,8 +471,18 @@ window.buildEstimatePdfBlob=async function(){
 async function saveEstimatePdf(){
   saveEstimatorSettings(true);
   calculateEstimate();
-  closeEstimatePanel();
-  openExportSavePanel("estimatepdf");
+  const btn=qs("saveEstimatePdfBtn");
+  if(btn){btn.disabled=true;btn.textContent="プレビュー作成中…"}
+  try{
+    closeEstimatePanel();
+    if(typeof window.openEstimatePdfPreview!=="function") throw new Error("preview handler unavailable");
+    await window.openEstimatePdfPreview();
+  }catch(err){
+    alert("見積PDFのプレビューを開けませんでした。");
+    openEstimatePanel();
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="図形＋金額をPDF保存"}
+  }
 }
 
 function closeEstimatePanel(){
@@ -490,6 +501,8 @@ function openEstimatePanel(){
   enableDirectNumberEntry(qs("estimatePanel"));
   hint.textContent="見積モード：図形をタップして外形・溝・穴・ネジ穴を指定";
 }
+window.reopenEstimatePanel=openEstimatePanel;
+
 qs("estimateBtn")?.addEventListener("click",()=>{
   const open=!qs("estimatePanel")?.classList.contains("hidden");
   if(open)closeEstimatePanel();else openEstimatePanel();

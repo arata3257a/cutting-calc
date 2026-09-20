@@ -1,4 +1,4 @@
-const CACHE='ai-3d-maker-v0.1';
+const CACHE='ai-3d-maker-v0.2';
 const CORE=['./','./index.html','./style.css','./app.js','./manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));

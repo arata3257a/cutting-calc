@@ -2225,6 +2225,8 @@ let exportFormat="";
 let exportDirectoryHandle=null;
 let exportFileHandle=null;
 let pdfPreviewUrl="";
+let pdfPreviewOpenedAt=0;
+let pdfPreviewUnlockTimer=null;
 
 function exportExtension(format){
   if(format==="json") return ".json";
@@ -2407,6 +2409,11 @@ function downloadBlob(name,blob){
 }
 
 function closePdfPreview(showSavePanel=false){
+  if(pdfPreviewUnlockTimer){
+    clearTimeout(pdfPreviewUnlockTimer);
+    pdfPreviewUnlockTimer=null;
+  }
+  pdfPreviewOpenedAt=0;
   if(pdfPreviewUrl){
     URL.revokeObjectURL(pdfPreviewUrl);
     pdfPreviewUrl="";
@@ -2434,10 +2441,24 @@ async function showPdfPreview(){
     pdfPreviewUrl=URL.createObjectURL(new Blob([previewSvg],{type:"image/svg+xml;charset=utf-8"}));
     if(qs("pdfPreviewImage")) qs("pdfPreviewImage").src=pdfPreviewUrl;
     if(qs("pdfPreviewTitle")) qs("pdfPreviewTitle").textContent=exportFormat==="estimatepdf"?"見積PDFプレビュー":"PDFプレビュー";
-    if(qs("savePdfPreviewBtn")) qs("savePdfPreviewBtn").textContent="保存確定";
+    const previewSaveBtn=qs("savePdfPreviewBtn");
+    if(previewSaveBtn){
+      previewSaveBtn.textContent="内容を確認してください";
+      previewSaveBtn.disabled=true;
+    }
     qs("fileSavePanel")?.classList.add("hidden");
     qs("pdfPreviewPanel")?.classList.remove("hidden");
-    hint.textContent=exportFormat==="estimatepdf"?"見積PDFを確認して「保存確定」を押してください":"PDFを確認して「保存確定」を押してください";
+    pdfPreviewOpenedAt=Date.now();
+    if(pdfPreviewUnlockTimer) clearTimeout(pdfPreviewUnlockTimer);
+    pdfPreviewUnlockTimer=setTimeout(()=>{
+      pdfPreviewUnlockTimer=null;
+      const b=qs("savePdfPreviewBtn");
+      if(b){
+        b.disabled=false;
+        b.textContent="保存確定";
+      }
+    },700);
+    hint.textContent=exportFormat==="estimatepdf"?"見積PDFを確認してから「保存確定」を押してください":"PDFを確認してから「保存確定」を押してください";
   }catch(err){
     alert("PDFプレビューを作成できませんでした。");
   }finally{
@@ -2455,14 +2476,18 @@ async function handleExportDecision(){
 
 window.openEstimatePdfPreview=async function(){
   exportFormat="estimatepdf";
-  resetExportLocation();
+  resetExportLocation("未選択");
   if(qs("exportFileName")) qs("exportFileName").value=defaultExportFileName("estimatepdf");
   qs("fileSavePanel")?.classList.add("hidden");
+  closePdfPreview(false);
   await showPdfPreview();
 };
 
 async function confirmExportSave(){
   if(!exportFormat) return;
+  if((exportFormat==="pdf" || exportFormat==="estimatepdf") && pdfPreviewOpenedAt && Date.now()-pdfPreviewOpenedAt<650){
+    return;
+  }
   const fileName=normalizeExportFileName(qs("exportFileName")?.value,exportFormat);
   if(qs("exportFileName")) qs("exportFileName").value=fileName;
 
@@ -2586,7 +2611,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=est11",{updateViaCache:"none"})
+      .register("./sw.js?v=est12",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

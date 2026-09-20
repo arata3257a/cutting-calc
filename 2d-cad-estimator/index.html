@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est3">
+  <link rel="stylesheet" href="./style.css?v=est4">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.2 / v1.34ベース</small>
+      <small>試作 v0.3 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -124,6 +124,17 @@
           <div class="field"><label for="estHoleMaxD">穴判定 最大径（mm）</label><input id="estHoleMaxD" type="number" value="30" min="0.1" step="1"></div>
           <div class="field"><label for="estTapTolerance">タップ下穴公差（±mm）</label><input id="estTapTolerance" type="number" value="0.12" min="0" step="0.01"></div>
           <div class="field-note">穴・ネジ穴・外形は素材厚み、溝加工は掘込み深さで加工時間を補正します。10mmを1.0倍の目安として計算します。</div>
+        </div>
+
+        <div class="estimate-section-title">線加工の指定</div>
+        <div class="estimate-classify">
+          <div id="estimateSelectionNote" class="field-note">図形を選択して、外形加工か溝加工かを指定します。</div>
+          <div class="estimate-classify-buttons">
+            <button id="markOuterBtn" type="button">外形に指定</button>
+            <button id="markGrooveBtn" type="button">溝に指定</button>
+            <button id="clearEstimateKindBtn" type="button">指定解除</button>
+          </div>
+          <div class="estimate-legend"><span class="outer-mark">■ 外形</span><span class="groove-mark">■ 溝</span><span>未指定は自動判定</span></div>
         </div>
 
         <div class="row">
@@ -257,7 +268,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est3"></script>
-  <script src="./estimator.js?v=est3"></script>
+  <script src="./app.js?v=est4"></script>
+  <script src="./estimator.js?v=est4"></script>
 </body>
 </html>

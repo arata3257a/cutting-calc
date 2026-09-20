@@ -1,12 +1,12 @@
 import base64
 import io
 import os
+import shutil
+import subprocess
 import sys
 import threading
-import traceback
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,16 +14,19 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
 
-APP_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = APP_DIR / "outputs"
+BACKEND_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BACKEND_DIR.parent
+OUTPUT_DIR = BACKEND_DIR / "outputs"
+WORK_DIR = BACKEND_DIR / "work"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-TRELLIS_REPO_PATH = os.getenv("TRELLIS_REPO_PATH", "")
-TRELLIS_MODEL = os.getenv("TRELLIS_MODEL", "microsoft/TRELLIS-image-large")
-if TRELLIS_REPO_PATH:
-    sys.path.insert(0, TRELLIS_REPO_PATH)
+TRIPOSR_PATH = Path(os.getenv("TRIPOSR_PATH", str(BACKEND_DIR / "TripoSR"))).resolve()
+TRIPOSR_RUN = TRIPOSR_PATH / "run.py"
+MC_RESOLUTION = int(os.getenv("TRIPOSR_MC_RESOLUTION", "192"))
+DEVICE = os.getenv("TRIPOSR_DEVICE", "cuda:0")
 
-app = FastAPI(title="AI 3D Maker v2 API", version="0.1.0")
+app = FastAPI(title="AI 3D Maker Local", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,35 +34,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/models", StaticFiles(directory=str(OUTPUT_DIR)), name="models")
 
 jobs = {}
 jobs_lock = threading.Lock()
 gpu_lock = threading.Lock()
-_pipeline = None
 
 
 class ImageBody(BaseModel):
     image: str
 
 
-class MultiViewBody(BaseModel):
-    front: str
-
-
 class ReconstructBody(BaseModel):
     front: str
-    left: Optional[str] = None
-    right: Optional[str] = None
-    back: Optional[str] = None
-    seed: int = 1
-    simplify: float = 0.95
-    texture_size: int = 1024
 
 
 def decode_data_image(data: str) -> Image.Image:
-    if not data:
-        raise ValueError("image is empty")
     if "," in data and data.lstrip().startswith("data:"):
         data = data.split(",", 1)[1]
     raw = base64.b64decode(data)
@@ -69,46 +58,25 @@ def decode_data_image(data: str) -> Image.Image:
 def encode_png(img: Image.Image) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-    return "data:image/png;base64," + b64
-
-
-def get_pipeline():
-    global _pipeline
-    if _pipeline is not None:
-        return _pipeline
-
-    try:
-        import torch
-        from trellis.pipelines import TrellisImageTo3DPipeline
-    except Exception as exc:
-        raise RuntimeError(
-            "TRELLIS is not installed. Set TRELLIS_REPO_PATH and install the official TRELLIS environment."
-        ) from exc
-
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU was not detected.")
-
-    pipeline = TrellisImageTo3DPipeline.from_pretrained(TRELLIS_MODEL)
-    pipeline.cuda()
-    _pipeline = pipeline
-    return _pipeline
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 @app.get("/health")
 def health():
-    gpu = False
+    ready = TRIPOSR_RUN.exists()
+    cuda = False
     try:
         import torch
-        gpu = bool(torch.cuda.is_available())
+        cuda = bool(torch.cuda.is_available())
     except Exception:
         pass
     return {
         "ok": True,
-        "backend": "trellis",
-        "model": TRELLIS_MODEL,
-        "cuda": gpu,
-        "trellisRepoPath": TRELLIS_REPO_PATH or None,
+        "ready": ready,
+        "engine": "TripoSR",
+        "cuda": cuda,
+        "device": DEVICE if cuda else "cpu",
+        "tripoSRPath": str(TRIPOSR_PATH),
     }
 
 
@@ -125,7 +93,7 @@ def extract(body: ImageBody):
         except Exception as exc:
             raise HTTPException(
                 status_code=501,
-                detail="rembg is not installed on the backend."
+                detail="rembgが未インストールです。setup_localを実行してください。"
             ) from exc
 
         output_bytes = remove(input_bytes)
@@ -137,37 +105,26 @@ def extract(body: ImageBody):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/multiview")
-def multiview(_: MultiViewBody):
-    raise HTTPException(
-        status_code=501,
-        detail="Multi-view image generation is not connected yet. "
-               "TRELLIS can generate 3D directly from one image, or accept manually supplied multiple views."
-    )
-
-
 @app.post("/reconstruct")
 def reconstruct(body: ReconstructBody, request: Request):
     if not body.front:
-        raise HTTPException(status_code=400, detail="front image is required")
+        raise HTTPException(status_code=400, detail="正面画像が必要です")
+    if not TRIPOSR_RUN.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=f"TripoSRが見つかりません: {TRIPOSR_PATH}"
+        )
 
     job_id = uuid.uuid4().hex
     public_base = str(request.base_url).rstrip("/")
-
     with jobs_lock:
-        jobs[job_id] = {
-            "status": "queued",
-            "progress": 1,
-            "resultUrl": None,
-            "error": None,
-        }
+        jobs[job_id] = {"status": "queued", "progress": 1, "resultUrl": None, "error": None}
 
-    thread = threading.Thread(
-        target=run_reconstruct_job,
-        args=(job_id, body, public_base),
+    threading.Thread(
+        target=run_job,
+        args=(job_id, body.front, public_base),
         daemon=True,
-    )
-    thread.start()
+    ).start()
     return {"jobId": job_id}
 
 
@@ -186,75 +143,64 @@ def update_job(job_id: str, **changes):
             jobs[job_id].update(changes)
 
 
-def run_reconstruct_job(job_id: str, body: ReconstructBody, public_base: str):
+def run_job(job_id: str, image_data: str, public_base: str):
+    job_dir = WORK_DIR / job_id
     try:
-        update_job(job_id, status="running", progress=5)
+        job_dir.mkdir(parents=True, exist_ok=True)
+        input_path = job_dir / "input.png"
+        decode_data_image(image_data).save(input_path)
+        update_job(job_id, status="running", progress=10)
 
-        images = []
-        for value in [body.front, body.right, body.back, body.left]:
-            if value:
-                images.append(decode_data_image(value))
-
-        update_job(job_id, progress=15)
+        out_dir = job_dir / "output"
+        out_dir.mkdir(parents=True, exist_ok=True)
 
         with gpu_lock:
-            pipeline = get_pipeline()
-            update_job(job_id, progress=25)
-
-            kwargs = {
-                "seed": int(body.seed),
-                "sparse_structure_sampler_params": {
-                    "steps": 12,
-                    "cfg_strength": 7.5,
-                },
-                "slat_sampler_params": {
-                    "steps": 12,
-                    "cfg_strength": 3.0,
-                },
-            }
-
-            if len(images) >= 2:
-                outputs = pipeline.run_multi_image(images, **kwargs)
-            else:
-                outputs = pipeline.run(images[0], **kwargs)
-
-            update_job(job_id, progress=78)
-
-            from trellis.utils import postprocessing_utils
-            glb = postprocessing_utils.to_glb(
-                outputs["gaussian"][0],
-                outputs["mesh"][0],
-                simplify=float(body.simplify),
-                texture_size=int(body.texture_size),
-                verbose=False,
+            update_job(job_id, progress=20)
+            cmd = [
+                sys.executable,
+                str(TRIPOSR_RUN),
+                str(input_path),
+                "--output-dir", str(out_dir),
+                "--model-save-format", "glb",
+                "--mc-resolution", str(MC_RESOLUTION),
+                "--device", DEVICE,
+            ]
+            env = os.environ.copy()
+            result = subprocess.run(
+                cmd,
+                cwd=str(TRIPOSR_PATH),
+                env=env,
+                capture_output=True,
+                text=True,
             )
+            if result.returncode != 0:
+                tail = (result.stderr or result.stdout or "")[-3000:]
+                raise RuntimeError(tail or f"TripoSR exited with {result.returncode}")
 
-            filename = f"{job_id}.glb"
-            out_path = OUTPUT_DIR / filename
-            glb.export(str(out_path))
+        update_job(job_id, progress=90)
+        generated = out_dir / "0" / "mesh.glb"
+        if not generated.exists():
+            raise RuntimeError("mesh.glbが生成されませんでした")
 
-            try:
-                import torch
-                torch.cuda.empty_cache()
-            except Exception:
-                pass
+        final_name = f"{job_id}.glb"
+        final_path = OUTPUT_DIR / final_name
+        shutil.copy2(generated, final_path)
 
-        result_url = f"{public_base}/models/{filename}"
         update_job(
             job_id,
             status="completed",
             progress=100,
-            resultUrl=result_url,
+            resultUrl=f"{public_base}/models/{final_name}",
         )
-
     except Exception as exc:
-        traceback.print_exc()
-        update_job(
-            job_id,
-            status="failed",
-            progress=0,
-            error=str(exc),
-        )
+        update_job(job_id, status="failed", progress=0, error=str(exc))
+    finally:
+        if os.getenv("KEEP_TRIPOSR_WORK", "0") != "1":
+            shutil.rmtree(job_dir, ignore_errors=True)
+
+
+app.mount("/models", StaticFiles(directory=str(OUTPUT_DIR)), name="models")
+app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
 
 
 if __name__ == "__main__":

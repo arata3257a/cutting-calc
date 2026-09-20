@@ -12,13 +12,13 @@
   <title>2D CAD 加工費見積版</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=est1">
+  <link rel="stylesheet" href="./style.css?v=est2">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD 加工費見積版</strong>
-      <small>試作 v0.1 / v1.34ベース</small>
+      <small>試作 v0.2 / v1.34ベース</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -111,7 +111,7 @@
         <div class="fields">
           <div class="field"><label for="estHourlyRate">時間単価（円/h）</label><input id="estHourlyRate" type="number" value="6000" min="0" step="100"></div>
           <div class="field"><label for="estThickness">素材厚み（mm）</label><input id="estThickness" type="number" value="10" min="0.1" step="0.1"></div>
-          <div class="field"><label for="estRefThickness">基準厚み（mm）</label><input id="estRefThickness" type="number" value="10" min="0.1" step="0.1"></div>
+          <div class="field"><label for="estCutDepth">掘込み深さ（mm）</label><input id="estCutDepth" type="number" value="5" min="0" step="0.1"></div>
           <div class="field"><label for="estSetupMin">段取り時間（分）</label><input id="estSetupMin" type="number" value="15" min="0" step="1"></div>
         </div>
 
@@ -123,7 +123,7 @@
           <div class="field"><label for="estGrooveSpeed">溝速度（mm/min）</label><input id="estGrooveSpeed" type="number" value="100" min="1" step="5"></div>
           <div class="field"><label for="estHoleMaxD">穴判定 最大径（mm）</label><input id="estHoleMaxD" type="number" value="30" min="0.1" step="1"></div>
           <div class="field"><label for="estTapTolerance">タップ下穴公差（±mm）</label><input id="estTapTolerance" type="number" value="0.12" min="0" step="0.01"></div>
-          <div class="field-note">基準厚みを1.0倍として、素材厚みに比例して加工時間を補正します。</div>
+          <div class="field-note">穴・ネジ穴・外形は素材厚み、溝加工は掘込み深さで加工時間を補正します。10mmを1.0倍の目安として計算します。</div>
         </div>
 
         <div class="row">
@@ -141,7 +141,8 @@
         </div>
 
         <div class="estimate-result">
-          <div><span>厚み補正</span><strong id="estThicknessFactor">×1.00</strong></div>
+          <div><span>素材厚み補正</span><strong id="estThicknessFactor">×1.00</strong></div>
+          <div><span>掘込み補正</span><strong id="estCutDepthFactor">×0.50</strong></div>
           <div><span>穴加工</span><strong id="estHoleTime">0.0分</strong></div>
           <div><span>ネジ穴</span><strong id="estTapTime">0.0分</strong></div>
           <div><span>外形加工</span><strong id="estOuterTime">0.0分</strong></div>
@@ -256,7 +257,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=est1"></script>
-  <script src="./estimator.js?v=est1"></script>
+  <script src="./app.js?v=est2"></script>
+  <script src="./estimator.js?v=est2"></script>
 </body>
 </html>

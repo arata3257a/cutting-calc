@@ -161,7 +161,10 @@ function markEstimateKind(kind){
   for(const s of shapes){
     if(!targetIds.has(s.id))continue;
     if(!["line","arc","rect","circle","slot"].includes(s.type))continue;
-    if(kind) s.estimateKind=kind; else delete s.estimateKind;
+    if(kind){
+      s.estimateKind=kind;
+      delete s.estimateHoleKind;
+    }else delete s.estimateKind;
     count++;
   }
   if(!count){
@@ -175,6 +178,67 @@ function markEstimateKind(kind){
   hint.textContent=kind==="outer"?"外形加工に指定しました":kind==="groove"?"溝加工に指定しました":"加工指定を解除しました";
 }
 
+
+function estSameCenterHoleIds(seedIds,tol=.05){
+  const result=new Set();
+  const seeds=shapes.filter(s=>seedIds.has(s.id)&&["circle","hole"].includes(s.type));
+  for(const seed of seeds){
+    result.add(seed.id);
+    const sx=Number(seed.cx)||0,sy=Number(seed.cy)||0;
+    for(const s of shapes){
+      if(!["circle","hole"].includes(s.type))continue;
+      const dx=(Number(s.cx)||0)-sx,dy=(Number(s.cy)||0)-sy;
+      if(Math.hypot(dx,dy)<=tol) result.add(s.id);
+    }
+  }
+  return result;
+}
+
+function updateEstimateHoleSelectionNote(){
+  const note=qs("estimateHoleSelectionNote");
+  if(!note)return;
+  const ids=estimatorSelectedIds();
+  const targets=shapes.filter(s=>ids.has(s.id)&&["circle","hole"].includes(s.type));
+  if(!targets.length){
+    note.textContent="円・穴を選択して、普通の穴かネジ穴かを指定します。同じ中心の円はまとめて扱います。";
+    return;
+  }
+  const kinds=new Set(targets.map(s=>s.estimateHoleKind||"auto"));
+  const label=kinds.size===1?(kinds.has("hole")?"穴":kinds.has("tap")?"ネジ穴":"未指定"):"混在";
+  note.textContent="選択中: "+targets.length+"要素 / 現在の指定: "+label;
+}
+
+function markEstimateHoleKind(kind){
+  const ids=estimatorSelectedIds();
+  if(!ids.size){
+    hint.textContent="先に円または穴を選択してください";
+    updateEstimateHoleSelectionNote();
+    return;
+  }
+  const targetIds=estSameCenterHoleIds(ids);
+  let count=0;
+  for(const s of shapes){
+    if(!targetIds.has(s.id))continue;
+    if(!["circle","hole"].includes(s.type))continue;
+    if(kind){
+      s.estimateHoleKind=kind;
+      delete s.estimateKind;
+    }else{
+      delete s.estimateHoleKind;
+    }
+    count++;
+  }
+  if(!count){
+    hint.textContent="穴として指定できる円・穴を選択してください";
+    return;
+  }
+  snapshot();
+  draw();
+  updateEstimateHoleSelectionNote();
+  scanDrawingForEstimate();
+  hint.textContent=kind==="hole"?"普通の穴に指定しました":kind==="tap"?"ネジ穴に指定しました":"穴指定を解除しました";
+}
+
 function scanDrawingForEstimate(){
   const holeMaxD=Math.max(.1,estNum("estHoleMaxD",30));
   const tapTolerance=Math.max(0,estNum("estTapTolerance",.12));
@@ -185,6 +249,14 @@ function scanDrawingForEstimate(){
 
   for(const s of visible){
     if(s.type==="hole"){
+      if(s.estimateHoleKind==="tap"){
+        tapCount++;tapBreakdown["指定ネジ穴"]=(tapBreakdown["指定ネジ穴"]||0)+1;
+        continue;
+      }
+      if(s.estimateHoleKind==="hole"){
+        holeCount++;
+        continue;
+      }
       const kind=String(s.holeKind||"through");
       if(kind!=="through"&&kind!=="counterbore"&&kind!=="countersink"){
         tapCount++;tapBreakdown[kind]=(tapBreakdown[kind]||0)+1;
@@ -221,6 +293,16 @@ function scanDrawingForEstimate(){
   }
 
   for(const group of genericCircleGroups.values()){
+    const manualHoleKind=group.map(s=>s.estimateHoleKind).find(v=>v==="hole"||v==="tap");
+    if(manualHoleKind==="hole"){
+      holeCount++;
+      continue;
+    }
+    if(manualHoleKind==="tap"){
+      tapCount++;
+      tapBreakdown["指定ネジ穴"]=(tapBreakdown["指定ネジ穴"]||0)+1;
+      continue;
+    }
     const ds=group.map(s=>Math.abs(Number(s.r)||0)*2).sort((a,b)=>a-b),minD=ds[0]||0;
     if(minD<=holeMaxD){
       const tap=estTapMatch(minD,tapTolerance);
@@ -247,12 +329,13 @@ function scanDrawingForEstimate(){
   qs("estGrooveLength").value=round(grooveLength,1);
 
   const taps=Object.entries(tapBreakdown).map(([k,v])=>k+"×"+v).join(" / ");
-  const manualCount=visible.filter(s=>s.estimateKind==="outer"||s.estimateKind==="groove").length;
+  const manualCount=visible.filter(s=>s.estimateKind==="outer"||s.estimateKind==="groove"||s.estimateHoleKind==="hole"||s.estimateHoleKind==="tap").length;
   qs("estimateDetectNote").textContent=
     "指定済み "+manualCount+"要素を優先。未指定のみ自動判定。"+
     (taps?" タップ候補: "+taps+"。":"")+
     " 数値は手動修正できます。";
   updateEstimateSelectionNote();
+  updateEstimateHoleSelectionNote();
   calculateEstimate();
 }
 function calculateEstimate(){
@@ -297,6 +380,7 @@ function openEstimatePanel(){
   qs("estimateBtn")?.classList.add("active");
   scanDrawingForEstimate();
   updateEstimateSelectionNote();
+  updateEstimateHoleSelectionNote();
   enableDirectNumberEntry(qs("estimatePanel"));
 }
 qs("estimateBtn")?.addEventListener("click",()=>{
@@ -307,6 +391,9 @@ qs("closeEstimateBtn")?.addEventListener("click",closeEstimatePanel);
 qs("markOuterBtn")?.addEventListener("click",()=>markEstimateKind("outer"));
 qs("markGrooveBtn")?.addEventListener("click",()=>markEstimateKind("groove"));
 qs("clearEstimateKindBtn")?.addEventListener("click",()=>markEstimateKind(null));
+qs("markHoleBtn")?.addEventListener("click",()=>markEstimateHoleKind("hole"));
+qs("markTapBtn")?.addEventListener("click",()=>markEstimateHoleKind("tap"));
+qs("clearEstimateHoleBtn")?.addEventListener("click",()=>markEstimateHoleKind(null));
 qs("scanEstimateBtn")?.addEventListener("click",scanDrawingForEstimate);
 qs("saveEstimateSettingsBtn")?.addEventListener("click",saveEstimatorSettings);
 for(const id of [...EST_SETTING_IDS,...EST_VALUE_IDS])qs(id)?.addEventListener("input",calculateEstimate);

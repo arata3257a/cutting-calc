@@ -1,7 +1,7 @@
 const ESTIMATOR_SETTINGS_KEY="easy-2d-cad-estimator-settings-v1";
 const EST_TAP_DRILLS={M3:2.5,M4:3.3,M5:4.2,M6:5.0,M8:6.8,M10:8.5,M12:10.2};
 const EST_SETTING_IDS=[
-  "estHourlyRate","estThickness","estRefThickness","estSetupMin",
+  "estHourlyRate","estThickness","estCutDepth","estSetupMin",
   "estHoleMin","estTapMin","estOuterSpeed","estGrooveSpeed","estHoleMaxD","estTapTolerance"
 ];
 const EST_VALUE_IDS=["estHoleCount","estTapCount","estOuterLength","estGrooveLength"];
@@ -11,7 +11,7 @@ function estNum(id,fallback=0){
   return Number.isFinite(v)?v:fallback;
 }
 function loadEstimatorSettings(){
-  const defaults={estHourlyRate:6000,estThickness:10,estRefThickness:10,estSetupMin:15,estHoleMin:.6,estTapMin:1.5,estOuterSpeed:120,estGrooveSpeed:100,estHoleMaxD:30,estTapTolerance:.12};
+  const defaults={estHourlyRate:6000,estThickness:10,estCutDepth:5,estSetupMin:15,estHoleMin:.6,estTapMin:1.5,estOuterSpeed:120,estGrooveSpeed:100,estHoleMaxD:30,estTapTolerance:.12};
   let saved={};
   try{saved=JSON.parse(localStorage.getItem(ESTIMATOR_SETTINGS_KEY))||{}}catch{}
   for(const id of EST_SETTING_IDS) if(qs(id)) qs(id).value=(id in saved?saved[id]:defaults[id]);
@@ -139,15 +139,27 @@ function scanDrawingForEstimate(){
   calculateEstimate();
 }
 function calculateEstimate(){
-  const hourly=Math.max(0,estNum("estHourlyRate")),thickness=Math.max(.01,estNum("estThickness",10)),ref=Math.max(.01,estNum("estRefThickness",10));
-  const factor=thickness/ref,setup=Math.max(0,estNum("estSetupMin")),holes=Math.max(0,estNum("estHoleCount")),taps=Math.max(0,estNum("estTapCount"));
-  const outer=Math.max(0,estNum("estOuterLength")),groove=Math.max(0,estNum("estGrooveLength"));
-  const holeTime=holes*Math.max(0,estNum("estHoleMin"))*factor;
-  const tapTime=taps*Math.max(0,estNum("estTapMin"))*factor;
-  const outerTime=outer/Math.max(.01,estNum("estOuterSpeed",1))*factor;
-  const grooveTime=groove/Math.max(.01,estNum("estGrooveSpeed",1))*factor;
-  const total=setup+holeTime+tapTime+outerTime+grooveTime,cost=Math.round(total/60*hourly);
-  qs("estThicknessFactor").textContent="×"+factor.toFixed(2);
+  const hourly=Math.max(0,estNum("estHourlyRate"));
+  const thickness=Math.max(.01,estNum("estThickness",10));
+  const cutDepth=Math.max(0,estNum("estCutDepth",5));
+  const thicknessFactor=thickness/10;
+  const cutDepthFactor=cutDepth/10;
+  const setup=Math.max(0,estNum("estSetupMin"));
+  const holes=Math.max(0,estNum("estHoleCount"));
+  const taps=Math.max(0,estNum("estTapCount"));
+  const outer=Math.max(0,estNum("estOuterLength"));
+  const groove=Math.max(0,estNum("estGrooveLength"));
+
+  // 穴・ネジ穴・外形は素材厚み、溝は実際の掘込み深さで補正する。
+  const holeTime=holes*Math.max(0,estNum("estHoleMin"))*thicknessFactor;
+  const tapTime=taps*Math.max(0,estNum("estTapMin"))*thicknessFactor;
+  const outerTime=outer/Math.max(.01,estNum("estOuterSpeed",1))*thicknessFactor;
+  const grooveTime=groove/Math.max(.01,estNum("estGrooveSpeed",1))*cutDepthFactor;
+  const total=setup+holeTime+tapTime+outerTime+grooveTime;
+  const cost=Math.round(total/60*hourly);
+
+  qs("estThicknessFactor").textContent="×"+thicknessFactor.toFixed(2);
+  qs("estCutDepthFactor").textContent="×"+cutDepthFactor.toFixed(2);
   qs("estHoleTime").textContent=holeTime.toFixed(1)+"分";
   qs("estTapTime").textContent=tapTime.toFixed(1)+"分";
   qs("estOuterTime").textContent=outerTime.toFixed(1)+"分";

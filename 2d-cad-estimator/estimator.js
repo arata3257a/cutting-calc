@@ -368,20 +368,70 @@ function calculateEstimate(){
   qs("estTotalTime").textContent=total.toFixed(1)+"分";
   qs("estCost").textContent="¥"+cost.toLocaleString("ja-JP");
 }
+function estimatorEligibleShape(s){
+  return !!s && ["line","arc","rect","circle","hole","slot"].includes(s.type);
+}
+
+window.handleEstimatorCanvasTap=function(p){
+  if(window.estimatorSelectionActive!==true)return;
+  const s=hitTest(p,estimatorEligibleShape);
+  closeProperty();
+  quickPanel?.classList.add("hidden");
+  selectedId=null;
+
+  if(!s){
+    selectedIds.clear();
+    hint.textContent="見積対象を選択してください";
+  }else{
+    if(selectedIds.has(s.id)) selectedIds.delete(s.id);
+    else selectedIds.add(s.id);
+    hint.textContent=selectedIds.size
+      ?"見積対象を選択中: "+selectedIds.size+"要素"
+      :"見積対象を選択してください";
+  }
+
+  updateEstimateSelectionNote();
+  updateEstimateHoleSelectionNote();
+  draw();
+};
+
+function enterEstimatorSelectionMode(){
+  window.estimatorSelectionActive=true;
+  document.body.classList.add("estimator-mode");
+  start=null;preview=null;drag=null;opState=null;arcDraft=null;dimDraft=null;dimSnapHover=null;
+  cancelMoveDrag();
+  closeProperty();
+  quickPanel?.classList.add("hidden");
+  qs("layerPanel")?.classList.add("hidden");
+  qs("dimensionModeDock")?.classList.add("hidden");
+  selectedId=null;
+  selectedIds.clear();
+  draw();
+}
+
+function exitEstimatorSelectionMode(){
+  window.estimatorSelectionActive=false;
+  document.body.classList.remove("estimator-mode");
+  selectedId=null;
+  selectedIds.clear();
+  draw();
+}
+
 function closeEstimatePanel(){
   qs("estimatePanel")?.classList.add("hidden");
   qs("estimateBtn")?.classList.remove("active");
+  exitEstimatorSelectionMode();
+  hint.textContent=tool==="select"?"図形をタップして選択できます":"操作を続けられます";
 }
 function openEstimatePanel(){
-  qs("layerPanel")?.classList.add("hidden");
-  closeProperty();
-  quickPanel?.classList.add("hidden");
+  enterEstimatorSelectionMode();
   qs("estimatePanel")?.classList.remove("hidden");
   qs("estimateBtn")?.classList.add("active");
   scanDrawingForEstimate();
   updateEstimateSelectionNote();
   updateEstimateHoleSelectionNote();
   enableDirectNumberEntry(qs("estimatePanel"));
+  hint.textContent="見積モード：図形をタップして外形・溝・穴・ネジ穴を指定";
 }
 qs("estimateBtn")?.addEventListener("click",()=>{
   const open=!qs("estimatePanel")?.classList.contains("hidden");
@@ -397,8 +447,6 @@ qs("clearEstimateHoleBtn")?.addEventListener("click",()=>markEstimateHoleKind(nu
 qs("scanEstimateBtn")?.addEventListener("click",scanDrawingForEstimate);
 qs("saveEstimateSettingsBtn")?.addEventListener("click",saveEstimatorSettings);
 for(const id of [...EST_SETTING_IDS,...EST_VALUE_IDS])qs(id)?.addEventListener("input",calculateEstimate);
-document.querySelectorAll(".tool[data-tool]").forEach(btn=>btn.addEventListener("click",closeEstimatePanel));
-qs("layerBtn")?.addEventListener("click",closeEstimatePanel);
-qs("sheetBtn")?.addEventListener("click",closeEstimatePanel);
+ qs("sheetBtn")?.addEventListener("click",closeEstimatePanel);
 loadEstimatorSettings();
 calculateEstimate();

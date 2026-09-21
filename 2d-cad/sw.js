@@ -1,11 +1,11 @@
-const CACHE = "easy-2d-cad-v141";
+const CACHE = "easy-2d-cad-v142";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=141",
-  "./app.js?v=141",
-  "./handwriting-ai.js?v=141",
-  "./handwriting.js?v=141",
+  "./style.css?v=142",
+  "./app.js?v=142",
+  "./handwriting-ai.js?v=142",
+  "./handwriting.js?v=142",
   "./manifest.webmanifest",
   "./icon.svg",
   "./data/drawing.json"

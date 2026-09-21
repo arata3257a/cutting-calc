@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=141">
+  <link rel="stylesheet" href="./style.css?v=142">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.41 / mm</small>
+      <small>v1.42 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -254,6 +254,24 @@
             黄色の欄は未認識または要確認です。数値を直すとプレビューも更新されます。
           </div>
 
+          <button id="handAssistBtn" class="wide hand-assist-open" type="button">写真をタップして補正</button>
+
+          <div id="handAssistArea" class="hand-assist-area hidden">
+            <div class="hand-section-title">④ 写真から補正</div>
+            <div id="handAssistHint" class="hand-assist-hint">補正する項目を選んでください。</div>
+            <div class="hand-assist-tools">
+              <button type="button" data-hand-assist="outline">外形を指定</button>
+              <button type="button" data-hand-assist="width">幅寸法を読む</button>
+              <button type="button" data-hand-assist="height">高さ寸法を読む</button>
+              <button type="button" data-hand-assist="hole">穴を追加</button>
+            </div>
+            <canvas id="handAssistCanvas"></canvas>
+            <div class="hand-assist-bottom">
+              <button id="handAssistClearBtn" type="button">補正をやり直す</button>
+              <button id="handAssistDoneBtn" class="primary" type="button">補正を閉じる</button>
+            </div>
+          </div>
+
           <div class="hand-save-actions">
             <button id="handApplyBtn" type="button">CADで編集</button>
             <button id="handPdfBtn" class="primary" type="button">PDF保存</button>
@@ -264,8 +282,8 @@
     </section>
   </main>
 
-  <script src="./app.js?v=141"></script>
-  <script type="module" src="./handwriting-ai.js?v=141"></script>
-  <script src="./handwriting.js?v=141"></script>
+  <script src="./app.js?v=142"></script>
+  <script type="module" src="./handwriting-ai.js?v=142"></script>
+  <script src="./handwriting.js?v=142"></script>
 </body>
 </html>

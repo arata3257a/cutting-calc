@@ -30,7 +30,7 @@
 
   function setBusy(on){
     state.working=on;
-    const ids=["handCameraBtn","handRecognizeBtn","handApplyBtn","handPdfBtn","handDxfBtn"];
+    const ids=["handCameraBtn","handGalleryBtn","handRecognizeBtn","handApplyBtn","handPdfBtn","handDxfBtn"];
     ids.forEach(id=>{const el=$(id); if(el) el.disabled=!!on;});
   }
 
@@ -48,6 +48,15 @@
   function triggerCamera(){
     if(state.working) return;
     const input=$("handCameraInput");
+    if(input){
+      input.value="";
+      input.click();
+    }
+  }
+
+  function triggerGallery(){
+    if(state.working) return;
+    const input=$("handGalleryInput");
     if(input){
       input.value="";
       input.click();
@@ -855,8 +864,9 @@
   $("handDrawBtn")?.addEventListener("click",openPanel);
   $("closeHandDrawBtn")?.addEventListener("click",closePanel);
   $("handCameraBtn")?.addEventListener("click",triggerCamera);
-  $("handRetakeBtn")?.addEventListener("click",triggerCamera);
+  $("handGalleryBtn")?.addEventListener("click",triggerGallery);
   $("handCameraInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
+  $("handGalleryInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handRecognizeBtn")?.addEventListener("click",recognize);
   $("handApplyBtn")?.addEventListener("click",()=>applyToCad(false));
   $("handPdfBtn")?.addEventListener("click",()=>exportAfterReview("pdf"));

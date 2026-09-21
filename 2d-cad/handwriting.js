@@ -3,6 +3,9 @@
   "use strict";
 
   const $ = id => document.getElementById(id);
+  let ocrWorkerPromise=null;
+  let engineWarmupPromise=null;
+
   const state = {
     imageReady:false,
     working:false,
@@ -58,7 +61,7 @@
     const img=$("handPhotoPreview");
     img.onload=()=>{
       try{
-        const maxSide=1600;
+        const maxSide=1000;
         const ratio=Math.min(1,maxSide/Math.max(img.naturalWidth||1,img.naturalHeight||1));
         const w=Math.max(1,Math.round(img.naturalWidth*ratio));
         const h=Math.max(1,Math.round(img.naturalHeight*ratio));
@@ -72,7 +75,12 @@
         state.width=null;state.height=null;state.holes=[];
         $("handPhotoArea")?.classList.remove("hidden");
         $("handReviewArea")?.classList.add("hidden");
-        setStatus("撮影画像を確認してください。問題なければ「この写真を読み取る」。","ok");
+        setStatus("撮影画像を確認してください。認識エンジンを準備しています…");
+        warmupEngines().then(()=>{
+          if(state.imageReady && !state.working) setStatus("準備完了。「この写真を読み取る」を押してください。","ok");
+        }).catch(()=>{
+          if(state.imageReady && !state.working) setStatus("準備に時間がかかっています。読み取りを押すと続行します。","warn");
+        });
       }finally{
         URL.revokeObjectURL(url);
       }
@@ -123,6 +131,43 @@
     }
     if(!window.Tesseract?.createWorker) throw new Error("文字認識を起動できません");
     return window.Tesseract;
+  }
+
+  function timeout(promise,ms,label){
+    return Promise.race([
+      promise,
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error(label||"処理がタイムアウトしました")),ms))
+    ]);
+  }
+
+  async function getOcrWorker(){
+    if(ocrWorkerPromise) return ocrWorkerPromise;
+    ocrWorkerPromise=(async()=>{
+      const T=await getTesseract();
+      const worker=await T.createWorker("eng",1,{
+        logger:m=>{
+          if(m.status==="loading tesseract core") setStatus("文字認識エンジンを準備中…");
+          else if(m.status==="loading language traineddata") setStatus("文字データを読み込み中…");
+          else if(m.status==="initializing api") setStatus("文字認識を初期化中…");
+        }
+      });
+      await worker.setParameters({
+        tessedit_pageseg_mode:"11",
+        preserve_interword_spaces:"1",
+        tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØø"
+      });
+      return worker;
+    })().catch(err=>{ocrWorkerPromise=null;throw err;});
+    return ocrWorkerPromise;
+  }
+
+  function warmupEngines(){
+    if(engineWarmupPromise) return engineWarmupPromise;
+    engineWarmupPromise=Promise.allSettled([
+      timeout(getOpenCV(),15000,"図形認識の準備に時間がかかっています"),
+      timeout(getOcrWorker(),15000,"文字認識の準備に時間がかかっています")
+    ]);
+    return engineWarmupPromise;
   }
 
   function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
@@ -264,6 +309,29 @@
     return {rect:bestRect,circles:circleCandidates};
   }
 
+  function detectGeometryFallback(){
+    const canvas=$("handSourceCanvas");
+    const W=canvas.width,H=canvas.height;
+    const x=canvas.getContext("2d",{willReadFrequently:true});
+    const data=x.getImageData(0,0,W,H).data;
+    const row=new Uint32Array(H),col=new Uint32Array(W);
+    for(let y=0;y<H;y++){
+      for(let xx=0;xx<W;xx++){
+        const i=(y*W+xx)*4;
+        const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+        if(gray<150){row[y]++;col[xx]++;}
+      }
+    }
+    const rowThresh=Math.max(10,W*.06),colThresh=Math.max(10,H*.06);
+    const ys=[],xs=[];
+    for(let y=Math.round(H*.12);y<Math.round(H*.88);y++) if(row[y]>rowThresh) ys.push(y);
+    for(let xx=Math.round(W*.12);xx<Math.round(W*.88);xx++) if(col[xx]>colThresh) xs.push(xx);
+    if(xs.length<2||ys.length<2) return {rect:null,circles:[]};
+    const left=xs[0],right=xs[xs.length-1],top=ys[0],bottom=ys[ys.length-1];
+    if(right-left<W*.15||bottom-top<H*.10) return {rect:null,circles:[]};
+    return {rect:{x:left,y:top,w:right-left,h:bottom-top,source:"fast"},circles:[]};
+  }
+
   function normalizeWordText(text){
     return String(text||"")
       .replace(/[，,]/g,".")
@@ -322,44 +390,49 @@
   }
 
   async function recognizeWords(){
-    const T=await getTesseract();
     const source=$("handSourceCanvas");
+    const worker=await timeout(getOcrWorker(),18000,"文字認識エンジンの準備に時間がかかっています");
     let lastPct=-1;
-    const worker=await T.createWorker("eng",1,{
-      logger:m=>{
-        if(m.status==="recognizing text" && Number.isFinite(m.progress)){
-          const pct=Math.round(m.progress*100);
-          if(pct!==lastPct){
-            lastPct=pct;
-            setStatus("寸法文字を認識中… "+pct+"%");
-          }
-        }
-      }
-    });
-    try{
-      await worker.setParameters({
-        tessedit_pageseg_mode:"11",
-        preserve_interword_spaces:"1",
-        tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØø"
-      });
-      const first=await worker.recognize(source);
-      let words=(first.data.words||[]).map(w=>({...w,rotation:0}));
-      let raw=first.data.text||"";
+    setStatus("寸法文字を認識中…");
+    const first=await timeout(worker.recognize(source,{
+      rotateAuto:false
+    },{
+      text:true,
+      blocks:true
+    }),18000,"文字認識に時間がかかりすぎています。もう一度撮影してください。");
 
-      const rotated=rotatedCanvas90(source);
-      setStatus("縦向きの寸法も確認しています…");
-      const second=await worker.recognize(rotated);
-      const rw=(second.data.words||[]).map(w=>({
-        ...w,
-        bbox:mapRotatedBox(w.bbox||w.boundingBox,source.width,source.height),
-        rotation:90
-      }));
-      words=words.concat(rw);
-      raw += "\n--- 縦向き確認 ---\n"+(second.data.text||"");
-      return {words,raw};
-    }finally{
-      await worker.terminate();
+    const words=(first.data.words||[]).map(w=>({...w,rotation:0}));
+    const raw=first.data.text||"";
+    const numericCount=words.filter(w=>/\d/.test(String(w.text||""))).length;
+    if(numericCount<2){
+      setStatus("文字が薄いため、画像を補正してもう一度確認しています…");
+      const improved=makeContrastCanvas(source);
+      const second=await timeout(worker.recognize(improved,{
+        rotateAuto:false
+      },{
+        text:true,
+        blocks:true
+      }),16000,"追加の文字認識に時間がかかりすぎています。");
+      const secondWords=(second.data.words||[]).map(w=>({...w,rotation:0}));
+      return {words:secondWords.length?secondWords:words,raw:(second.data.text||raw)};
     }
+    return {words,raw};
+  }
+
+  function makeContrastCanvas(source){
+    const out=document.createElement("canvas");
+    out.width=source.width;out.height=source.height;
+    const x=out.getContext("2d",{willReadFrequently:true});
+    x.drawImage(source,0,0);
+    const img=x.getImageData(0,0,out.width,out.height);
+    const d=img.data;
+    for(let i=0;i<d.length;i+=4){
+      const gray=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+      const v=gray<185?0:255;
+      d[i]=d[i+1]=d[i+2]=v;
+    }
+    x.putImageData(img,0,0);
+    return out;
   }
 
   function chooseOuterDimensions(parsed,rect){
@@ -564,15 +637,25 @@
     setBusy(true);
     $("handReviewArea")?.classList.add("hidden");
     try{
-      setStatus("図形を認識しています…");
-      const cv=await getOpenCV();
-      const geo=detectGeometry(cv);
+      setStatus("図形と寸法を読み取っています…");
+      const [cvResult,ocrResult]=await Promise.allSettled([
+        timeout(getOpenCV(),12000,"図形認識の準備が遅いため簡易認識に切り替えます"),
+        recognizeWords()
+      ]);
+
+      let geo={rect:null,circles:[]};
+      if(cvResult.status==="fulfilled"){
+        geo=detectGeometry(cvResult.value);
+      }
+      if(!geo.rect){
+        geo=detectGeometryFallback();
+      }
       if(!geo.rect) throw new Error("外形を認識できませんでした。外形線がはっきり見えるように撮影してください。");
       state.rect=geo.rect;
       state.circles=geo.circles;
 
-      setStatus("寸法文字の認識を開始しています…");
-      const ocr=await recognizeWords();
+      if(ocrResult.status!=="fulfilled") throw ocrResult.reason;
+      const ocr=ocrResult.value;
       state.rawText=ocr.raw;
       const parsed=ocr.words.flatMap(parseWord);
       state.dims=parsed;

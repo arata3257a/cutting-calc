@@ -18,6 +18,7 @@
     width:null,
     height:null,
     holes:[],
+    aiUsed:false,
     fileName:""
   };
 
@@ -81,7 +82,7 @@
         c.drawImage(img,0,0,w,h);
         state.sourceW=w;state.sourceH=h;state.imageReady=true;
         state.rect=null;state.circles=[];state.dims=[];state.rawText="";
-        state.width=null;state.height=null;state.holes=[];
+        state.width=null;state.height=null;state.holes=[];state.aiUsed=false;
         $("handPhotoArea")?.classList.remove("hidden");
         $("handReviewArea")?.classList.add("hidden");
         setStatus("撮影画像を確認してください。認識エンジンを準備しています…");
@@ -215,8 +216,12 @@
           const centerPenalty=Math.hypot((cx-W/2)/W,(cy-H/2)/H);
           const borderTouch=r.x<3||r.y<3||r.x+r.width>W-3||r.y+r.height>H-3;
 
-          if(r.width>W*.18 && r.height>H*.12 && areaRatio>.025 && areaRatio<.82 && fill>.28){
-            const score=areaRatio*100 + fill*16 - centerPenalty*18 - (borderTouch?25:0);
+          if(r.width>W*.18 && r.height>H*.10 && areaRatio>.025 && areaRatio<.42 && fill>.12){
+            const targetArea=.10;
+            const areaPenalty=Math.abs(Math.log(Math.max(.001,areaRatio)/targetArea));
+            const aspect=r.width/Math.max(1,r.height);
+            const aspectPenalty=(aspect<.35||aspect>4.5)?14:0;
+            const score=28-areaPenalty*9+Math.min(fill,.55)*6-centerPenalty*8-(borderTouch?24:0)-aspectPenalty;
             if(score>bestScore){
               bestScore=score;
               bestRect={x:r.x,y:r.y,w:r.width,h:r.height,source:"contour",score};
@@ -251,7 +256,7 @@
 
       horizontal.sort((a,b)=>b.len-a.len);
       vertical.sort((a,b)=>b.len-a.len);
-      const hs=horizontal.slice(0,12),vs=vertical.slice(0,12);
+      const hs=horizontal.slice(0,18),vs=vertical.slice(0,18);
       let houghBest=null,houghScore=-Infinity;
       for(let a=0;a<hs.length;a++) for(let b=a+1;b<hs.length;b++){
         const top=Math.min(hs[a].y,hs[b].y),bottom=Math.max(hs[a].y,hs[b].y);
@@ -267,16 +272,17 @@
           const coverV=[vs[c],vs[d]].filter(l=>l.y1<=top+tolY && l.y2>=bottom-tolY).length;
           const cx=(left+right)/2,cy=(top+bottom)/2;
           const centerPenalty=Math.hypot((cx-W/2)/W,(cy-H/2)/H);
-          const score=(coverH+coverV)*10 + areaRatio*25 - centerPenalty*10;
+          const aspect=rw/Math.max(1,rh);
+          const areaPenalty=Math.abs(Math.log(Math.max(.001,areaRatio)/.10));
+          const aspectPenalty=(aspect<.35||aspect>4.5)?18:0;
+          const score=(coverH+coverV)*15-areaPenalty*9-centerPenalty*8-aspectPenalty;
           if(score>houghScore){
             houghScore=score;houghBest={x:left,y:top,w:rw,h:rh,source:"lines",score};
           }
         }
       }
-      if(houghBest && (!bestRect || houghBest.score>bestRect.score*.75)){
-        if(!bestRect || Math.abs((houghBest.w*houghBest.h)-(bestRect.w*bestRect.h))/(W*H)>.015){
-          bestRect=houghBest;
-        }
+      if(houghBest && houghBest.score>=42){
+        bestRect=houghBest;
       }
 
       if(!bestRect){
@@ -290,36 +296,48 @@
 
       if(bestRect){
         const minSide=Math.min(bestRect.w,bestRect.h);
-        const circlesMat=keep(new cv.Mat());
-        const circleInput=keep(new cv.Mat());
-        cv.medianBlur(gray,circleInput,5);
+        const x1=Math.max(0,Math.round(bestRect.x));
+        const y1=Math.max(0,Math.round(bestRect.y));
+        const x2=Math.min(W,Math.round(bestRect.x+bestRect.w));
+        const y2=Math.min(H,Math.round(bestRect.y+bestRect.h));
+
+        // Search only inside the detected part outline. This prevents zeros in
+        // dimension text from being mistaken for holes.
         try{
-          const minR=Math.max(4,Math.round(minSide*.012));
-          const maxR=Math.max(minR+2,Math.round(minSide*.22));
-          cv.HoughCircles(circleInput,circlesMat,cv.HOUGH_GRADIENT,1.1,Math.max(16,minSide*.07),80,15,minR,maxR);
+          const roi=keep(gray.roi(new cv.Rect(x1,y1,Math.max(1,x2-x1),Math.max(1,y2-y1))));
+          const roiBlur=keep(new cv.Mat());
+          cv.medianBlur(roi,roiBlur,5);
+          const circlesMat=keep(new cv.Mat());
+          const minR=Math.max(4,Math.round(minSide*.025));
+          const maxR=Math.max(minR+3,Math.round(minSide*.17));
+          cv.HoughCircles(
+            roiBlur,circlesMat,cv.HOUGH_GRADIENT,
+            1.1,Math.max(18,minSide*.16),70,12,minR,maxR
+          );
           for(let i=0;i<circlesMat.cols;i++){
             const k=i*3;
-            circleCandidates.push({cx:circlesMat.data32F[k],cy:circlesMat.data32F[k+1],r:circlesMat.data32F[k+2],quality:.92,source:"hough"});
+            circleCandidates.push({
+              cx:x1+circlesMat.data32F[k],
+              cy:y1+circlesMat.data32F[k+1],
+              r:circlesMat.data32F[k+2],
+              quality:.96,
+              source:"roi-hough"
+            });
           }
-          const circlesMat2=keep(new cv.Mat());
-          cv.HoughCircles(circleInput,circlesMat2,cv.HOUGH_GRADIENT,1.2,Math.max(18,minSide*.09),70,11,minR,maxR);
-          for(let i=0;i<circlesMat2.cols;i++){
-            const k=i*3;
-            circleCandidates.push({cx:circlesMat2.data32F[k],cy:circlesMat2.data32F[k+1],r:circlesMat2.data32F[k+2],quality:.78,source:"hough2"});
-          }
-        }catch{}
+        }catch(e){console.warn("hole hough",e)}
 
-        const x1=bestRect.x,y1=bestRect.y,x2=x1+bestRect.w,y2=y1+bestRect.h;
+        const margin=Math.max(4,minSide*.035);
         circleCandidates=circleCandidates.filter(c=>
-          c.cx>x1+3 && c.cx<x2-3 && c.cy>y1+3 && c.cy<y2-3 &&
-          c.r>=Math.max(3,minSide*.010) && c.r<minSide*.24
+          c.cx>x1+margin && c.cx<x2-margin &&
+          c.cy>y1+margin && c.cy<y2-margin &&
+          c.r>=Math.max(3,minSide*.018) && c.r<minSide*.20
         );
         circleCandidates.sort((a,b)=>b.quality-a.quality);
         const dedup=[];
-        for(const c of circleCandidates){
-          if(dedup.some(d=>Math.hypot(d.cx-c.cx,d.cy-c.cy)<Math.max(8,(d.r+c.r)*.45))) continue;
-          dedup.push(c);
-          if(dedup.length>=8) break;
+        for(const cc of circleCandidates){
+          if(dedup.some(d=>Math.hypot(d.cx-cc.cx,d.cy-cc.cy)<Math.max(9,(d.r+cc.r)*.60))) continue;
+          dedup.push(cc);
+          if(dedup.length>=4) break;
         }
         circleCandidates=dedup;
       }
@@ -507,14 +525,15 @@
       raw+="\n【下側寸法】\n"+(br.data.text||"");
     }catch(e){console.warn(e)}
 
-    // Right-side vertical dimensions. Rotate them before OCR.
+    // Dimension values themselves are normally written upright even for a
+    // vertical dimension line, so do not rotate this crop.
     const right=cropCanvas(
       source,
-      rect.x+rect.w-rect.w*.10,
+      rect.x+rect.w-rect.w*.05,
       rect.y-my*.35,
-      Math.min(W-(rect.x+rect.w-rect.w*.10),rect.w*.75),
+      Math.min(W-(rect.x+rect.w-rect.w*.05),rect.w*.95),
       rect.h+my*.7,
-      true,2.5
+      false,2.5
     );
     try{
       const rr=await ocrOne(worker,right.canvas,"縦寸法を確認しています…","11");
@@ -548,6 +567,153 @@
     }
     x.putImageData(img,0,0);
     return out;
+  }
+
+
+  async function waitForHandwritingAI(ms=5000){
+    const started=Date.now();
+    while(Date.now()-started<ms){
+      if(window.HandwritingAI?.readCanvas) return window.HandwritingAI;
+      await new Promise(r=>setTimeout(r,80));
+    }
+    return null;
+  }
+
+  function aiCrop(source,x,y,w,h,scale=2.0){
+    const sx=clamp(Math.floor(x),0,source.width-1);
+    const sy=clamp(Math.floor(y),0,source.height-1);
+    const sw=clamp(Math.ceil(w),1,source.width-sx);
+    const sh=clamp(Math.ceil(h),1,source.height-sy);
+    const raw=document.createElement("canvas");
+    raw.width=sw;raw.height=sh;
+    const rctx=raw.getContext("2d");
+    rctx.fillStyle="#fff";rctx.fillRect(0,0,sw,sh);
+    rctx.drawImage(source,sx,sy,sw,sh,0,0,sw,sh);
+    const enhanced=makeContrastCanvas(raw,true);
+    const out=document.createElement("canvas");
+    out.width=Math.max(64,Math.round(enhanced.width*scale));
+    out.height=Math.max(48,Math.round(enhanced.height*scale));
+    const g=out.getContext("2d");
+    g.fillStyle="#fff";g.fillRect(0,0,out.width,out.height);
+    g.imageSmoothingEnabled=true;
+    g.drawImage(enhanced,0,0,out.width,out.height);
+    return out;
+  }
+
+  function bestPlainToken(result,preferLargest=true){
+    const list=(result?.tokens||[]).filter(t=>t.kind==="plain"&&t.value>=1&&t.value<=10000);
+    if(!list.length) return null;
+    return [...list].sort((a,b)=>preferLargest?b.value-a.value:a.value-b.value)[0];
+  }
+
+  async function aiReadOuterDimensions(rect,current){
+    if(Number.isFinite(current.width)&&Number.isFinite(current.height)) return current;
+    const ai=await waitForHandwritingAI();
+    if(!ai) return current;
+    const source=$("handSourceCanvas");
+    const W=source.width,H=source.height;
+    const out={...current};
+    const report=p=>{
+      const msg=p?.message||"手書きAIで寸法を確認しています…";
+      setStatus(msg+(p?.progress===null?"":""));
+    };
+
+    state.aiUsed=true;
+    // Outer width is normally the farthest horizontal dimension below the part.
+    if(!Number.isFinite(out.width)){
+      const y0=rect.y+rect.h+rect.h*.28;
+      const crop=aiCrop(
+        source,
+        rect.x-rect.w*.20,
+        y0,
+        rect.w*1.40,
+        Math.max(36,H-y0),
+        2.2
+      );
+      try{
+        const result=await ai.readCanvas(crop,report,{label:"外形の横寸法をAIで確認しています…",max_new_tokens:12});
+        const token=bestPlainToken(result,true);
+        if(token){
+          out.width=token.value;
+          out.aiWidthText=result.text;
+        }
+      }catch(e){console.warn("AI width",e)}
+    }
+
+    // Outer height is normally the farthest dimension to the right of the part.
+    if(!Number.isFinite(out.height)){
+      const x0=rect.x+rect.w+rect.w*.20;
+      const crop=aiCrop(
+        source,
+        x0,
+        rect.y-rect.h*.18,
+        Math.max(36,W-x0),
+        rect.h*1.36,
+        2.4
+      );
+      try{
+        const result=await ai.readCanvas(crop,report,{label:"外形の縦寸法をAIで確認しています…",max_new_tokens:12});
+        const token=bestPlainToken(result,true);
+        if(token){
+          out.height=token.value;
+          out.aiHeightText=result.text;
+        }
+      }catch(e){console.warn("AI height",e)}
+    }
+
+    // Reject a pair that is wildly inconsistent with the detected part shape.
+    if(Number.isFinite(out.width)&&Number.isFinite(out.height)){
+      const geometryRatio=rect.w/Math.max(1,rect.h);
+      const numberRatio=out.width/Math.max(.001,out.height);
+      const mismatch=Math.abs(Math.log(Math.max(.05,numberRatio)/Math.max(.05,geometryRatio)));
+      if(mismatch>0.95){
+        if(!Number.isFinite(current.width)) out.width=null;
+        if(!Number.isFinite(current.height)) out.height=null;
+      }
+    }
+    return out;
+  }
+
+  async function aiRefineHoleLabels(rect,holes){
+    if(!holes.length) return holes;
+    const needs=holes.filter(h=>!h.label);
+    if(!needs.length) return holes;
+    const ai=await waitForHandwritingAI();
+    if(!ai) return holes;
+    const source=$("handSourceCanvas");
+    const report=p=>setStatus(p?.message||"穴表記をAIで確認しています…");
+    state.aiUsed=true;
+
+    for(const h of needs.slice(0,3)){
+      const cc=state.circles[h.index-1];
+      if(!cc) continue;
+      const crop=aiCrop(
+        source,
+        cc.cx-rect.w*.62,
+        cc.cy-rect.h*.48,
+        rect.w*.92,
+        rect.h*.76,
+        2.1
+      );
+      try{
+        const result=await ai.readCanvas(crop,report,{label:"穴のφ・M表記をAIで確認しています…",max_new_tokens:12});
+        const technical=(result.tokens||[]).find(t=>t.kind==="diameter"||t.kind==="thread");
+        const plain=(result.tokens||[]).find(t=>t.kind==="plain");
+        const token=technical||plain;
+        if(!token) continue;
+        if(token.kind==="thread"){
+          h.holeKind="M"+token.value;
+          h.label="M"+token.value;
+          h.threadSize=token.value;
+          // Keep diameter empty: thread nominal size is not the drilled diameter.
+        }else{
+          h.diameter=token.value;
+          h.holeKind="through";
+          h.label="Ø"+token.value;
+        }
+      }catch(e){console.warn("AI hole",e)}
+    }
+    return holes;
   }
 
   function candidateScore(d,rect,axis){
@@ -794,13 +960,23 @@
       state.rawText=ocr.raw;
       const parsed=ocr.words.flatMap(parseWord);
       state.dims=parsed;
-      const outer=chooseOuterDimensions(parsed,state.rect);
+      let outer=chooseOuterDimensions(parsed,state.rect);
+      if(!Number.isFinite(outer.width)||!Number.isFinite(outer.height)){
+        setStatus("通常OCRで不足した寸法を手書きAIで確認します…","warn");
+        outer=await aiReadOuterDimensions(state.rect,outer);
+      }
       state.width=Number.isFinite(outer.width)?outer.width:null;
       state.height=Number.isFinite(outer.height)?outer.height:null;
       const used=new Set();
       if(outer.widthDim) used.add(outer.widthDim);
       if(outer.heightDim) used.add(outer.heightDim);
       state.holes=mapHoles(parsed,state.rect,state.circles,state.width,state.height,used);
+      state.holes=await aiRefineHoleLabels(state.rect,state.holes);
+      if(state.aiUsed){
+        state.rawText+="\n【手書きAI補助】\n"+
+          (outer.aiWidthText?"横: "+outer.aiWidthText+"\n":"")+
+          (outer.aiHeightText?"縦: "+outer.aiHeightText+"\n":"");
+      }
       renderReview();
     }catch(err){
       console.error(err);

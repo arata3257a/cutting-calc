@@ -288,8 +288,46 @@
       return;
     }
     list.innerHTML=state.holes.map((h,i)=>
-      '<div class="reliable-hole-item"><span>穴'+(i+1)+' '+h.label+'</span><span>X '+round(h.x,2)+' / Y '+round(h.y,2)+'</span></div>'
+      '<div class="simple-hole-position" data-hole-index="'+i+'">'+
+        '<div class="simple-hole-position-head"><strong>穴'+(i+1)+' '+h.label+'</strong><span>穴中心位置</span></div>'+
+        '<div class="simple-hole-position-inputs">'+
+          '<label>左から X mm<input class="simple-hole-x" type="number" inputmode="decimal" step="any" value="'+round(h.x,2)+'"></label>'+
+          '<label>下から Y mm<input class="simple-hole-y" type="number" inputmode="decimal" step="any" value="'+round(h.y,2)+'"></label>'+
+        '</div>'+
+      '</div>'
     ).join("");
+  }
+
+  function updateHolePositionFromInput(row){
+    const i=Number(row?.dataset?.holeIndex);
+    const h=state.holes[i];
+    if(!h||!state.outer) return;
+    const width=numberValue("simpleWidth");
+    const height=numberValue("simpleHeight");
+    if(!(width>0)||!(height>0)) return;
+
+    const xInput=row.querySelector(".simple-hole-x");
+    const yInput=row.querySelector(".simple-hole-y");
+    let x=Number(xInput?.value);
+    let y=Number(yInput?.value);
+    if(!Number.isFinite(x)||!Number.isFinite(y)) return;
+
+    x=clamp(x,0,width);
+    y=clamp(y,0,height);
+    if(xInput) xInput.value=round(x,2);
+    if(yInput) yInput.value=round(y,2);
+
+    h.x=x;
+    h.y=y;
+    h.normX=width?x/width:0;
+    h.normY=height?y/height:0;
+    h.photo={
+      x:state.outer.x+h.normX*state.outer.w,
+      y:state.outer.y+state.outer.h-h.normY*state.outer.h
+    };
+    drawPhoto();
+    if(!$("handSimpleReview")?.classList.contains("hidden")) drawCadPreview();
+    status(h.label+" の穴位置を X="+round(x,2)+" / Y="+round(y,2)+" mm に変更しました。","ok");
   }
 
   function undoHole(){
@@ -333,7 +371,7 @@
     g.fillStyle="#fff";g.fillRect(0,0,cssW,cssH);
     g.strokeStyle="#1e2935";g.fillStyle="#1e2935";g.lineWidth=2;
 
-    const pad=58;
+    const pad=92;
     const s=Math.min((cssW-pad*2)/width,(cssH-pad*2)/height);
     const ox=(cssW-width*s)/2;
     const oy=(cssH+height*s)/2;
@@ -366,7 +404,8 @@
     g.fillStyle="#1e2935";g.fillText(round(height)+" mm",0,0);
     g.restore();
 
-    for(const hole of state.holes){
+    const holeDimFont="600 11px system-ui";
+    state.holes.forEach((hole,i)=>{
       const p=P(hole.x,hole.y);
       const rr=Math.max(4,(hole.diameter/2)*s);
       g.beginPath();g.arc(p.x,p.y,rr,0,Math.PI*2);g.stroke();
@@ -375,8 +414,37 @@
       g.moveTo(p.x,p.y-7);g.lineTo(p.x,p.y+7);
       g.stroke();
       g.fillStyle="#fff";g.fillRect(p.x-30,p.y-rr-24,60,18);
-      g.fillStyle="#1e2935";g.fillText(hole.label,p.x,p.y-rr-15);
-    }
+      g.fillStyle="#1e2935";g.font="600 13px system-ui";g.fillText(hole.label,p.x,p.y-rr-15);
+
+      // X dimension: from left edge to hole center.
+      const dimY=a.y+24+i*18;
+      g.lineWidth=1.2;
+      g.beginPath();
+      g.moveTo(a.x,p.y);g.lineTo(a.x,dimY);
+      g.moveTo(p.x,p.y);g.lineTo(p.x,dimY);
+      g.moveTo(a.x,dimY);g.lineTo(p.x,dimY);
+      g.stroke();
+      g.font=holeDimFont;
+      const xText="X "+round(hole.x,2);
+      const xMid=(a.x+p.x)/2;
+      g.fillStyle="#fff";g.fillRect(xMid-26,dimY-8,52,16);
+      g.fillStyle="#1e2935";g.fillText(xText,xMid,dimY);
+
+      // Y dimension: from bottom edge to hole center.
+      const dimX=a.x+width*s+24+i*18;
+      g.beginPath();
+      g.moveTo(p.x,a.y);g.lineTo(dimX,a.y);
+      g.moveTo(p.x,p.y);g.lineTo(dimX,p.y);
+      g.moveTo(dimX,a.y);g.lineTo(dimX,p.y);
+      g.stroke();
+      const yText="Y "+round(hole.y,2);
+      const yMid=(a.y+p.y)/2;
+      g.save();
+      g.translate(dimX,yMid);g.rotate(-Math.PI/2);
+      g.fillStyle="#fff";g.fillRect(-26,-8,52,16);
+      g.fillStyle="#1e2935";g.fillText(yText,0,0);
+      g.restore();
+    });
   }
 
   function preview(){
@@ -430,6 +498,21 @@
       x1:0,y1:0,x2:0,y2:height,
       tx:-off,ty:height/2,mode:"vertical",layer:"2"
     });
+
+    // Hole-center dimensions: X from left edge, Y from bottom edge.
+    state.holes.forEach((h,i)=>{
+      const dimOff=off*(2+i*.75);
+      result.push({
+        id:newId(),type:"dim",
+        x1:0,y1:h.y,x2:h.x,y2:h.y,
+        tx:h.x/2,ty:-dimOff,mode:"horizontal",layer:"2"
+      });
+      result.push({
+        id:newId(),type:"dim",
+        x1:h.x,y1:0,x2:h.x,y2:h.y,
+        tx:width+dimOff,ty:h.y/2,mode:"vertical",layer:"2"
+      });
+    });
     return result;
   }
 
@@ -470,6 +553,12 @@
 
   $("simpleRedoOutlineBtn")?.addEventListener("click",redoOutline);
   $("simpleUndoHoleBtn")?.addEventListener("click",undoHole);
+  $("simpleHoleList")?.addEventListener("change",e=>{
+    const row=e.target.closest(".simple-hole-position");
+    if(row && (e.target.classList.contains("simple-hole-x")||e.target.classList.contains("simple-hole-y"))){
+      updateHolePositionFromInput(row);
+    }
+  });
   $("simplePreviewBtn")?.addEventListener("click",preview);
   $("simpleBackBtn")?.addEventListener("click",backToEdit);
   $("simplePdfBtn")?.addEventListener("click",()=>exportFormat("pdf"));

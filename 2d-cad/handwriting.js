@@ -190,6 +190,7 @@
     const keep=m=>{mats.push(m);return m;};
     let bestRect=null;
     let circleCandidates=[];
+    let rectCandidates=[];
     try{
       const src=keep(cv.imread(canvas));
       const gray=keep(new cv.Mat());
@@ -290,7 +291,7 @@
       const hs=mergeH(horizontal).sort((a,b)=>b.len-a.len).slice(0,18);
       const vs=mergeV(vertical).sort((a,b)=>b.len-a.len).slice(0,18);
       let houghBest=null,houghScore=-Infinity;
-      const rectCandidates=[];
+      rectCandidates=[];
       for(let a=0;a<hs.length;a++) for(let b=a+1;b<hs.length;b++){
         const top=Math.min(hs[a].y,hs[b].y),bottom=Math.max(hs[a].y,hs[b].y);
         if(bottom-top<H*.10) continue;

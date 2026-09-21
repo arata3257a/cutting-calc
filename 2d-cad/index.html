@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=135">
+  <link rel="stylesheet" href="./style.css?v=136">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.35 / mm</small>
+      <small>v1.36 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -197,12 +197,73 @@
         </div>
       </details>
 
+      <button id="handDrawBtn" class="hand-entry-btn">📷 手書き図面</button>
       <button id="sheetBtn">図面情報</button>
+      <input id="handCameraInput" type="file" accept="image/*" capture="environment" hidden>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
+    <section id="handDrawPanel" class="hand-draw-panel hidden" aria-label="手書き図面の読込み">
+      <div class="hand-draw-card">
+        <div class="hand-draw-head">
+          <div>
+            <strong>手書き図面をデータ化</strong>
+            <small>撮影 → 認識 → 確認 → PDF / DXF</small>
+          </div>
+          <button id="closeHandDrawBtn" class="icon-btn" type="button">×</button>
+        </div>
+
+        <div class="hand-actions-top">
+          <button id="handCameraBtn" class="primary" type="button">📷 カメラで撮影</button>
+          <button id="handRetakeBtn" type="button">撮り直す / 画像を選ぶ</button>
+        </div>
+
+        <div id="handStatus" class="hand-status">手書き図面を撮影してください。</div>
+
+        <div id="handPhotoArea" class="hand-photo-area hidden">
+          <div class="hand-section-title">① 撮影画像</div>
+          <img id="handPhotoPreview" alt="撮影した手書き図面">
+          <canvas id="handSourceCanvas" hidden></canvas>
+          <button id="handRecognizeBtn" class="primary wide" type="button">この写真を読み取る</button>
+        </div>
+
+        <div id="handReviewArea" class="hand-review-area hidden">
+          <div class="hand-section-title">② 図面化プレビュー</div>
+          <canvas id="handCadPreview"></canvas>
+
+          <div class="hand-section-title">③ 認識した寸法を確認</div>
+          <div class="hand-outer-fields">
+            <label>外形 幅 mm
+              <input id="handOuterWidth" inputmode="decimal" placeholder="未認識">
+            </label>
+            <label>外形 高さ mm
+              <input id="handOuterHeight" inputmode="decimal" placeholder="未認識">
+            </label>
+          </div>
+
+          <div class="hand-subtitle">穴</div>
+          <div id="handHoleFields" class="hand-hole-fields"></div>
+
+          <details class="hand-ocr-details">
+            <summary>認識した文字を確認</summary>
+            <pre id="handRecognizedText"></pre>
+          </details>
+
+          <div class="hand-review-note">
+            黄色の欄は未認識または要確認です。数値を直すとプレビューも更新されます。
+          </div>
+
+          <div class="hand-save-actions">
+            <button id="handApplyBtn" type="button">CADで編集</button>
+            <button id="handPdfBtn" class="primary" type="button">PDF保存</button>
+            <button id="handDxfBtn" class="primary" type="button">DXF保存</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <script src="./app.js?v=135"></script>
+  <script src="./app.js?v=136"></script>
+  <script src="./handwriting.js?v=136"></script>
 </body>
 </html>

@@ -183,7 +183,7 @@
   function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
   function centerOfBox(b){return {x:(b.x0+b.x1)/2,y:(b.y0+b.y1)/2};}
 
-  function detectGeometry(cv){
+  function detectGeometry(cv,targetAspect=null){
     const canvas=$("handSourceCanvas");
     const W=canvas.width,H=canvas.height;
     const mats=[];
@@ -241,23 +241,56 @@
       }
 
       const edges=keep(new cv.Mat());
-      cv.Canny(blur,edges,50,150,3,false);
+      cv.Canny(blur,edges,25,90,3,false);
       const lines=keep(new cv.Mat());
-      cv.HoughLinesP(edges,lines,1,Math.PI/180,45,Math.max(25,Math.min(W,H)*.10),12);
+      cv.HoughLinesP(edges,lines,1,Math.PI/180,25,Math.max(22,Math.min(W,H)*.07),18);
       const horizontal=[],vertical=[];
       for(let i=0;i<lines.rows;i++){
         const base=i*4;
         const x1=lines.data32S[base],y1=lines.data32S[base+1],x2=lines.data32S[base+2],y2=lines.data32S[base+3];
         const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
         if(len<25) continue;
-        if(Math.abs(dy)<=len*.13) horizontal.push({x1:Math.min(x1,x2),x2:Math.max(x1,x2),y:(y1+y2)/2,len});
-        if(Math.abs(dx)<=len*.13) vertical.push({y1:Math.min(y1,y2),y2:Math.max(y1,y2),x:(x1+x2)/2,len});
+        if(Math.abs(dy)<=len*.16) horizontal.push({x1:Math.min(x1,x2),x2:Math.max(x1,x2),y:(y1+y2)/2,len});
+        if(Math.abs(dx)<=len*.16) vertical.push({y1:Math.min(y1,y2),y2:Math.max(y1,y2),x:(x1+x2)/2,len});
       }
 
-      horizontal.sort((a,b)=>b.len-a.len);
-      vertical.sort((a,b)=>b.len-a.len);
-      const hs=horizontal.slice(0,18),vs=vertical.slice(0,18);
+      function mergeH(input){
+        const groups=[];
+        for(const l of [...input].sort((a,b)=>a.y-b.y)){
+          let g=groups.find(g=>Math.abs(g.y-l.y)<=5 && !(l.x1>g.x2+10 || l.x2<g.x1-10));
+          if(!g){
+            groups.push({...l,weight:l.len});
+          }else{
+            const total=g.weight+l.len;
+            g.y=(g.y*g.weight+l.y*l.len)/total;
+            g.weight=total;
+            g.x1=Math.min(g.x1,l.x1);g.x2=Math.max(g.x2,l.x2);
+            g.len=g.x2-g.x1;
+          }
+        }
+        return groups;
+      }
+      function mergeV(input){
+        const groups=[];
+        for(const l of [...input].sort((a,b)=>a.x-b.x)){
+          let g=groups.find(g=>Math.abs(g.x-l.x)<=5 && !(l.y1>g.y2+10 || l.y2<g.y1-10));
+          if(!g){
+            groups.push({...l,weight:l.len});
+          }else{
+            const total=g.weight+l.len;
+            g.x=(g.x*g.weight+l.x*l.len)/total;
+            g.weight=total;
+            g.y1=Math.min(g.y1,l.y1);g.y2=Math.max(g.y2,l.y2);
+            g.len=g.y2-g.y1;
+          }
+        }
+        return groups;
+      }
+
+      const hs=mergeH(horizontal).sort((a,b)=>b.len-a.len).slice(0,18);
+      const vs=mergeV(vertical).sort((a,b)=>b.len-a.len).slice(0,18);
       let houghBest=null,houghScore=-Infinity;
+      const rectCandidates=[];
       for(let a=0;a<hs.length;a++) for(let b=a+1;b<hs.length;b++){
         const top=Math.min(hs[a].y,hs[b].y),bottom=Math.max(hs[a].y,hs[b].y);
         if(bottom-top<H*.10) continue;
@@ -275,13 +308,25 @@
           const aspect=rw/Math.max(1,rh);
           const areaPenalty=Math.abs(Math.log(Math.max(.001,areaRatio)/.10));
           const aspectPenalty=(aspect<.35||aspect>4.5)?18:0;
-          const score=(coverH+coverV)*15-areaPenalty*9-centerPenalty*8-aspectPenalty;
+          const minSide=Math.min(rw,rh);
+          const innerCircleCount=circleCandidates.filter(cc=>
+            cc.quality>=.45 &&
+            cc.cx>left+rw*.08 && cc.cx<right-rw*.08 &&
+            cc.cy>top+rh*.08 && cc.cy<bottom-rh*.08 &&
+            cc.r>=Math.max(3,minSide*.025) && cc.r<=minSide*.18
+          ).length;
+          const circleBonus=Math.min(2,innerCircleCount)*10;
+          const ratioPenalty=targetAspect?
+            Math.abs(Math.log(Math.max(.05,aspect)/Math.max(.05,targetAspect)))*72:0;
+          const score=(coverH+coverV)*15-areaPenalty*9-centerPenalty*8-aspectPenalty+circleBonus-ratioPenalty;
+          const candidate={x:left,y:top,w:rw,h:rh,source:"lines",score,coverH,coverV,innerCircleCount};
+          rectCandidates.push(candidate);
           if(score>houghScore){
-            houghScore=score;houghBest={x:left,y:top,w:rw,h:rh,source:"lines",score};
+            houghScore=score;houghBest=candidate;
           }
         }
       }
-      if(houghBest && houghBest.score>=42){
+      if(houghBest && houghBest.score>=30){
         bestRect=houghBest;
       }
 
@@ -344,7 +389,7 @@
     }finally{
       mats.reverse().forEach(m=>{try{m.delete();}catch{}});
     }
-    return {rect:bestRect,circles:circleCandidates};
+    return {rect:bestRect,circles:circleCandidates,candidates:rectCandidates.sort((a,b)=>b.score-a.score).slice(0,12)};
   }
 
   function detectGeometryFallback(){
@@ -947,9 +992,10 @@
     try{
       setStatus("外形と穴を認識しています…");
       let geo={rect:null,circles:[]};
+      let cvLib=null;
       try{
-        const cv=await timeout(getOpenCV(),12000,"図形認識の準備が遅いため簡易認識に切り替えます");
-        geo=detectGeometry(cv);
+        cvLib=await timeout(getOpenCV(),12000,"図形認識の準備が遅いため簡易認識に切り替えます");
+        geo=detectGeometry(cvLib);
       }catch(e){console.warn(e)}
       if(!geo.rect) geo=detectGeometryFallback();
       if(!geo.rect) throw new Error("外形を認識できませんでした。外形線がはっきり見えるように撮影してください。");
@@ -967,6 +1013,26 @@
       }
       state.width=Number.isFinite(outer.width)?outer.width:null;
       state.height=Number.isFinite(outer.height)?outer.height:null;
+
+      // Second geometry pass: use the recognized 60:50-style ratio to separate
+      // the real part outline from dimension extension lines.
+      if(cvLib && Number.isFinite(state.width)&&Number.isFinite(state.height)&&state.height>0){
+        const targetAspect=state.width/state.height;
+        try{
+          const refined=detectGeometry(cvLib,targetAspect);
+          if(refined?.rect){
+            const oldRect=state.rect;
+            const shift=Math.abs(refined.rect.x-oldRect.x)+Math.abs(refined.rect.y-oldRect.y)+
+              Math.abs(refined.rect.w-oldRect.w)+Math.abs(refined.rect.h-oldRect.h);
+            if(shift>4){
+              state.rect=refined.rect;
+              state.circles=refined.circles||[];
+              state.rawText+="\n【外形再判定】 寸法比 "+roundValue(targetAspect,3)+" を使用";
+            }
+          }
+        }catch(e){console.warn("geometry refine",e)}
+      }
+
       const used=new Set();
       if(outer.widthDim) used.add(outer.widthDim);
       if(outer.heightDim) used.add(outer.heightDim);

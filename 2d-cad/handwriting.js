@@ -19,6 +19,10 @@
     height:null,
     holes:[],
     aiUsed:false,
+    assistMode:null,
+    assistPoints:[],
+    assistHoleCenter:null,
+    assistBusy:false,
     fileName:""
   };
 
@@ -83,6 +87,7 @@
         state.sourceW=w;state.sourceH=h;state.imageReady=true;
         state.rect=null;state.circles=[];state.dims=[];state.rawText="";
         state.width=null;state.height=null;state.holes=[];state.aiUsed=false;
+        state.assistMode=null;state.assistPoints=[];state.assistHoleCenter=null;state.assistBusy=false;
         $("handPhotoArea")?.classList.remove("hidden");
         $("handReviewArea")?.classList.add("hidden");
         setStatus("撮影画像を確認してください。認識エンジンを準備しています…");
@@ -1069,6 +1074,285 @@
     }
   }
 
+
+  function assistMessage(message){
+    const el=$("handAssistHint");
+    if(el) el.textContent=message;
+  }
+
+  function setAssistMode(mode){
+    state.assistMode=mode;
+    state.assistPoints=[];
+    state.assistHoleCenter=null;
+    document.querySelectorAll("[data-hand-assist]").forEach(btn=>{
+      btn.classList.toggle("active",btn.dataset.handAssist===mode);
+    });
+    const messages={
+      outline:"外形の左上をタップ → 次に右下をタップしてください。",
+      width:"写真内の外形幅の数字（例: 60）をタップしてください。",
+      height:"写真内の外形高さの数字（例: 50）をタップしてください。",
+      hole:"穴の中心をタップ → 次に φ10 / M6 などの表記をタップしてください。"
+    };
+    assistMessage(messages[mode]||"補正する項目を選んでください。");
+    drawAssistCanvas();
+  }
+
+  function openAssist(){
+    if(!state.imageReady) return;
+    $("handAssistArea")?.classList.remove("hidden");
+    const needOutline=!state.rect;
+    const needWidth=!(Number($("handOuterWidth")?.value)>0);
+    const needHeight=!(Number($("handOuterHeight")?.value)>0);
+    setAssistMode(needOutline?"outline":needWidth?"width":needHeight?"height":"hole");
+    setTimeout(drawAssistCanvas,0);
+    $("handAssistArea")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  function closeAssist(){
+    $("handAssistArea")?.classList.add("hidden");
+    state.assistMode=null;
+    state.assistPoints=[];
+    state.assistHoleCenter=null;
+    document.querySelectorAll("[data-hand-assist]").forEach(btn=>btn.classList.remove("active"));
+  }
+
+  function assistSourcePoint(e){
+    const canvas=$("handAssistCanvas");
+    const r=canvas.getBoundingClientRect();
+    return {
+      x:clamp((e.clientX-r.left)/Math.max(1,r.width)*canvas.width,0,canvas.width),
+      y:clamp((e.clientY-r.top)/Math.max(1,r.height)*canvas.height,0,canvas.height)
+    };
+  }
+
+  function drawAssistCanvas(){
+    const source=$("handSourceCanvas"),canvas=$("handAssistCanvas");
+    if(!source||!canvas||!state.imageReady) return;
+    canvas.width=source.width;
+    canvas.height=source.height;
+    const g=canvas.getContext("2d");
+    g.clearRect(0,0,canvas.width,canvas.height);
+    g.drawImage(source,0,0);
+
+    const lw=Math.max(2,canvas.width/300);
+    if(state.rect){
+      g.save();
+      g.strokeStyle="#147d38";
+      g.lineWidth=lw*2;
+      g.setLineDash([lw*4,lw*3]);
+      g.strokeRect(state.rect.x,state.rect.y,state.rect.w,state.rect.h);
+      g.restore();
+    }
+
+    for(const h of state.holes){
+      if(!state.rect) continue;
+      const px=state.rect.x+(h.normX??.5)*state.rect.w;
+      const py=state.rect.y+state.rect.h-(h.normY??.5)*state.rect.h;
+      g.save();
+      g.strokeStyle="#b22222";
+      g.lineWidth=lw*1.6;
+      g.beginPath();g.arc(px,py,lw*4,0,Math.PI*2);g.stroke();
+      g.beginPath();g.moveTo(px-lw*6,py);g.lineTo(px+lw*6,py);
+      g.moveTo(px,py-lw*6);g.lineTo(px,py+lw*6);g.stroke();
+      if(h.label){
+        g.font=Math.max(12,canvas.width/45)+"px system-ui";
+        g.fillStyle="#b22222";
+        g.fillText(h.label,px+lw*7,py-lw*5);
+      }
+      g.restore();
+    }
+
+    if(state.assistPoints.length){
+      g.save();
+      g.fillStyle="#0057b8";
+      for(const p of state.assistPoints){
+        g.beginPath();g.arc(p.x,p.y,lw*4,0,Math.PI*2);g.fill();
+      }
+      g.restore();
+    }
+    if(state.assistHoleCenter){
+      const p=state.assistHoleCenter;
+      g.save();
+      g.strokeStyle="#0057b8";g.lineWidth=lw*2;
+      g.beginPath();g.arc(p.x,p.y,lw*7,0,Math.PI*2);g.stroke();
+      g.beginPath();g.moveTo(p.x-lw*9,p.y);g.lineTo(p.x+lw*9,p.y);
+      g.moveTo(p.x,p.y-lw*9);g.lineTo(p.x,p.y+lw*9);g.stroke();
+      g.restore();
+    }
+  }
+
+  function parseAssistTokens(text){
+    const normalized=String(text||"")
+      .replace(/[ØøΦφ⌀]/g,"D")
+      .replace(/[Oo](?=\d)/g,"0")
+      .replace(/(?<=\d)[Oo]/g,"0")
+      .replace(/[Il|]/g,"1")
+      .replace(/\s+/g,"")
+      .toUpperCase();
+    const out=[];
+    const re=/(M\d+(?:\.\d+)?|D\d+(?:\.\d+)?|R\d+(?:\.\d+)?|\d+(?:\.\d+)?)/g;
+    for(const m of normalized.matchAll(re)){
+      const raw=m[0];
+      let kind="plain",value;
+      if(raw[0]==="M"){kind="thread";value=Number(raw.slice(1))}
+      else if(raw[0]==="D"){kind="diameter";value=Number(raw.slice(1))}
+      else if(raw[0]==="R"){kind="radius";value=Number(raw.slice(1))}
+      else value=Number(raw);
+      if(Number.isFinite(value)&&value>0&&value<100000) out.push({kind,value,raw});
+    }
+    return out;
+  }
+
+  function focusedCropAt(p,kind){
+    const source=$("handSourceCanvas");
+    const wide=kind==="width"||kind==="height";
+    const cw=Math.max(120,source.width*(wide?.24:.22));
+    const ch=Math.max(70,source.height*(wide?.12:.14));
+    return cropCanvas(source,p.x-cw/2,p.y-ch/2,cw,ch,false,3.0).canvas;
+  }
+
+  async function readFocusedValue(p,kind){
+    const crop=focusedCropAt(p,kind);
+    let tokens=[],raw="";
+    try{
+      const worker=await timeout(getOcrWorker(),12000,"文字認識を準備しています");
+      const result=await ocrOne(worker,crop,"タップした文字だけを読み取っています…","7");
+      raw=result.data?.text||"";
+      tokens=parseAssistTokens(raw);
+    }catch(e){console.warn("focused OCR",e)}
+
+    if(!tokens.length){
+      const ai=await waitForHandwritingAI(1800);
+      if(ai){
+        try{
+          const result=await ai.readCanvas(crop,p=>setStatus(p?.message||"手書きAIで確認しています…"),{
+            label:"タップした文字を手書きAIで確認しています…",
+            max_new_tokens:10,
+            num_beams:2
+          });
+          raw=result?.text||raw;
+          tokens=(result?.tokens||[]).map(t=>({kind:t.kind,value:t.value,raw:t.raw}));
+        }catch(e){console.warn("focused AI",e)}
+      }
+    }
+
+    let token=null;
+    if(kind==="hole"){
+      token=tokens.find(t=>t.kind==="diameter"||t.kind==="thread")||tokens[0]||null;
+    }else{
+      const plain=tokens.filter(t=>t.kind==="plain");
+      token=plain.sort((a,b)=>b.value-a.value)[0]||tokens.find(t=>Number.isFinite(t.value))||null;
+    }
+    return {token,raw};
+  }
+
+  function manualAssistValue(kind,guessText=""){
+    const label=kind==="width"?"外形幅":kind==="height"?"外形高さ":"穴表記";
+    const input=window.prompt(
+      label+"を読み取れませんでした。値を入力してください。"+
+      (kind==="hole"?"（例: φ10 / M6）":"（mm）"),
+      guessText||""
+    );
+    if(input===null) return null;
+    const tokens=parseAssistTokens(input);
+    if(kind==="hole") return tokens.find(t=>t.kind==="diameter"||t.kind==="thread")||tokens[0]||null;
+    return tokens.find(t=>t.kind==="plain")||tokens[0]||null;
+  }
+
+  async function handleAssistTap(e){
+    if(state.assistBusy||!state.assistMode) return;
+    const p=assistSourcePoint(e);
+    const mode=state.assistMode;
+
+    if(mode==="outline"){
+      state.assistPoints.push(p);
+      if(state.assistPoints.length===1){
+        assistMessage("左上を取得しました。次に外形の右下をタップしてください。");
+        drawAssistCanvas();
+        return;
+      }
+      const a=state.assistPoints[0],b=state.assistPoints[1];
+      const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
+      const w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+      if(w<20||h<20){
+        state.assistPoints=[];
+        assistMessage("外形が小さすぎます。左上→右下でもう一度指定してください。");
+        drawAssistCanvas();return;
+      }
+      state.rect={x,y,w,h,source:"manual"};
+      state.assistPoints=[];
+      // Re-map existing hole positions to the newly confirmed outline.
+      assistMessage("外形を指定しました。次は「幅寸法を読む」または「高さ寸法を読む」を選択してください。");
+      drawAssistCanvas();
+      return;
+    }
+
+    if(mode==="width"||mode==="height"){
+      state.assistBusy=true;
+      state.assistPoints=[p];drawAssistCanvas();
+      try{
+        let {token,raw}=await readFocusedValue(p,mode);
+        if(!token) token=manualAssistValue(mode,raw);
+        if(token&&Number.isFinite(token.value)){
+          const id=mode==="width"?"handOuterWidth":"handOuterHeight";
+          $(id).value=token.value;
+          if(mode==="width") state.width=token.value; else state.height=token.value;
+          syncHolePositionsFromOuter();
+          markMissingInputs();drawCleanPreview();
+          assistMessage((mode==="width"?"外形幅 ":"外形高さ ")+token.value+" mm を設定しました。");
+        }else{
+          assistMessage("寸法を設定しませんでした。もう一度数字の中央をタップしてください。");
+        }
+      }finally{
+        state.assistBusy=false;state.assistPoints=[];drawAssistCanvas();
+      }
+      return;
+    }
+
+    if(mode==="hole"){
+      if(!state.assistHoleCenter){
+        state.assistHoleCenter=p;
+        assistMessage("穴中心を取得しました。次に、この穴の φ10 / M6 などの文字をタップしてください。");
+        drawAssistCanvas();return;
+      }
+      state.assistBusy=true;
+      state.assistPoints=[p];drawAssistCanvas();
+      try{
+        let {token,raw}=await readFocusedValue(p,"hole");
+        if(!token) token=manualAssistValue("hole",raw);
+        if(!token){
+          assistMessage("穴表記を設定しませんでした。表記の中央をもう一度タップしてください。");
+          return;
+        }
+        const center=state.assistHoleCenter;
+        const rect=state.rect||{x:0,y:0,w:$("handSourceCanvas").width,h:$("handSourceCanvas").height};
+        const normX=clamp((center.x-rect.x)/Math.max(1,rect.w),0,1);
+        const normY=clamp((rect.y+rect.h-center.y)/Math.max(1,rect.h),0,1);
+        const width=inputNumber($("handOuterWidth")),height=inputNumber($("handOuterHeight"));
+        const isThread=token.kind==="thread";
+        const label=isThread?"M"+token.value:"Ø"+token.value;
+        state.holes.push({
+          index:state.holes.length+1,
+          normX,normY,
+          x:Number.isFinite(width)?roundValue(width*normX,2):null,
+          y:Number.isFinite(height)?roundValue(height*normY,2):null,
+          diameter:isThread?token.value:token.value,
+          holeKind:isThread?"M"+token.value:"through",
+          threadSize:isThread?token.value:null,
+          label,
+          source:"manual"
+        });
+        state.circles.push({cx:center.x,cy:center.y,r:8,quality:1,source:"manual"});
+        renderReview();
+        $("handAssistArea")?.classList.remove("hidden");
+        setAssistMode("hole");
+        assistMessage(label+" の穴を追加しました。続ける場合は次の穴中心をタップしてください。");
+      }finally{
+        state.assistBusy=false;state.assistHoleCenter=null;state.assistPoints=[];drawAssistCanvas();
+      }
+    }
+  }
+
   function buildCadShapes(){
     syncHolePositionsFromOuter();
     const vals=reviewValues();
@@ -1127,6 +1411,17 @@
   $("handCameraInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handGalleryInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handRecognizeBtn")?.addEventListener("click",recognize);
+  $("handAssistBtn")?.addEventListener("click",openAssist);
+  $("handAssistDoneBtn")?.addEventListener("click",closeAssist);
+  $("handAssistClearBtn")?.addEventListener("click",()=>{
+    state.assistPoints=[];state.assistHoleCenter=null;
+    assistMessage("現在の補正操作を取り消しました。項目を選び直してください。");
+    drawAssistCanvas();
+  });
+  document.querySelectorAll("[data-hand-assist]").forEach(btn=>{
+    btn.addEventListener("click",()=>setAssistMode(btn.dataset.handAssist));
+  });
+  $("handAssistCanvas")?.addEventListener("pointerup",handleAssistTap);
   $("handApplyBtn")?.addEventListener("click",()=>applyToCad(false));
   $("handPdfBtn")?.addEventListener("click",()=>exportAfterReview("pdf"));
   $("handDxfBtn")?.addEventListener("click",()=>exportAfterReview("dxf"));
@@ -1139,5 +1434,6 @@
   $("handHoleFields")?.addEventListener("input",()=>{markMissingInputs();drawCleanPreview();});
   window.addEventListener("resize",()=>{
     if(!$("handReviewArea")?.classList.contains("hidden")) drawCleanPreview();
+    if(!$("handAssistArea")?.classList.contains("hidden")) drawAssistCanvas();
   });
 })();

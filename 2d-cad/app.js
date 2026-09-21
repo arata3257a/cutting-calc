@@ -2568,7 +2568,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=138",{updateViaCache:"none"})
+      .register("./sw.js?v=139",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

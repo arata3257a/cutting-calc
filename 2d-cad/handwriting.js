@@ -906,9 +906,15 @@
     if(!Number.isFinite(state.height)) missed.push("外形高さ");
     const missingHoleD=state.holes.filter(h=>!Number.isFinite(h.diameter)).length;
     if(missingHoleD) missed.push("穴径 "+missingHoleD+"個");
-    setStatus(missed.length ? "認識できなかった項目があります。黄色の入力欄を確認・修正してください。" : "図面化しました。寸法と穴位置を確認してください。", missed.length?"warn":"ok");
+    setStatus(missed.length ? "自動認識で不足があります。写真をタップして補正してください。" : "図面化しました。寸法と穴位置を確認してください。", missed.length?"warn":"ok");
     markMissingInputs();
     drawCleanPreview();
+    if(missed.length){
+      setTimeout(()=>{
+        openAssist();
+        if(!Number.isFinite(state.width) || !Number.isFinite(state.height)) setAssistMode("outline");
+      },120);
+    }
   }
 
   function inputNumber(el){
@@ -1282,8 +1288,9 @@
       state.rect={x,y,w,h,source:"manual"};
       state.assistPoints=[];
       // Re-map existing hole positions to the newly confirmed outline.
-      assistMessage("外形を指定しました。次は「幅寸法を読む」または「高さ寸法を読む」を選択してください。");
+      assistMessage("外形を指定しました。次に写真の「全幅の数字」をタップしてください。");
       drawAssistCanvas();
+      setTimeout(()=>setAssistMode("width"),250);
       return;
     }
 
@@ -1300,6 +1307,8 @@
           syncHolePositionsFromOuter();
           markMissingInputs();drawCleanPreview();
           assistMessage((mode==="width"?"外形幅 ":"外形高さ ")+token.value+" mm を設定しました。");
+          if(mode==="width") setTimeout(()=>setAssistMode("height"),250);
+          else setTimeout(()=>setAssistMode("hole"),250);
         }else{
           assistMessage("寸法を設定しませんでした。もう一度数字の中央をタップしてください。");
         }
@@ -1331,12 +1340,14 @@
         const width=inputNumber($("handOuterWidth")),height=inputNumber($("handOuterHeight"));
         const isThread=token.kind==="thread";
         const label=isThread?"M"+token.value:"Ø"+token.value;
+        const tapDrillMap={3:2.5,4:3.3,5:4.2,6:5.0,8:6.8,10:8.5,12:10.2};
+        const holeDiameter=isThread?(tapDrillMap[token.value]||token.value):token.value;
         state.holes.push({
           index:state.holes.length+1,
           normX,normY,
           x:Number.isFinite(width)?roundValue(width*normX,2):null,
           y:Number.isFinite(height)?roundValue(height*normY,2):null,
-          diameter:isThread?token.value:token.value,
+          diameter:holeDiameter,
           holeKind:isThread?"M"+token.value:"through",
           threadSize:isThread?token.value:null,
           label,
@@ -1412,6 +1423,7 @@
   $("handGalleryInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handRecognizeBtn")?.addEventListener("click",recognize);
   $("handAssistBtn")?.addEventListener("click",openAssist);
+  $("handAssistBtnTop")?.addEventListener("click",openAssist);
   $("handAssistDoneBtn")?.addEventListener("click",closeAssist);
   $("handAssistClearBtn")?.addEventListener("click",()=>{
     state.assistPoints=[];state.assistHoleCenter=null;

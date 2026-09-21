@@ -849,3 +849,43 @@ main{
   .hand-simple-card{min-height:100%}
   #simplePhotoCanvas{max-height:52vh}
 }
+
+
+/* v1.61 穴位置寸法入力 */
+.simple-hole-position{
+  padding:10px;
+  border:1px solid #dfe4e8;
+  border-radius:10px;
+  background:#f8fafb
+}
+.simple-hole-position-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px
+}
+.simple-hole-position-head strong{font-size:13px}
+.simple-hole-position-head span{font-size:10px;color:#66717d}
+.simple-hole-position-inputs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+.simple-hole-position-inputs label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:11px;
+  color:#66717d
+}
+.simple-hole-position-inputs input{
+  width:100%;
+  min-width:0;
+  padding:9px;
+  border:1px solid #cfd6dd;
+  border-radius:8px;
+  background:#fff;
+  color:#18202a;
+  font-size:16px
+}

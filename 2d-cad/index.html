@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=143">
+  <link rel="stylesheet" href="./style.css?v=150">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.43 / mm</small>
+      <small>v1.50 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -225,8 +225,49 @@
           <div class="hand-section-title">① 撮影画像</div>
           <img id="handPhotoPreview" alt="撮影した手書き図面">
           <canvas id="handSourceCanvas" hidden></canvas>
-          <button id="handRecognizeBtn" class="primary wide" type="button">この写真を読み取る</button>
-          <button id="handAssistBtnTop" class="wide hand-assist-open" type="button">✋ 写真をタップして確実に補正</button>
+          <button id="handReliableBtn" class="primary wide" type="button">✅ 確実モードで図面化</button>
+          <button id="handRecognizeBtn" class="wide" type="button">自動読み取り（実験）</button>
+          <button id="handAssistBtnTop" class="wide hand-assist-open" type="button">旧補正モード</button>
+
+          <div id="handReliableArea" class="hand-reliable-area hidden">
+            <div class="hand-section-title">確実モード</div>
+            <div class="hand-reliable-note">
+              最初に外形寸法を入力し、写真の外形4隅をタップします。以降は穴中心をタップするだけで位置をmm換算します。
+            </div>
+
+            <div class="hand-outer-fields">
+              <label>外形 幅 mm
+                <input id="reliableWidth" inputmode="decimal" placeholder="例 60">
+              </label>
+              <label>外形 高さ mm
+                <input id="reliableHeight" inputmode="decimal" placeholder="例 50">
+              </label>
+            </div>
+
+            <button id="reliableStartBtn" class="primary wide" type="button">外形4隅を指定する</button>
+            <div id="reliableHint" class="hand-assist-hint">幅・高さを入力してください。</div>
+            <canvas id="reliableCanvas"></canvas>
+
+            <div id="reliableHoleControls" class="reliable-hole-controls hidden">
+              <div class="reliable-hole-row">
+                <label>穴種類
+                  <select id="reliableHoleKind">
+                    <option value="through">φ穴</option>
+                    <option value="thread">Mタップ</option>
+                  </select>
+                </label>
+                <label>サイズ
+                  <input id="reliableHoleSize" inputmode="decimal" placeholder="10">
+                </label>
+              </div>
+              <div class="reliable-hole-note">例：φ10 →「φ穴・10」、M6 →「Mタップ・6」</div>
+              <div id="reliableHoleList" class="reliable-hole-list"></div>
+              <div class="hand-assist-bottom">
+                <button id="reliableUndoBtn" type="button">1つ戻す</button>
+                <button id="reliableFinishBtn" class="primary" type="button">図面プレビューへ</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="handReviewArea" class="hand-review-area hidden">
@@ -283,8 +324,8 @@
     </section>
   </main>
 
-  <script src="./app.js?v=143"></script>
-  <script type="module" src="./handwriting-ai.js?v=143"></script>
-  <script src="./handwriting.js?v=143"></script>
+  <script src="./app.js?v=150"></script>
+  <script type="module" src="./handwriting-ai.js?v=150"></script>
+  <script src="./handwriting.js?v=150"></script>
 </body>
 </html>

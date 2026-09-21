@@ -422,3 +422,212 @@ main{
   }
   .pdf-preview-stage{padding:6px}
 }
+
+
+/* v1.36 手書き図面読込み */
+.hand-entry-btn{
+  border-color:#7aa7d2!important;
+  background:#eef7ff!important;
+  color:#174f7a!important;
+  font-weight:700
+}
+.hand-draw-panel{
+  position:fixed;
+  inset:0;
+  z-index:2000;
+  background:rgba(15,23,42,.58);
+  padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom));
+  overflow:auto;
+  overscroll-behavior:contain
+}
+.hand-draw-panel.hidden{display:none}
+.hand-draw-card{
+  width:min(760px,100%);
+  margin:0 auto;
+  background:#fff;
+  border-radius:18px;
+  padding:14px;
+  box-shadow:0 18px 60px rgba(0,0,0,.30)
+}
+.hand-draw-head{
+  position:sticky;
+  top:-14px;
+  z-index:3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:-14px -14px 12px;
+  padding:12px 14px;
+  background:#fff;
+  border-bottom:1px solid #e1e5e9;
+  border-radius:18px 18px 0 0
+}
+.hand-draw-head strong{display:block;font-size:17px}
+.hand-draw-head small{display:block;margin-top:2px;color:#66717d;font-size:11px}
+.hand-actions-top{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:10px
+}
+.hand-status{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border-radius:11px;
+  background:#f3f5f7;
+  color:#36414c;
+  font-size:13px;
+  line-height:1.5
+}
+.hand-status[data-kind="ok"]{background:#edf8f0;color:#23643a}
+.hand-status[data-kind="warn"]{background:#fff6d8;color:#725900}
+.hand-status[data-kind="error"]{background:#fff0f0;color:#9b2424}
+.hand-section-title{
+  margin:14px 0 8px;
+  font-size:14px;
+  font-weight:800
+}
+.hand-subtitle{
+  margin:12px 0 6px;
+  font-size:13px;
+  font-weight:800
+}
+.hand-photo-area img{
+  display:block;
+  width:100%;
+  max-height:50vh;
+  object-fit:contain;
+  background:#eef1f4;
+  border:1px solid #d8dee5;
+  border-radius:12px
+}
+.hand-review-area{
+  border-top:1px solid #e3e7eb;
+  margin-top:14px;
+  padding-top:4px
+}
+.hand-review-area.hidden,.hand-photo-area.hidden{display:none}
+#handCadPreview{
+  display:block;
+  width:100%;
+  min-height:260px;
+  background:#fff;
+  border:1px solid #cfd6dd;
+  border-radius:12px
+}
+.hand-outer-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+.hand-outer-fields label,
+.hand-hole-row label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:11px;
+  color:#66717d
+}
+.hand-outer-fields input,
+.hand-hole-row input{
+  width:100%;
+  min-width:0;
+  border:1px solid #cfd6dd;
+  border-radius:9px;
+  padding:9px;
+  font-size:16px;
+  color:#18202a;
+  background:#fff
+}
+.hand-outer-fields input.needs-check,
+.hand-hole-row input.needs-check{
+  border-color:#d8a900;
+  background:#fff8cf
+}
+.hand-hole-fields{
+  display:flex;
+  flex-direction:column;
+  gap:8px
+}
+.hand-hole-row{
+  display:grid;
+  grid-template-columns:62px repeat(3,minmax(0,1fr));
+  align-items:end;
+  gap:7px;
+  padding:9px;
+  border:1px solid #e0e5ea;
+  border-radius:11px;
+  background:#f8fafb
+}
+.hand-hole-row strong{
+  align-self:center;
+  font-size:12px
+}
+.hand-empty{
+  padding:10px;
+  border-radius:9px;
+  background:#f3f5f7;
+  color:#66717d;
+  font-size:12px
+}
+.hand-ocr-details{
+  margin-top:12px;
+  border:1px solid #dfe4e8;
+  border-radius:10px;
+  padding:8px 10px
+}
+.hand-ocr-details summary{
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700
+}
+.hand-ocr-details pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:11px;
+  line-height:1.45;
+  max-height:180px;
+  overflow:auto;
+  background:#f7f8fa;
+  padding:8px;
+  border-radius:8px
+}
+.hand-review-note{
+  margin:10px 0;
+  padding:9px 10px;
+  border-radius:9px;
+  background:#fff8cf;
+  color:#665400;
+  font-size:11px;
+  line-height:1.45
+}
+.hand-save-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  position:sticky;
+  bottom:-14px;
+  margin:10px -14px -14px;
+  padding:10px 14px max(10px,env(safe-area-inset-bottom));
+  background:#fff;
+  border-top:1px solid #e1e5e9;
+  border-radius:0 0 18px 18px
+}
+.hand-draw-panel button:disabled{opacity:.5;cursor:default}
+@media(max-width:560px){
+  .hand-draw-panel{padding:0}
+  .hand-draw-card{min-height:100%;border-radius:0;padding:12px}
+  .hand-draw-head{top:-12px;margin:-12px -12px 10px;border-radius:0}
+  .hand-actions-top{grid-template-columns:1fr}
+  .hand-hole-row{
+    grid-template-columns:52px 1fr 1fr;
+  }
+  .hand-hole-row label:last-child{grid-column:2/4}
+  .hand-save-actions{
+    margin:10px -12px -12px;
+    bottom:-12px;
+    padding-left:12px;padding-right:12px;
+    border-radius:0
+  }
+}

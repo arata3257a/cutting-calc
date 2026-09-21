@@ -769,3 +769,83 @@ main{
   background:#f1f4f6;
   font-size:12px
 }
+
+
+/* v1.60 超シンプル半自動 手書き図面 */
+.hand-simple-card{width:min(720px,100%)}
+.hand-simple-work.hidden,.hand-review-area.hidden,.simple-hole-area.hidden{display:none}
+.hand-simple-guide{
+  margin:6px 0 8px;
+  padding:8px 10px;
+  border-radius:9px;
+  background:#eef6ff;
+  color:#174f7a;
+  font-size:12px;
+  line-height:1.45
+}
+#simplePhotoCanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:58vh;
+  object-fit:contain;
+  background:#f3f5f7;
+  border:2px solid #cfd6dd;
+  border-radius:12px;
+  touch-action:none;
+  user-select:none
+}
+#simpleCadPreview{
+  display:block;
+  width:100%;
+  min-height:260px;
+  background:#fff;
+  border:1px solid #cfd6dd;
+  border-radius:12px
+}
+.simple-hole-controls{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+.simple-hole-controls label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:11px;
+  color:#66717d
+}
+.simple-hole-controls select,
+.simple-hole-controls input{
+  width:100%;
+  min-width:0;
+  padding:10px;
+  border:1px solid #cfd6dd;
+  border-radius:9px;
+  background:#fff;
+  color:#18202a;
+  font-size:16px
+}
+.simple-hole-chips{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  margin:8px 0
+}
+.simple-hole-chips button{
+  min-height:42px;
+  padding:8px 6px;
+  font-weight:800;
+  background:#fff
+}
+.simple-hole-chips button.active{
+  background:#18202a;
+  color:#fff;
+  border-color:#18202a
+}
+#simpleRedoOutlineBtn{margin-top:8px}
+.simple-save-actions{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:560px){
+  .hand-simple-card{min-height:100%}
+  #simplePhotoCanvas{max-height:52vh}
+}

@@ -247,7 +247,7 @@
         const x1=bestRect.x,y1=bestRect.y,x2=x1+bestRect.w,y2=y1+bestRect.h;
         circleCandidates=circleCandidates.filter(c=>
           c.cx>x1+3 && c.cx<x2-3 && c.cy>y1+3 && c.cy<y2-3 &&
-          c.r>=3 && c.r<minSide*.32
+          c.r>=Math.max(5,minSide*.018) && c.r<minSide*.32
         );
         circleCandidates.sort((a,b)=>b.quality-a.quality);
         const dedup=[];
@@ -290,7 +290,7 @@
     const value=Math.abs(Number(m[0]));
     if(!Number.isFinite(value)||value<=0||value>100000) return [];
     let kind="plain";
-    if(/^D/i.test(text)) kind="diameter";
+    if(/^[DO](?=\d)/i.test(text)) kind="diameter";
     else if(/^R/i.test(text)) kind="radius";
     else if(/^M/i.test(text)) kind="thread";
     return [{kind,value,text:word.text,bbox:box,confidence:word.confidence||0}];
@@ -463,12 +463,23 @@
     drawCleanPreview();
   }
 
+  function inputNumber(el){
+    const raw=String(el?.value??"").trim();
+    if(raw==="") return NaN;
+    const v=Number(raw);
+    return Number.isFinite(v)?v:NaN;
+  }
+
   function markMissingInputs(){
     ["handOuterWidth","handOuterHeight"].forEach(id=>{
-      const el=$(id);if(el) el.classList.toggle("needs-check",!(Number(el.value)>0));
+      const el=$(id);if(el) el.classList.toggle("needs-check",!(inputNumber(el)>0));
     });
     document.querySelectorAll(".hand-hole-row").forEach(row=>{
-      row.querySelectorAll("input").forEach(inp=>inp.classList.toggle("needs-check",!(Number(inp.value)>=0) || (inp.classList.contains("hand-hole-d")&&!(Number(inp.value)>0))));
+      row.querySelectorAll("input").forEach(inp=>{
+        const v=inputNumber(inp);
+        const bad=inp.classList.contains("hand-hole-d") ? !(v>0) : !(v>=0);
+        inp.classList.toggle("needs-check",bad);
+      });
     });
   }
 
@@ -483,14 +494,14 @@
   }
 
   function reviewValues(){
-    const width=Number($("handOuterWidth")?.value);
-    const height=Number($("handOuterHeight")?.value);
+    const width=inputNumber($("handOuterWidth"));
+    const height=inputNumber($("handOuterHeight"));
     const holes=[];
     document.querySelectorAll(".hand-hole-row").forEach((row,i)=>{
       holes.push({
-        x:Number(row.querySelector(".hand-hole-x")?.value),
-        y:Number(row.querySelector(".hand-hole-y")?.value),
-        d:Number(row.querySelector(".hand-hole-d")?.value),
+        x:inputNumber(row.querySelector(".hand-hole-x")),
+        y:inputNumber(row.querySelector(".hand-hole-y")),
+        d:inputNumber(row.querySelector(".hand-hole-d")),
         index:i+1
       });
     });

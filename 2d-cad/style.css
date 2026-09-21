@@ -631,3 +631,62 @@ main{
     border-radius:0
   }
 }
+
+
+/* v1.42 手書き補正モード */
+.hand-assist-open{
+  margin-top:10px;
+  border:2px solid #18202a;
+  background:#fff;
+  font-weight:800
+}
+.hand-assist-area{
+  margin-top:12px;
+  padding-top:6px;
+  border-top:1px solid #e1e5e9
+}
+.hand-assist-area.hidden{display:none}
+.hand-assist-hint{
+  padding:9px 10px;
+  margin-bottom:8px;
+  border-radius:9px;
+  background:#eef6ff;
+  color:#174f7a;
+  font-size:12px;
+  line-height:1.45
+}
+.hand-assist-tools{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding-bottom:8px
+}
+.hand-assist-tools button{
+  flex:0 0 auto;
+  white-space:nowrap;
+  font-size:12px;
+  padding:8px 10px
+}
+.hand-assist-tools button.active{
+  background:#18202a;
+  color:#fff;
+  border-color:#18202a
+}
+#handAssistCanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  background:#f3f5f7;
+  border:2px solid #cfd6dd;
+  border-radius:12px;
+  touch-action:manipulation
+}
+.hand-assist-bottom{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px
+}
+@media(max-width:560px){
+  .hand-assist-tools{margin-right:-12px;padding-right:12px}
+}

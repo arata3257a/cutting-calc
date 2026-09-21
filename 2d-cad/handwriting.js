@@ -1105,6 +1105,7 @@
 
   function openAssist(){
     if(!state.imageReady) return;
+    $("handReviewArea")?.classList.remove("hidden");
     $("handAssistArea")?.classList.remove("hidden");
     const needOutline=!state.rect;
     const needWidth=!(Number($("handOuterWidth")?.value)>0);
@@ -1423,7 +1424,10 @@
   $("handGalleryInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handRecognizeBtn")?.addEventListener("click",recognize);
   $("handAssistBtn")?.addEventListener("click",openAssist);
-  $("handAssistBtnTop")?.addEventListener("click",openAssist);
+  $("handAssistBtnTop")?.addEventListener("click",()=>{
+    openAssist();
+    setAssistMode("outline");
+  });
   $("handAssistDoneBtn")?.addEventListener("click",closeAssist);
   $("handAssistClearBtn")?.addEventListener("click",()=>{
     state.assistPoints=[];state.assistHoleCenter=null;

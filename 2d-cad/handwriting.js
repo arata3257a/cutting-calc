@@ -311,7 +311,7 @@
           const aspectPenalty=(aspect<.35||aspect>4.5)?18:0;
           const minSide=Math.min(rw,rh);
           const innerCircleCount=circleCandidates.filter(cc=>
-            cc.quality>=.45 &&
+            cc.quality>=.58 &&
             cc.cx>left+rw*.08 && cc.cx<right-rw*.08 &&
             cc.cy>top+rh*.08 && cc.cy<bottom-rh*.08 &&
             cc.r>=Math.max(3,minSide*.025) && cc.r<=minSide*.18
@@ -362,12 +362,27 @@
           );
           for(let i=0;i<circlesMat.cols;i++){
             const k=i*3;
+            const gcx=x1+circlesMat.data32F[k];
+            const gcy=y1+circlesMat.data32F[k+1];
+            const gr=circlesMat.data32F[k+2];
+            let ring=0,inside=0,outside=0,n=0;
+            for(let a=0;a<Math.PI*2;a+=Math.PI/18){
+              const sample=(rr)=>{
+                const sx=Math.max(0,Math.min(W-1,Math.round(gcx+Math.cos(a)*rr)));
+                const sy=Math.max(0,Math.min(H-1,Math.round(gcy+Math.sin(a)*rr)));
+                return gray.ucharPtr(sy,sx)[0];
+              };
+              ring+=sample(gr);
+              inside+=sample(gr*.58);
+              outside+=sample(gr*1.34);
+              n++;
+            }
+            const contrast=n?((inside+outside-2*ring)/n):0;
             circleCandidates.push({
-              cx:x1+circlesMat.data32F[k],
-              cy:y1+circlesMat.data32F[k+1],
-              r:circlesMat.data32F[k+2],
-              quality:.96,
-              source:"roi-hough"
+              cx:gcx,cy:gcy,r:gr,
+              quality:.72+Math.max(-.2,Math.min(.55,contrast/55)),
+              source:"roi-hough",
+              ringContrast:contrast
             });
           }
         }catch(e){console.warn("hole hough",e)}
@@ -376,7 +391,8 @@
         circleCandidates=circleCandidates.filter(c=>
           c.cx>x1+margin && c.cx<x2-margin &&
           c.cy>y1+margin && c.cy<y2-margin &&
-          c.r>=Math.max(3,minSide*.018) && c.r<minSide*.20
+          c.r>=Math.max(3,minSide*.018) && c.r<minSide*.20 &&
+          (c.source!=="roi-hough" || (c.ringContrast??0)>6)
         );
         circleCandidates.sort((a,b)=>b.quality-a.quality);
         const dedup=[];
@@ -667,7 +683,7 @@
     state.aiUsed=true;
     // Outer width is normally the farthest horizontal dimension below the part.
     if(!Number.isFinite(out.width)){
-      const y0=rect.y+rect.h+rect.h*.28;
+      const y0=rect.y+rect.h+rect.h*.72;
       const crop=aiCrop(
         source,
         rect.x-rect.w*.20,
@@ -688,7 +704,7 @@
 
     // Outer height is normally the farthest dimension to the right of the part.
     if(!Number.isFinite(out.height)){
-      const x0=rect.x+rect.w+rect.w*.20;
+      const x0=rect.x+rect.w+rect.w*.14;
       const crop=aiCrop(
         source,
         x0,

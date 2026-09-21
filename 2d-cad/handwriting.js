@@ -39,7 +39,7 @@
 
   function setBusy(on){
     state.working=on;
-    const ids=["handCameraBtn","handGalleryBtn","handRecognizeBtn","handApplyBtn","handPdfBtn","handDxfBtn"];
+    const ids=["handCameraBtn","handGalleryBtn","reliableDetectBtn","reliableFinishBtn","handPdfBtn","handDxfBtn"];
     ids.forEach(id=>{const el=$(id); if(el) el.disabled=!!on;});
   }
 

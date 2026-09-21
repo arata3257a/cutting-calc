@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=151">
+  <link rel="stylesheet" href="./style.css?v=160">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.51 / mm</small>
+      <small>v1.60 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -204,96 +204,90 @@
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
-    <section id="handDrawPanel" class="hand-draw-panel hidden" aria-label="手書き図面の読込み">
-      <div class="hand-draw-card">
+    <section id="handDrawPanel" class="hand-draw-panel hidden" aria-label="手書き図面のデータ化">
+      <div class="hand-draw-card hand-simple-card">
         <div class="hand-draw-head">
           <div>
             <strong>手書き図面をデータ化</strong>
-            <small>写真 → サイズ入力 → 穴をタップ → 保存</small>
+            <small>写真 → サイズ → 外形を囲む → 穴をタップ</small>
           </div>
           <button id="closeHandDrawBtn" class="icon-btn" type="button">×</button>
         </div>
 
         <div class="hand-actions-top">
-          <button id="handCameraBtn" class="primary" type="button">📷 カメラで撮影</button>
+          <button id="handCameraBtn" class="primary" type="button">📷 撮影</button>
           <button id="handGalleryBtn" type="button">🖼️ 画像を選ぶ</button>
         </div>
+        <input id="handCameraInput" type="file" accept="image/*" capture="environment" hidden>
+        <input id="handGalleryInput" type="file" accept="image/*" hidden>
+        <img id="handPhotoPreview" alt="" hidden>
 
-        <div id="handStatus" class="hand-status">手書き図面を撮影してください。</div>
+        <div id="handStatus" class="hand-status">写真を撮るか、画像を選んでください。</div>
 
-        <div id="handPhotoArea" class="hand-photo-area hidden">
-          <img id="handPhotoPreview" alt="" class="hand-load-image" hidden>
-          <canvas id="handSourceCanvas" hidden></canvas>
+        <div id="handSimpleWork" class="hand-simple-work hidden">
+          <div class="hand-section-title">① 外形サイズ</div>
+          <div class="hand-outer-fields">
+            <label>幅 mm
+              <input id="simpleWidth" type="number" inputmode="decimal" step="any" placeholder="例 60">
+            </label>
+            <label>高さ mm
+              <input id="simpleHeight" type="number" inputmode="decimal" step="any" placeholder="例 50">
+            </label>
+          </div>
 
-          <div id="handReliableArea" class="hand-reliable-area">
-            <div class="hand-section-title">① 外形サイズを入力</div>
-            <div class="hand-outer-fields">
-              <label>幅 mm
-                <input id="reliableWidth" inputmode="decimal" placeholder="例 60">
+          <div class="hand-section-title">② 外形を指で囲む</div>
+          <div class="hand-simple-guide">外形の左上から右下へ、指で1回なぞるだけです。</div>
+          <canvas id="simplePhotoCanvas"></canvas>
+          <button id="simpleRedoOutlineBtn" class="wide hidden" type="button">外形を選び直す</button>
+
+          <div id="simpleHoleArea" class="simple-hole-area hidden">
+            <div class="hand-section-title">③ 穴を追加</div>
+            <div class="simple-hole-controls">
+              <label>種類
+                <select id="simpleHoleKind">
+                  <option value="through">φ穴</option>
+                  <option value="thread">Mタップ</option>
+                </select>
               </label>
-              <label>高さ mm
-                <input id="reliableHeight" inputmode="decimal" placeholder="例 50">
+              <label>サイズ
+                <input id="simpleHoleSize" type="number" inputmode="decimal" step="any" placeholder="例 10">
               </label>
             </div>
 
-            <button id="reliableDetectBtn" class="primary wide" type="button">このサイズで進む</button>
-            <div id="reliableHint" class="hand-assist-hint">幅と高さを入力してください。</div>
+            <div class="simple-hole-chips">
+              <button type="button" data-hole-kind="through" data-hole-size="6">φ6</button>
+              <button type="button" data-hole-kind="through" data-hole-size="8">φ8</button>
+              <button type="button" data-hole-kind="through" data-hole-size="10">φ10</button>
+              <button type="button" data-hole-kind="thread" data-hole-size="4">M4</button>
+              <button type="button" data-hole-kind="thread" data-hole-size="5">M5</button>
+              <button type="button" data-hole-kind="thread" data-hole-size="6">M6</button>
+            </div>
 
-            <div class="hand-section-title">② 写真の穴中心をタップ</div>
-            <canvas id="reliableCanvas"></canvas>
+            <div class="hand-simple-guide">種類とサイズを決めたら、写真の穴中心をタップしてください。</div>
+            <div id="simpleHoleList" class="reliable-hole-list"></div>
 
-            <button id="reliableOutlineFixBtn" class="wide reliable-outline-fix hidden" type="button">外形位置が違うときだけ直す</button>
-
-            <div id="reliableHoleControls" class="reliable-hole-controls hidden">
-              <div class="reliable-hole-row">
-                <label>穴種類
-                  <select id="reliableHoleKind">
-                    <option value="through">φ穴</option>
-                    <option value="thread">Mタップ</option>
-                  </select>
-                </label>
-                <label>サイズ
-                  <input id="reliableHoleSize" inputmode="decimal" placeholder="例 10">
-                </label>
-              </div>
-              <div class="reliable-hole-note">穴種類とサイズを選び、写真の穴中心をタップします。</div>
-              <div id="reliableHoleList" class="reliable-hole-list"></div>
-              <div class="hand-assist-bottom">
-                <button id="reliableUndoBtn" type="button">1つ戻す</button>
-                <button id="reliableFinishBtn" class="primary" type="button">プレビューへ</button>
-              </div>
+            <div class="hand-assist-bottom">
+              <button id="simpleUndoHoleBtn" type="button">1つ戻す</button>
+              <button id="simplePreviewBtn" class="primary" type="button">プレビュー</button>
             </div>
           </div>
         </div>
 
-        <div id="handReviewArea" class="hand-review-area hidden">
-          <div class="hand-section-title">③ 図面プレビュー</div>
-          <canvas id="handCadPreview"></canvas>
-
-          <div class="hand-simple-hidden hidden">
-            <input id="handOuterWidth">
-            <input id="handOuterHeight">
-            <div id="handHoleFields"></div>
-            <pre id="handRecognizedText"></pre>
-            <div id="handAssistArea" class="hidden"></div>
-          </div>
-
-          <div class="hand-review-note">
-            内容が合っていればPDFまたはDXFで保存してください。
-          </div>
-
+        <div id="handSimpleReview" class="hand-review-area hidden">
+          <div class="hand-section-title">④ 図面プレビュー</div>
+          <canvas id="simpleCadPreview"></canvas>
+          <div class="hand-review-note">内容が合っていれば保存してください。</div>
           <div class="hand-save-actions simple-save-actions">
-            <button id="handBackSimpleBtn" type="button">修正する</button>
-            <button id="handPdfBtn" class="primary" type="button">PDF保存</button>
-            <button id="handDxfBtn" class="primary" type="button">DXF保存</button>
+            <button id="simpleBackBtn" type="button">修正する</button>
+            <button id="simplePdfBtn" class="primary" type="button">PDF保存</button>
+            <button id="simpleDxfBtn" class="primary" type="button">DXF保存</button>
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <script src="./app.js?v=151"></script>
-  <script type="module" src="./handwriting-ai.js?v=151"></script>
-  <script src="./handwriting.js?v=151"></script>
+  <script src="./app.js?v=160"></script>
+  <script src="./handwriting-simple.js?v=160"></script>
 </body>
 </html>

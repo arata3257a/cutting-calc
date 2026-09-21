@@ -683,7 +683,7 @@
     state.aiUsed=true;
     // Outer width is normally the farthest horizontal dimension below the part.
     if(!Number.isFinite(out.width)){
-      const y0=rect.y+rect.h+rect.h*.72;
+      const y0=rect.y+rect.h+rect.h*.88;
       const crop=aiCrop(
         source,
         rect.x-rect.w*.20,

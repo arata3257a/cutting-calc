@@ -154,7 +154,7 @@
       await worker.setParameters({
         tessedit_pageseg_mode:"11",
         preserve_interword_spaces:"1",
-        tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØø"
+        tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØøΦφ⌀"
       });
       return worker;
     })().catch(err=>{ocrWorkerPromise=null;throw err;});
@@ -217,8 +217,11 @@
           const perimeter=cv.arcLength(cnt,true);
           const circularity=perimeter>0 ? (4*Math.PI*area)/(perimeter*perimeter) : 0;
           const aspect=r.height? r.width/r.height : 0;
-          if(r.width>=10 && r.height>=10 && aspect>.62 && aspect<1.38 && circularity>.42){
-            circleCandidates.push({cx:r.x+r.width/2,cy:r.y+r.height/2,r:(r.width+r.height)/4,quality:circularity,source:"contour"});
+          const sizeRatio=Math.max(r.width,r.height)/Math.max(1,Math.min(W,H));
+          if(r.width>=8 && r.height>=8 && aspect>.52 && aspect<1.48 && circularity>.16 && sizeRatio<.28){
+            const fillScore=1-Math.min(1,Math.abs(fill-.38));
+            const quality=circularity*.75+fillScore*.25;
+            circleCandidates.push({cx:r.x+r.width/2,cy:r.y+r.height/2,r:(r.width+r.height)/4,quality,source:"contour"});
           }
         }finally{cnt.delete();}
       }
@@ -282,24 +285,32 @@
         const circleInput=keep(new cv.Mat());
         cv.medianBlur(gray,circleInput,5);
         try{
-          cv.HoughCircles(circleInput,circlesMat,cv.HOUGH_GRADIENT,1.2,Math.max(18,minSide*.08),100,24,4,Math.max(8,Math.round(minSide*.28)));
+          const minR=Math.max(4,Math.round(minSide*.012));
+          const maxR=Math.max(minR+2,Math.round(minSide*.22));
+          cv.HoughCircles(circleInput,circlesMat,cv.HOUGH_GRADIENT,1.1,Math.max(16,minSide*.07),80,15,minR,maxR);
           for(let i=0;i<circlesMat.cols;i++){
             const k=i*3;
-            circleCandidates.push({cx:circlesMat.data32F[k],cy:circlesMat.data32F[k+1],r:circlesMat.data32F[k+2],quality:.75,source:"hough"});
+            circleCandidates.push({cx:circlesMat.data32F[k],cy:circlesMat.data32F[k+1],r:circlesMat.data32F[k+2],quality:.92,source:"hough"});
+          }
+          const circlesMat2=keep(new cv.Mat());
+          cv.HoughCircles(circleInput,circlesMat2,cv.HOUGH_GRADIENT,1.2,Math.max(18,minSide*.09),70,11,minR,maxR);
+          for(let i=0;i<circlesMat2.cols;i++){
+            const k=i*3;
+            circleCandidates.push({cx:circlesMat2.data32F[k],cy:circlesMat2.data32F[k+1],r:circlesMat2.data32F[k+2],quality:.78,source:"hough2"});
           }
         }catch{}
 
         const x1=bestRect.x,y1=bestRect.y,x2=x1+bestRect.w,y2=y1+bestRect.h;
         circleCandidates=circleCandidates.filter(c=>
           c.cx>x1+3 && c.cx<x2-3 && c.cy>y1+3 && c.cy<y2-3 &&
-          c.r>=Math.max(5,minSide*.018) && c.r<minSide*.32
+          c.r>=Math.max(3,minSide*.010) && c.r<minSide*.24
         );
         circleCandidates.sort((a,b)=>b.quality-a.quality);
         const dedup=[];
         for(const c of circleCandidates){
           if(dedup.some(d=>Math.hypot(d.cx-c.cx,d.cy-c.cy)<Math.max(8,(d.r+c.r)*.45))) continue;
           dedup.push(c);
-          if(dedup.length>=20) break;
+          if(dedup.length>=8) break;
         }
         circleCandidates=dedup;
       }
@@ -337,6 +348,7 @@
       .replace(/[，,]/g,".")
       .replace(/[×＊*]/g,"x")
       .replace(/[ØøΦφ⌀]/g,"D")
+      .replace(/^O(?=\d)/i,"D")
       .replace(/\s+/g,"")
       .trim();
   }
@@ -389,92 +401,206 @@
     return c;
   }
 
-  async function recognizeWords(){
+  function cropCanvas(source,x,y,w,h,rotate=false,scaleUp=2.2){
+    const sx=clamp(Math.floor(x),0,source.width-1);
+    const sy=clamp(Math.floor(y),0,source.height-1);
+    const sw=clamp(Math.ceil(w),1,source.width-sx);
+    const sh=clamp(Math.ceil(h),1,source.height-sy);
+    const raw=document.createElement("canvas");
+    raw.width=sw;raw.height=sh;
+    raw.getContext("2d").drawImage(source,sx,sy,sw,sh,0,0,sw,sh);
+
+    const pre=makeContrastCanvas(raw,true);
+    const out=document.createElement("canvas");
+    const tw=Math.max(1,Math.round(pre.width*scaleUp));
+    const th=Math.max(1,Math.round(pre.height*scaleUp));
+    if(rotate){
+      out.width=th;out.height=tw;
+      const g=out.getContext("2d");
+      g.imageSmoothingEnabled=false;
+      g.translate(out.width,0);g.rotate(Math.PI/2);
+      g.drawImage(pre,0,0,tw,th);
+    }else{
+      out.width=tw;out.height=th;
+      const g=out.getContext("2d");
+      g.imageSmoothingEnabled=false;
+      g.drawImage(pre,0,0,tw,th);
+    }
+    return {canvas:out,sourceBox:{x:sx,y:sy,w:sw,h:sh},rotate};
+  }
+
+  function remapCropWord(word,crop){
+    const b=word.bbox||word.boundingBox;
+    if(!b) return word;
+    const scaleX=crop.rotate ? crop.sourceBox.h/crop.canvas.width : crop.sourceBox.w/crop.canvas.width;
+    const scaleY=crop.rotate ? crop.sourceBox.w/crop.canvas.height : crop.sourceBox.h/crop.canvas.height;
+    let box;
+    if(!crop.rotate){
+      box={
+        x0:crop.sourceBox.x+b.x0*scaleX,
+        y0:crop.sourceBox.y+b.y0*scaleY,
+        x1:crop.sourceBox.x+b.x1*scaleX,
+        y1:crop.sourceBox.y+b.y1*scaleY
+      };
+    }else{
+      // inverse of clockwise 90 degree rotation
+      const pts=[
+        {x:b.y0*scaleY,y:crop.sourceBox.h-b.x0*scaleX},
+        {x:b.y1*scaleY,y:crop.sourceBox.h-b.x0*scaleX},
+        {x:b.y0*scaleY,y:crop.sourceBox.h-b.x1*scaleX},
+        {x:b.y1*scaleY,y:crop.sourceBox.h-b.x1*scaleX}
+      ];
+      box={
+        x0:crop.sourceBox.x+Math.min(...pts.map(p=>p.x)),
+        y0:crop.sourceBox.y+Math.min(...pts.map(p=>p.y)),
+        x1:crop.sourceBox.x+Math.max(...pts.map(p=>p.x)),
+        y1:crop.sourceBox.y+Math.max(...pts.map(p=>p.y))
+      };
+    }
+    return {...word,bbox:box};
+  }
+
+  async function ocrOne(worker,input,label,psm="11"){
+    setStatus(label);
+    await worker.setParameters({
+      tessedit_pageseg_mode:psm,
+      preserve_interword_spaces:"1",
+      tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØøΦφ⌀"
+    });
+    return timeout(worker.recognize(input),12000,label+"に時間がかかりすぎています");
+  }
+
+  async function recognizeWords(rect){
     const source=$("handSourceCanvas");
     const worker=await timeout(getOcrWorker(),18000,"文字認識エンジンの準備に時間がかかっています");
-    let lastPct=-1;
-    setStatus("寸法文字を認識中…");
-    const first=await timeout(worker.recognize(source,{
-      rotateAuto:false
-    },{
-      text:true,
-      blocks:true
-    }),18000,"文字認識に時間がかかりすぎています。もう一度撮影してください。");
+    const W=source.width,H=source.height;
+    const mx=rect.w*.35,my=rect.h*.45;
 
-    const words=(first.data.words||[]).map(w=>({...w,rotation:0}));
-    const raw=first.data.text||"";
-    const numericCount=words.filter(w=>/\d/.test(String(w.text||""))).length;
-    if(numericCount<2){
-      setStatus("文字が薄いため、画像を補正してもう一度確認しています…");
-      const improved=makeContrastCanvas(source);
-      const second=await timeout(worker.recognize(improved,{
-        rotateAuto:false
-      },{
-        text:true,
-        blocks:true
-      }),16000,"追加の文字認識に時間がかかりすぎています。");
-      const secondWords=(second.data.words||[]).map(w=>({...w,rotation:0}));
-      return {words:secondWords.length?secondWords:words,raw:(second.data.text||raw)};
-    }
+    // Whole image: labels such as Ø10, M6 and fallback numbers.
+    const whole=makeContrastCanvas(source,true);
+    const wholeResult=await ocrOne(worker,whole,"図面全体の文字を確認しています…","11");
+    const words=(wholeResult.data.words||[]).map(w=>({...w,region:"whole"}));
+    let raw="【全体】\n"+(wholeResult.data.text||"");
+
+    // Bottom horizontal dimensions (outer width, inner horizontal dimensions).
+    const bottom=cropCanvas(
+      source,
+      rect.x-mx,
+      rect.y+rect.h-rect.h*.10,
+      rect.w+mx*2,
+      Math.min(H-(rect.y+rect.h-rect.h*.10),rect.h*1.05),
+      false,2.5
+    );
+    try{
+      const br=await ocrOne(worker,bottom.canvas,"横寸法を確認しています…","11");
+      const bw=(br.data.words||[]).map(w=>({...remapCropWord(w,bottom),region:"bottom"}));
+      words.push(...bw);
+      raw+="\n【下側寸法】\n"+(br.data.text||"");
+    }catch(e){console.warn(e)}
+
+    // Right-side vertical dimensions. Rotate them before OCR.
+    const right=cropCanvas(
+      source,
+      rect.x+rect.w-rect.w*.10,
+      rect.y-my*.35,
+      Math.min(W-(rect.x+rect.w-rect.w*.10),rect.w*.75),
+      rect.h+my*.7,
+      true,2.5
+    );
+    try{
+      const rr=await ocrOne(worker,right.canvas,"縦寸法を確認しています…","11");
+      const rw=(rr.data.words||[]).map(w=>({...remapCropWord(w,right),region:"right"}));
+      words.push(...rw);
+      raw+="\n【右側寸法】\n"+(rr.data.text||"");
+    }catch(e){console.warn(e)}
+
     return {words,raw};
   }
 
-  function makeContrastCanvas(source){
+  function makeContrastCanvas(source,strong=false){
     const out=document.createElement("canvas");
     out.width=source.width;out.height=source.height;
     const x=out.getContext("2d",{willReadFrequently:true});
     x.drawImage(source,0,0);
     const img=x.getImageData(0,0,out.width,out.height);
     const d=img.data;
+    // Pencil lines are faint. Raise local contrast without erasing mid-gray strokes.
+    const threshold=strong?205:190;
     for(let i=0;i<d.length;i+=4){
       const gray=.299*d[i]+.587*d[i+1]+.114*d[i+2];
-      const v=gray<185?0:255;
+      let v;
+      if(strong){
+        v=gray<threshold ? Math.max(0,(gray-105)*1.15) : 255;
+        if(gray<165) v=0;
+      }else{
+        v=gray<185?0:255;
+      }
       d[i]=d[i+1]=d[i+2]=v;
     }
     x.putImageData(img,0,0);
     return out;
   }
 
-  function chooseOuterDimensions(parsed,rect){
-    const pairW=parsed.find(d=>d.kind==="pairWidth");
-    const pairH=parsed.find(d=>d.kind==="pairHeight");
-    if(pairW&&pairH) return {width:pairW.value,height:pairH.value,widthDim:pairW,heightDim:pairH};
+  function candidateScore(d,rect,axis){
+    const p=centerOfBox(d.bbox);
+    const right=rect.x+rect.w,bottom=rect.y+rect.h;
+    const conf=(d.confidence||0)/100;
+    if(axis==="width"){
+      const cxDist=Math.abs(p.x-(rect.x+rect.w/2))/Math.max(1,rect.w/2);
+      const below=(p.y>=rect.y+rect.h*.70);
+      const bottomDist=Math.abs(p.y-bottom)/Math.max(1,rect.h);
+      const regionBonus=d.region==="bottom"?2.5:0;
+      return regionBonus+(below?2.2:0)+(1-Math.min(1,cxDist))*1.5+(1-Math.min(1,bottomDist))*1.0+conf*.6;
+    }
+    const cyDist=Math.abs(p.y-(rect.y+rect.h/2))/Math.max(1,rect.h/2);
+    const onRight=(p.x>=rect.x+rect.w*.72);
+    const rightDist=Math.abs(p.x-right)/Math.max(1,rect.w);
+    const regionBonus=d.region==="right"?2.5:0;
+    return regionBonus+(onRight?2.2:0)+(1-Math.min(1,cyDist))*1.5+(1-Math.min(1,rightDist))*1.0+conf*.6;
+  }
 
-    const usable=parsed.filter(d=>d.kind==="plain");
-    const cx=rect.x+rect.w/2,cy=rect.y+rect.h/2;
-    let bestW=null,bestWS=-Infinity,bestH=null,bestHS=-Infinity;
-    for(const d of usable){
+  function chooseOuterDimensions(parsed,rect){
+    const plain=parsed.filter(d=>d.kind==="plain" && d.value>=1 && d.value<=100000);
+    const unique=[];
+    for(const d of plain){
       const p=centerOfBox(d.bbox);
-      const xNorm=Math.abs(p.x-cx)/Math.max(1,rect.w/2);
-      const yNorm=Math.abs(p.y-cy)/Math.max(1,rect.h/2);
-      const nearTopBottom=Math.min(Math.abs(p.y-rect.y),Math.abs(p.y-(rect.y+rect.h)))/Math.max(1,rect.h);
-      const nearLeftRight=Math.min(Math.abs(p.x-rect.x),Math.abs(p.x-(rect.x+rect.w)))/Math.max(1,rect.w);
-      const outsideV=(p.y<rect.y||p.y>rect.y+rect.h)?1:0;
-      const outsideH=(p.x<rect.x||p.x>rect.x+rect.w)?1:0;
-      const ws=(1-Math.min(1,xNorm))*2.2 +(1-Math.min(1,nearTopBottom))*1.8 +outsideV*.8 -(yNorm<.25?.8:0)+(d.confidence||0)/200;
-      const hs=(1-Math.min(1,yNorm))*2.2 +(1-Math.min(1,nearLeftRight))*1.8 +outsideH*.8 -(xNorm<.25?.8:0)+(d.confidence||0)/200;
-      if(ws>bestWS){bestWS=ws;bestW=d;}
-      if(hs>bestHS){bestHS=hs;bestH=d;}
+      if(unique.some(u=>u.value===d.value && Math.hypot(centerOfBox(u.bbox).x-p.x,centerOfBox(u.bbox).y-p.y)<18)) continue;
+      unique.push(d);
     }
-    if(bestW===bestH && usable.length>1){
-      const rest=usable.filter(d=>d!==bestW);
-      let altH=null,altHS=-Infinity;
-      for(const d of rest){
-        const p=centerOfBox(d.bbox);
-        const yNorm=Math.abs(p.y-cy)/Math.max(1,rect.h/2);
-        const nearLeftRight=Math.min(Math.abs(p.x-rect.x),Math.abs(p.x-(rect.x+rect.w)))/Math.max(1,rect.w);
-        const outsideH=(p.x<rect.x||p.x>rect.x+rect.w)?1:0;
-        const hs=(1-Math.min(1,yNorm))*2.2 +(1-Math.min(1,nearLeftRight))*1.8 +outsideH*.8+(d.confidence||0)/200;
-        if(hs>altHS){altHS=hs;altH=d;}
+    if(!unique.length) return {width:null,height:null,widthDim:null,heightDim:null};
+
+    const widthRank=unique.map(d=>({d,s:candidateScore(d,rect,"width")})).filter(x=>x.s>1.0).sort((a,b)=>b.s-a.s || b.d.value-a.d.value);
+    const heightRank=unique.map(d=>({d,s:candidateScore(d,rect,"height")})).filter(x=>x.s>1.0).sort((a,b)=>b.s-a.s || b.d.value-a.d.value);
+
+    // Prefer the largest plausible dimension among strongly positioned candidates.
+    const wPool=widthRank.filter(x=>x.s>=Math.max(2.8,(widthRank[0]?.s||0)-1.3)).slice(0,6);
+    const hPool=heightRank.filter(x=>x.s>=Math.max(2.8,(heightRank[0]?.s||0)-1.3)).slice(0,6);
+
+    let best=null,bestScore=-Infinity;
+    const pixelRatio=rect.w/Math.max(1,rect.h);
+    for(const w of wPool){
+      for(const h of hPool){
+        if(w.d===h.d) continue;
+        const ratio=w.d.value/Math.max(.001,h.d.value);
+        const ratioPenalty=Math.abs(Math.log(Math.max(.05,ratio)/Math.max(.05,pixelRatio)));
+        // Larger outside dimensions are more likely the overall size than 10/30/40 etc.
+        const sizeBonus=Math.log10(Math.max(1,w.d.value*h.d.value))*.35;
+        const score=w.s+h.s+sizeBonus-ratioPenalty*2.3;
+        if(score>bestScore){bestScore=score;best={w:w.d,h:h.d,ratioPenalty};}
       }
-      if(altH && altHS>bestHS-1.2) bestH=altH;
     }
-    return {
-      width:bestW&&bestWS>1.2?bestW.value:null,
-      height:bestH&&bestHS>1.2?bestH.value:null,
-      widthDim:bestW,
-      heightDim:bestH
-    };
+
+    // Do not confidently emit a clearly inconsistent pair. Wrong is worse than blank.
+    if(!best || bestScore<5.0 || best.ratioPenalty>0.75){
+      const w=wPool.sort((a,b)=>b.d.value-a.d.value)[0]?.d||null;
+      const h=hPool.sort((a,b)=>b.d.value-a.d.value)[0]?.d||null;
+      if(w&&h){
+        const rp=Math.abs(Math.log((w.value/h.value)/pixelRatio));
+        if(rp<=.75) return {width:w.value,height:h.value,widthDim:w,heightDim:h};
+      }
+      return {width:null,height:null,widthDim:null,heightDim:null};
+    }
+    return {width:best.w.value,height:best.h.value,widthDim:best.w,heightDim:best.h};
   }
 
   function mapHoles(parsed,rect,circles,width,height,usedDims){
@@ -637,25 +763,18 @@
     setBusy(true);
     $("handReviewArea")?.classList.add("hidden");
     try{
-      setStatus("図形と寸法を読み取っています…");
-      const [cvResult,ocrResult]=await Promise.allSettled([
-        timeout(getOpenCV(),12000,"図形認識の準備が遅いため簡易認識に切り替えます"),
-        recognizeWords()
-      ]);
-
+      setStatus("外形と穴を認識しています…");
       let geo={rect:null,circles:[]};
-      if(cvResult.status==="fulfilled"){
-        geo=detectGeometry(cvResult.value);
-      }
-      if(!geo.rect){
-        geo=detectGeometryFallback();
-      }
+      try{
+        const cv=await timeout(getOpenCV(),12000,"図形認識の準備が遅いため簡易認識に切り替えます");
+        geo=detectGeometry(cv);
+      }catch(e){console.warn(e)}
+      if(!geo.rect) geo=detectGeometryFallback();
       if(!geo.rect) throw new Error("外形を認識できませんでした。外形線がはっきり見えるように撮影してください。");
       state.rect=geo.rect;
       state.circles=geo.circles;
 
-      if(ocrResult.status!=="fulfilled") throw ocrResult.reason;
-      const ocr=ocrResult.value;
+      const ocr=await recognizeWords(state.rect);
       state.rawText=ocr.raw;
       const parsed=ocr.words.flatMap(parseWord);
       state.dims=parsed;

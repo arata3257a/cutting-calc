@@ -23,6 +23,10 @@
     assistPoints:[],
     assistHoleCenter:null,
     assistBusy:false,
+    reliableMode:null,
+    reliableCorners:[],
+    reliableHoles:[],
+    reliableH:null,
     fileName:""
   };
 
@@ -88,6 +92,7 @@
         state.rect=null;state.circles=[];state.dims=[];state.rawText="";
         state.width=null;state.height=null;state.holes=[];state.aiUsed=false;
         state.assistMode=null;state.assistPoints=[];state.assistHoleCenter=null;state.assistBusy=false;
+        state.reliableMode=null;state.reliableCorners=[];state.reliableHoles=[];state.reliableH=null;
         $("handPhotoArea")?.classList.remove("hidden");
         $("handReviewArea")?.classList.add("hidden");
         setStatus("撮影画像を確認してください。認識エンジンを準備しています…");
@@ -1081,6 +1086,291 @@
   }
 
 
+
+  function reliableMessage(message,kind=""){
+    const el=$("reliableHint");
+    if(!el) return;
+    el.textContent=message;
+    el.dataset.kind=kind;
+  }
+
+  function reliableInputNumber(id){
+    const raw=String($(id)?.value??"").trim();
+    if(raw==="") return NaN;
+    const v=Number(raw);
+    return Number.isFinite(v)?v:NaN;
+  }
+
+  function solveLinear(A,b){
+    const n=A.length;
+    const M=A.map((row,i)=>row.slice().concat([b[i]]));
+    for(let col=0;col<n;col++){
+      let pivot=col;
+      for(let r=col+1;r<n;r++){
+        if(Math.abs(M[r][col])>Math.abs(M[pivot][col])) pivot=r;
+      }
+      if(Math.abs(M[pivot][col])<1e-10) throw new Error("外形4点の計算に失敗しました");
+      if(pivot!==col){const t=M[pivot];M[pivot]=M[col];M[col]=t;}
+      const d=M[col][col];
+      for(let j=col;j<=n;j++) M[col][j]/=d;
+      for(let r=0;r<n;r++){
+        if(r===col) continue;
+        const f=M[r][col];
+        for(let j=col;j<=n;j++) M[r][j]-=f*M[col][j];
+      }
+    }
+    return M.map(row=>row[n]);
+  }
+
+  function homographyFrom4(src,dst){
+    const A=[],b=[];
+    for(let i=0;i<4;i++){
+      const x=src[i].x,y=src[i].y,u=dst[i].x,v=dst[i].y;
+      A.push([x,y,1,0,0,0,-u*x,-u*y]);b.push(u);
+      A.push([0,0,0,x,y,1,-v*x,-v*y]);b.push(v);
+    }
+    const h=solveLinear(A,b);
+    return [h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7],1];
+  }
+
+  function applyHomography(H,p){
+    const d=H[6]*p.x+H[7]*p.y+H[8];
+    if(Math.abs(d)<1e-10) return null;
+    return {
+      x:(H[0]*p.x+H[1]*p.y+H[2])/d,
+      y:(H[3]*p.x+H[4]*p.y+H[5])/d
+    };
+  }
+
+  function reliablePoint(e){
+    const canvas=$("reliableCanvas");
+    const r=canvas.getBoundingClientRect();
+    return {
+      x:clamp((e.clientX-r.left)/Math.max(1,r.width)*canvas.width,0,canvas.width),
+      y:clamp((e.clientY-r.top)/Math.max(1,r.height)*canvas.height,0,canvas.height)
+    };
+  }
+
+  function drawReliableCanvas(){
+    const source=$("handSourceCanvas"),canvas=$("reliableCanvas");
+    if(!source||!canvas||!state.imageReady) return;
+    canvas.width=source.width;canvas.height=source.height;
+    const g=canvas.getContext("2d");
+    g.clearRect(0,0,canvas.width,canvas.height);
+    g.drawImage(source,0,0);
+    const lw=Math.max(2,canvas.width/320);
+
+    if(state.reliableCorners.length){
+      g.save();
+      g.lineWidth=lw*2;
+      g.strokeStyle="#0057b8";
+      g.fillStyle="#0057b8";
+      g.font=Math.max(14,canvas.width/38)+"px system-ui";
+      g.beginPath();
+      state.reliableCorners.forEach((p,i)=>{
+        if(i===0) g.moveTo(p.x,p.y); else g.lineTo(p.x,p.y);
+        g.beginPath();g.arc(p.x,p.y,lw*4.5,0,Math.PI*2);g.fill();
+        g.fillText(String(i+1),p.x+lw*6,p.y-lw*5);
+      });
+      if(state.reliableCorners.length===4){
+        g.beginPath();
+        g.moveTo(state.reliableCorners[0].x,state.reliableCorners[0].y);
+        for(let i=1;i<4;i++) g.lineTo(state.reliableCorners[i].x,state.reliableCorners[i].y);
+        g.closePath();g.stroke();
+      }
+      g.restore();
+    }
+
+    if(state.reliableHoles.length){
+      g.save();
+      g.strokeStyle="#b22222";g.fillStyle="#b22222";g.lineWidth=lw*2;
+      g.font=Math.max(13,canvas.width/42)+"px system-ui";
+      for(const h of state.reliableHoles){
+        const p=h.photo;
+        g.beginPath();g.arc(p.x,p.y,lw*5,0,Math.PI*2);g.stroke();
+        g.beginPath();g.moveTo(p.x-lw*7,p.y);g.lineTo(p.x+lw*7,p.y);
+        g.moveTo(p.x,p.y-lw*7);g.lineTo(p.x,p.y+lw*7);g.stroke();
+        g.fillText(h.label,p.x+lw*8,p.y-lw*6);
+      }
+      g.restore();
+    }
+  }
+
+  function renderReliableHoleList(){
+    const list=$("reliableHoleList");
+    if(!list) return;
+    if(!state.reliableHoles.length){
+      list.innerHTML='<div class="hand-empty">穴はまだ追加されていません。</div>';
+      return;
+    }
+    list.innerHTML=state.reliableHoles.map((h,i)=>
+      '<div class="reliable-hole-item"><span>穴 '+(i+1)+' '+h.label+'</span>'+
+      '<span>X '+roundValue(h.x,2)+' / Y '+roundValue(h.y,2)+'</span></div>'
+    ).join("");
+  }
+
+  function openReliable(){
+    if(!state.imageReady) return;
+    $("handReliableArea")?.classList.remove("hidden");
+    $("handReviewArea")?.classList.add("hidden");
+    state.reliableMode="size";
+    state.reliableCorners=[];
+    state.reliableHoles=[];
+    state.reliableH=null;
+    $("reliableHoleControls")?.classList.add("hidden");
+    reliableMessage("外形の幅・高さを入力してください。");
+    setTimeout(drawReliableCanvas,0);
+    $("handReliableArea")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  function startReliableCorners(){
+    const width=reliableInputNumber("reliableWidth");
+    const height=reliableInputNumber("reliableHeight");
+    if(!(width>0)||!(height>0)){
+      reliableMessage("外形の幅と高さを入力してください。","error");
+      return;
+    }
+    state.reliableMode="corners";
+    state.reliableCorners=[];
+    state.reliableHoles=[];
+    state.reliableH=null;
+    $("reliableHoleControls")?.classList.add("hidden");
+    reliableMessage("①左上 → ②右上 → ③右下 → ④左下 の順にタップしてください。");
+    drawReliableCanvas();
+  }
+
+  function finishCornerCalibration(){
+    const width=reliableInputNumber("reliableWidth");
+    const height=reliableInputNumber("reliableHeight");
+    const dst=[
+      {x:0,y:height},
+      {x:width,y:height},
+      {x:width,y:0},
+      {x:0,y:0}
+    ];
+    try{
+      state.reliableH=homographyFrom4(state.reliableCorners,dst);
+    }catch(e){
+      state.reliableCorners=[];
+      state.reliableH=null;
+      reliableMessage("4点の指定がうまく計算できません。もう一度指定してください。","error");
+      drawReliableCanvas();
+      return;
+    }
+    state.reliableMode="holes";
+    $("reliableHoleControls")?.classList.remove("hidden");
+    renderReliableHoleList();
+    reliableMessage("外形を確定しました。穴種類とサイズを選び、写真の穴中心をタップしてください。");
+    drawReliableCanvas();
+  }
+
+  function addReliableHole(p){
+    if(!state.reliableH) return;
+    const mapped=applyHomography(state.reliableH,p);
+    if(!mapped) return;
+    const width=reliableInputNumber("reliableWidth");
+    const height=reliableInputNumber("reliableHeight");
+    const x=clamp(mapped.x,0,width),y=clamp(mapped.y,0,height);
+    const size=reliableInputNumber("reliableHoleSize");
+    if(!(size>0)){
+      reliableMessage("穴サイズを入力してから穴中心をタップしてください。","error");
+      return;
+    }
+    const kind=$("reliableHoleKind")?.value||"through";
+    const tap={3:2.5,4:3.3,5:4.2,6:5.0,8:6.8,10:8.5,12:10.2};
+    const isThread=kind==="thread";
+    const label=isThread?"M"+size:"Ø"+size;
+    const diameter=isThread?(tap[size]||size):size;
+    state.reliableHoles.push({
+      photo:{x:p.x,y:p.y},
+      x,y,
+      normX:width?x/width:0,
+      normY:height?y/height:0,
+      diameter,
+      holeKind:isThread?"M"+size:"through",
+      threadSize:isThread?size:null,
+      label,
+      source:"reliable"
+    });
+    renderReliableHoleList();
+    reliableMessage(label+" を追加しました。次の穴は種類・サイズを変更して中心をタップしてください。");
+    drawReliableCanvas();
+  }
+
+  function handleReliableTap(e){
+    if(!state.imageReady) return;
+    const p=reliablePoint(e);
+    if(state.reliableMode==="corners"){
+      state.reliableCorners.push(p);
+      const n=state.reliableCorners.length;
+      if(n<4){
+        const names=["右上","右下","左下"];
+        reliableMessage((n+1)+"点目: "+names[n-1]+"をタップしてください。");
+        drawReliableCanvas();
+      }else{
+        finishCornerCalibration();
+      }
+      return;
+    }
+    if(state.reliableMode==="holes") addReliableHole(p);
+  }
+
+  function undoReliable(){
+    if(state.reliableMode==="corners"){
+      state.reliableCorners.pop();
+      reliableMessage("1点戻しました。続きの角をタップしてください。");
+      drawReliableCanvas();
+      return;
+    }
+    if(state.reliableMode==="holes"&&state.reliableHoles.length){
+      state.reliableHoles.pop();
+      renderReliableHoleList();
+      reliableMessage("最後の穴を削除しました。");
+      drawReliableCanvas();
+    }
+  }
+
+  function finishReliable(){
+    const width=reliableInputNumber("reliableWidth");
+    const height=reliableInputNumber("reliableHeight");
+    if(!(width>0)||!(height>0)||state.reliableCorners.length!==4||!state.reliableH){
+      reliableMessage("外形寸法と4隅の指定を完了してください。","error");
+      return;
+    }
+
+    state.width=width;state.height=height;
+    $("handOuterWidth").value=width;
+    $("handOuterHeight").value=height;
+
+    const xs=state.reliableCorners.map(p=>p.x),ys=state.reliableCorners.map(p=>p.y);
+    const rx=Math.min(...xs),ry=Math.min(...ys);
+    state.rect={
+      x:rx,y:ry,
+      w:Math.max(...xs)-rx,
+      h:Math.max(...ys)-ry,
+      source:"reliable"
+    };
+
+    state.holes=state.reliableHoles.map((h,i)=>({
+      index:i+1,
+      normX:h.normX,normY:h.normY,
+      x:h.x,y:h.y,
+      diameter:h.diameter,
+      holeKind:h.holeKind,
+      threadSize:h.threadSize,
+      label:h.label,
+      source:"reliable"
+    }));
+    state.rawText="【確実モード】\\n外形 "+width+" × "+height+" mm\\n"+
+      state.holes.map(h=>h.label+"  X="+roundValue(h.x,2)+" Y="+roundValue(h.y,2)).join("\\n");
+
+    $("handReliableArea")?.classList.add("hidden");
+    $("handReviewArea")?.classList.remove("hidden");
+    renderReview();
+    setStatus("確実モードで図面化しました。位置と寸法を確認してください。","ok");
+    $("handReviewArea")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
   function assistMessage(message){
     const el=$("handAssistHint");
     if(el) el.textContent=message;
@@ -1423,6 +1713,11 @@
   $("handCameraInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handGalleryInput")?.addEventListener("change",e=>loadImageFile(e.target.files?.[0]));
   $("handRecognizeBtn")?.addEventListener("click",recognize);
+  $("handReliableBtn")?.addEventListener("click",openReliable);
+  $("reliableStartBtn")?.addEventListener("click",startReliableCorners);
+  $("reliableCanvas")?.addEventListener("pointerup",handleReliableTap);
+  $("reliableUndoBtn")?.addEventListener("click",undoReliable);
+  $("reliableFinishBtn")?.addEventListener("click",finishReliable);
   $("handAssistBtn")?.addEventListener("click",openAssist);
   $("handAssistBtnTop")?.addEventListener("click",()=>{
     openAssist();
@@ -1451,5 +1746,6 @@
   window.addEventListener("resize",()=>{
     if(!$("handReviewArea")?.classList.contains("hidden")) drawCleanPreview();
     if(!$("handAssistArea")?.classList.contains("hidden")) drawAssistCanvas();
+    if(!$("handReliableArea")?.classList.contains("hidden")) drawReliableCanvas();
   });
 })();

@@ -467,7 +467,7 @@
       preserve_interword_spaces:"1",
       tessedit_char_whitelist:"0123456789.-+xXRMrmDdOoØøΦφ⌀"
     });
-    return timeout(worker.recognize(input),12000,label+"に時間がかかりすぎています");
+    return timeout(worker.recognize(input,{}, {text:true,blocks:true}),12000,label+"に時間がかかりすぎています");
   }
 
   async function recognizeWords(rect){
@@ -604,26 +604,33 @@
   }
 
   function mapHoles(parsed,rect,circles,width,height,usedDims){
-    const candidates=parsed.filter(d=>!usedDims.has(d) && (d.kind==="diameter"||d.kind==="plain"));
+    const candidates=parsed.filter(d=>!usedDims.has(d) && ["diameter","thread","plain"].includes(d.kind));
     return circles.map((c,index)=>{
       let best=null,bestScore=Infinity;
       for(const d of candidates){
         const p=centerOfBox(d.bbox);
         const dist=Math.hypot(p.x-c.cx,p.y-c.cy);
-        const maxDist=Math.max(rect.w,rect.h)*.32;
+        const maxDist=Math.max(rect.w,rect.h)*.42;
         if(dist>maxDist) continue;
-        const penalty=d.kind==="diameter"?0:maxDist*.18;
-        const score=dist+penalty;
+        let penalty=0;
+        if(d.kind==="diameter") penalty=-maxDist*.20;
+        else if(d.kind==="thread") penalty=-maxDist*.12;
+        else penalty=maxDist*.16;
+        const score=dist+penalty-(d.confidence||0)*.18;
         if(score<bestScore){bestScore=score;best=d;}
       }
       if(best) usedDims.add(best);
+      const normX=clamp((c.cx-rect.x)/Math.max(1,rect.w),0,1);
+      const normY=clamp((rect.y+rect.h-c.cy)/Math.max(1,rect.h),0,1);
       return {
         index:index+1,
-        normX:clamp((c.cx-rect.x)/Math.max(1,rect.w),0,1),
-        normY:clamp((rect.y+rect.h-c.cy)/Math.max(1,rect.h),0,1),
-        x:Number.isFinite(width)?roundValue(width*clamp((c.cx-rect.x)/rect.w,0,1),2):null,
-        y:Number.isFinite(height)?roundValue(height*clamp((rect.y+rect.h-c.cy)/rect.h,0,1),2):null,
+        normX,
+        normY,
+        x:Number.isFinite(width)?roundValue(width*normX,2):null,
+        y:Number.isFinite(height)?roundValue(height*normY,2):null,
         diameter:best?best.value:null,
+        holeKind:best?.kind==="thread" ? "M"+best.value : "through",
+        label:best?.kind==="thread" ? "M"+best.value : best?.kind==="diameter" ? "Ø"+best.value : "",
         dim:best,
         source:c.source
       };
@@ -643,7 +650,7 @@
       }else{
         list.innerHTML=state.holes.map((h,i)=>
           '<div class="hand-hole-row" data-hole="'+i+'">'+
-            '<strong>穴 '+(i+1)+'</strong>'+
+            '<strong>穴 '+(i+1)+(h.label?' '+h.label:'')+'</strong>'+
             '<label>X位置 mm<input class="hand-hole-x" inputmode="decimal" value="'+(h.x??"")+'" placeholder="未認識"></label>'+
             '<label>Y位置 mm<input class="hand-hole-y" inputmode="decimal" value="'+(h.y??"")+'" placeholder="未認識"></label>'+
             '<label>直径 Ø mm<input class="hand-hole-d" inputmode="decimal" value="'+(h.diameter??"")+'" placeholder="未認識"></label>'+
@@ -806,7 +813,8 @@
     result.push({id:newId(),type:"rect",x:0,y:0,w:vals.width,h:vals.height,corners:{},layer:"0"});
     vals.holes.forEach(h=>{
       if(Number.isFinite(h.x)&&Number.isFinite(h.y)&&h.x>=0&&h.y>=0&&h.d>0){
-        result.push({id:newId(),type:"hole",cx:h.x,cy:h.y,r:h.d/2,holeKind:"through",layer:"1"});
+        const meta=state.holes[h.index-1]||{};
+        result.push({id:newId(),type:"hole",cx:h.x,cy:h.y,r:h.d/2,holeKind:meta.holeKind||"through",layer:"1"});
       }
     });
     const dimOffset=Math.max(8,Math.min(vals.width,vals.height)*.12);

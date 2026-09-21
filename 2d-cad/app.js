@@ -2569,7 +2569,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=143",{updateViaCache:"none"})
+      .register("./sw.js?v=150",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

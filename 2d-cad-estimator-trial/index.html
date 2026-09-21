@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>2D CAD 加工費見積 1週間お試し版</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css?v=trial1">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <strong>2D CAD 加工費見積 1週間お試し版</strong>
+      <small>1週間お試し版 / v1.1</small>
+    </div>
+    <div class="header-actions">
+      <button id="undoBtn" title="戻る">↶</button>
+      <button id="redoBtn" title="進む">↷</button>
+      <button id="saveBtn" class="primary">保存</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="workspace">
+      <div class="canvas-wrap">
+        <canvas id="cadCanvas"></canvas>
+
+        <div id="dimensionModeDock" class="dimension-mode hidden">
+          <div class="dimension-mode-title">寸法方向を選択</div>
+          <div class="dimension-mode-buttons">
+            <button id="dimHorizontalBtn" class="dim-mode-btn active" type="button">↔<span>水平寸法</span></button>
+            <button id="dimVerticalBtn" class="dim-mode-btn" type="button">↕<span>垂直寸法</span></button>
+          </div>
+          <select id="dimensionModeSelect" class="visually-hidden" aria-label="寸法方向">
+            <option value="horizontal" selected>水平</option>
+            <option value="vertical">垂直</option>
+          </select>
+        </div>
+
+        <div id="hint">図形をタップして選択できます</div>
+      </div>
+
+      <nav class="edit-toolbar" aria-label="編集ツール">
+        <button id="layerBtn" class="tool edit-tool" title="レイヤー">▱<span>レイヤー</span></button>
+        <button id="estimateBtn" class="tool edit-tool estimator-tool" title="加工費見積">¥<span>見積</span></button>
+        <button class="tool edit-tool" data-tool="trim">✂<span>トリム</span></button>
+        <button class="tool edit-tool" data-tool="offset">⇆<span>オフセット</span></button>
+        <button class="tool edit-tool" data-tool="chamfer">◩<span>面取り</span></button>
+        <button class="tool edit-tool" data-tool="fillet">⌜<span>R</span></button>
+        <button class="tool edit-tool" data-tool="copy">⧉<span>コピー</span></button>
+        <button class="tool edit-tool" data-tool="mirror">↔<span>ミラー</span></button>
+        <button class="tool edit-tool" data-tool="rotate">↻<span>回転</span></button>
+        <button class="tool edit-tool" data-tool="dimension">↕<span>寸法</span></button>
+        <button class="tool edit-tool" data-tool="multi">✥<span>移動</span></button>
+        <button id="deleteToolBtn" class="tool edit-tool delete-tool">🗑<span>削除</span></button>
+      </nav>
+
+      <nav class="draw-toolbar" aria-label="作図ツール">
+        <button class="tool active" data-tool="select">↖<span>選択</span></button>
+        <button class="tool" data-tool="line">／<span>直線</span></button>
+        <button class="tool" data-tool="parallel">∥<span>平行線</span></button>
+        <button class="tool" data-tool="point">•<span>点</span></button>
+        <button class="tool" data-tool="circle">○<span>円</span></button>
+        <button class="tool" data-tool="slot">▭<span>長穴</span></button>
+        <button class="tool" data-tool="arc">⌒<span>円弧</span></button>
+      </nav>
+
+      <aside id="layerPanel" class="panel compact-panel hidden">
+        <div class="panel-title">
+          <strong>レイヤー</strong>
+          <button id="closeLayerBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label for="layerSelect">現在のレイヤー</label>
+            <select id="layerSelect">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>表示</label>
+            <button id="layerVisibleBtn">👁 表示中</button>
+          </div>
+        </div>
+      </aside>
+
+      <aside id="estimatePanel" class="panel estimate-panel hidden">
+        <div class="panel-title">
+          <strong>加工費 自動見積</strong>
+          <button id="closeEstimateBtn" class="icon-btn">×</button>
+        </div>
+
+        <div class="estimate-section-title">基本設定</div>
+        <div class="fields">
+          <div class="field"><label for="estHourlyRate">時間単価（円/h）</label><input id="estHourlyRate" type="number" value="6000" min="0" step="100"></div>
+          <div class="field"><label for="estThickness">素材厚み（mm）</label><input id="estThickness" type="number" value="10" min="0.1" step="0.1"></div>
+          <div class="field"><label for="estSetupMin">段取り時間（分）</label><input id="estSetupMin" type="number" value="15" min="0" step="1"></div>
+        </div>
+
+        <div class="estimate-section-title">加工基準</div>
+        <div class="fields">
+          <div class="field"><label for="estHoleMin">穴1個（分）</label><input id="estHoleMin" type="number" value="0.6" min="0" step="0.1"></div>
+          <div class="field"><label for="estHoleDepth">穴加工 深さ（mm）</label><input id="estHoleDepth" type="number" value="10" min="0" step="0.1"></div>
+          <div class="field"><label for="estTapMin">ネジ穴1個（分）</label><input id="estTapMin" type="number" value="1.5" min="0" step="0.1"></div>
+          <div class="field"><label for="estTapDepth">ネジ穴 深さ（mm）</label><input id="estTapDepth" type="number" value="10" min="0" step="0.1"></div>
+          <div class="field"><label for="estOuterSpeed">外形速度（mm/min）</label><input id="estOuterSpeed" type="number" value="120" min="1" step="5"></div>
+          <div class="field"><label for="estOuterDepth">外形加工 深さ（mm）</label><input id="estOuterDepth" type="number" value="10" min="0" step="0.1"></div>
+          <div class="field"><label for="estGrooveSpeed">溝速度（mm/min）</label><input id="estGrooveSpeed" type="number" value="100" min="1" step="5"></div>
+          <div class="field"><label for="estGrooveDepth">溝加工 深さ（mm）</label><input id="estGrooveDepth" type="number" value="5" min="0" step="0.1"></div>
+          <div class="field"><label for="estTapTolerance">タップ下穴公差（±mm）</label><input id="estTapTolerance" type="number" value="0.12" min="0" step="0.01"></div>
+          <div class="field-note">外形・溝・穴・ネジ穴は、それぞれ設定した加工深さで時間を補正します。10mm深さを1.0倍の目安とします。未指定の円は穴として扱い、代表的なタップ下穴径に近い場合だけネジ穴候補にします。</div>
+        </div>
+
+        <div class="estimate-section-title">線加工の指定</div>
+        <div class="estimate-classify">
+          <div id="estimateSelectionNote" class="field-note">見積モードで図形をタップし、外形加工か溝加工かを指定します。</div>
+          <div class="estimate-classify-buttons">
+            <button id="markOuterBtn" type="button">外形に指定</button>
+            <button id="markGrooveBtn" type="button">溝に指定</button>
+            <button id="clearEstimateKindBtn" type="button">指定解除</button>
+          </div>
+          <div class="estimate-legend"><span class="outer-mark">■ 外形</span><span class="groove-mark">■ 溝</span><span>未指定は自動判定</span></div>
+        </div>
+
+        <div class="estimate-section-title">穴加工の指定</div>
+        <div class="estimate-classify">
+          <div id="estimateHoleSelectionNote" class="field-note">見積モードで円・穴をタップし、普通の穴かネジ穴かを指定します。</div>
+          <div class="estimate-classify-buttons">
+            <button id="markHoleBtn" type="button">穴に指定</button>
+            <button id="markTapBtn" type="button">ネジ穴に指定</button>
+            <button id="clearEstimateHoleBtn" type="button">指定解除</button>
+          </div>
+          <div class="estimate-legend"><span class="hole-mark">■ 穴</span><span class="tap-mark">■ ネジ穴</span><span>未指定は自動判定</span></div>
+        </div>
+
+        <div class="estimate-section-title">図面から認識した加工量</div>
+        <div class="fields">
+          <div class="field"><label for="estHoleCount">穴数</label><input id="estHoleCount" type="number" value="0" min="0" step="1"></div>
+          <div class="field"><label for="estTapCount">ネジ穴数</label><input id="estTapCount" type="number" value="0" min="0" step="1"></div>
+          <div class="field"><label for="estOuterLength">外形周長（mm）</label><input id="estOuterLength" type="number" value="0" min="0" step="0.1"></div>
+          <div class="field"><label for="estGrooveLength">溝加工長（mm）</label><input id="estGrooveLength" type="number" value="0" min="0" step="0.1"></div>
+          <div id="estimateDetectNote" class="field-note">図形の指定内容から加工量を自動集計します。数値は手動修正できます。</div>
+        </div>
+
+        <div class="estimate-result">
+          <div><span>穴加工</span><strong id="estHoleTime">0.0分</strong></div>
+          <div><span>ネジ穴</span><strong id="estTapTime">0.0分</strong></div>
+          <div><span>外形加工</span><strong id="estOuterTime">0.0分</strong></div>
+          <div><span>溝加工</span><strong id="estGrooveTime">0.0分</strong></div>
+          <div><span>段取り</span><strong id="estSetupTime">0.0分</strong></div>
+          <div class="estimate-total-time"><span>推定加工時間</span><strong id="estTotalTime">0.0分</strong></div>
+          <div class="estimate-cost"><span>概算加工費</span><strong id="estCost">¥0</strong></div>
+        </div>
+        <button id="saveEstimatePdfBtn" class="primary estimate-pdf-save" type="button">図形＋金額をPDF保存</button>
+        <div class="estimate-warning">※ 概算用です。材料費、工具交換、測定、治具、仕上げ、難易度などは含みません。</div>
+      </aside>
+
+      <aside id="quickPanel" class="panel hidden">
+        <div class="panel-title">
+          <strong id="quickTitle">数値で作図</strong>
+          <button id="closeQuickBtn" class="icon-btn">×</button>
+        </div>
+        <div id="quickFields" class="fields"></div>
+        <button id="createByValueBtn" class="primary wide">この寸法で作成</button>
+      </aside>
+
+      <aside id="propertyPanel" class="panel hidden">
+        <div class="panel-title">
+          <strong>選択した図形</strong>
+          <button id="closePropertyBtn" class="icon-btn">×</button>
+        </div>
+        <div id="propertyFields" class="fields"></div>
+        <div class="row">
+          <button id="applyPropertyBtn" class="primary">寸法を更新</button>
+          <button id="deleteSelectedBtn" class="danger">削除</button>
+        </div>
+      </aside>
+
+      <aside id="sheetPanel" class="panel hidden">
+        <div class="panel-title">
+          <strong>図面情報</strong>
+          <button id="closeSheetBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field"><label for="sheetTitle">品名</label><input id="sheetTitle" value=""></div>
+          <div class="field"><label for="sheetNo">図番</label><input id="sheetNo" value=""></div>
+          <div class="field"><label for="sheetScale">尺度</label><input id="sheetScale" value="1:1"></div>
+          <div class="field"><label for="sheetName">作者</label><input id="sheetName" value=""></div>
+          <div class="field"><label for="sheetMaterial">材質</label><input id="sheetMaterial" value=""></div>
+          <div class="field"><label for="sheetDate">日付</label><input id="sheetDate" type="date" value=""></div>
+        </div>
+        <button id="saveSheetBtn" class="primary wide">図面情報を保存</button>
+      </aside>
+
+      <aside id="fileSavePanel" class="panel compact-panel hidden">
+        <div class="panel-title">
+          <strong id="fileSaveTitle">ファイル出力</strong>
+          <button id="closeFileSaveBtn" class="icon-btn">×</button>
+        </div>
+        <div class="fields">
+          <div class="field" style="grid-column:1/-1">
+            <label for="exportFileName">ファイル名</label>
+            <input id="exportFileName" value="" autocomplete="off">
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label for="exportSaveLocation">保存先</label>
+            <input id="exportSaveLocation" value="未選択" readonly>
+          </div>
+          <div class="field-note">保存先を選択してから「決定」を押すと保存します。端末がフォルダー指定に対応していない場合は、端末の通常の保存先を使用します。</div>
+        </div>
+        <div class="row">
+          <button id="chooseExportLocationBtn" type="button">保存先を選択</button>
+          <button id="confirmExportBtn" class="primary" type="button">決定</button>
+        </div>
+      </aside>
+
+      <aside id="pdfPreviewPanel" class="pdf-preview-panel hidden">
+        <div class="panel-title">
+          <strong id="pdfPreviewTitle">PDFプレビュー</strong>
+          <button id="closePdfPreviewBtn" class="icon-btn">×</button>
+        </div>
+        <div class="pdf-preview-stage">
+          <img id="pdfPreviewImage" alt="PDFに保存される図面のプレビュー">
+        </div>
+        <div class="row pdf-preview-actions">
+          <button id="backPdfPreviewBtn" type="button">戻る</button>
+          <button id="savePdfPreviewBtn" class="primary" type="button">保存確定</button>
+        </div>
+      </aside>
+
+    </section>
+
+    <section class="bottom-actions">
+      <button id="newBtn">新規</button>
+      <button id="sampleBtn">サンプル</button>
+
+      <details id="loadMenu" class="transfer-menu">
+        <summary>📥 読込み</summary>
+        <div class="transfer-popover">
+          <button id="importBtn" type="button"><strong>保存データを読込</strong><span>続きから編集</span></button>
+          <button id="dxfImportBtn" type="button"><strong>DXF</strong><span>CADデータ</span></button>
+        </div>
+      </details>
+
+      <details id="outputMenu" class="transfer-menu">
+        <summary>📤 出力</summary>
+        <div class="transfer-popover">
+          <button id="exportBtn" type="button"><strong>編集データを保存</strong><span>あとで再編集</span></button>
+          <button id="dxfBtn" type="button"><strong>DXF</strong><span>CAD用</span></button>
+          <button id="svgBtn" type="button"><strong>SVG</strong><span>画像用</span></button>
+          <button id="printBtn" type="button"><strong>PDF</strong><span>図枠付き</span></button>
+        </div>
+      </details>
+
+      <button id="sheetBtn">図面情報</button>
+      <input id="importInput" type="file" accept=".json,application/json" hidden>
+      <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
+    </section>
+  </main>
+
+  <script src="./trial.js?v=trial1"></script>
+  <script src="./app.js?v=trial1"></script>
+  <script src="./estimator.js?v=trial1"></script>
+</body>
+</html>

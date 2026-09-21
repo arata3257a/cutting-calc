@@ -209,7 +209,7 @@
         <div class="hand-draw-head">
           <div>
             <strong>手書き図面をデータ化</strong>
-            <small>撮影 → 認識 → 確認 → PDF / DXF</small>
+            <small>写真 → サイズ入力 → 穴をタップ → 保存</small>
           </div>
           <button id="closeHandDrawBtn" class="icon-btn" type="button">×</button>
         </div>
@@ -222,7 +222,7 @@
         <div id="handStatus" class="hand-status">手書き図面を撮影してください。</div>
 
         <div id="handPhotoArea" class="hand-photo-area hidden">
-          <img id="handPhotoPreview" alt="撮影した手書き図面" class="hand-load-image">
+          <img id="handPhotoPreview" alt="" class="hand-load-image" hidden>
           <canvas id="handSourceCanvas" hidden></canvas>
 
           <div id="handReliableArea" class="hand-reliable-area">
@@ -287,7 +287,7 @@
             <button id="handPdfBtn" class="primary" type="button">PDF保存</button>
             <button id="handDxfBtn" class="primary" type="button">DXF保存</button>
           </div>
-        </div>        </div>
+        </div>
       </div>
     </section>
   </main>

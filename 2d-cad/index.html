@@ -12,13 +12,13 @@
   <title>2D CAD かんたん作図</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=142">
+  <link rel="stylesheet" href="./style.css?v=143">
 </head>
 <body>
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.42 / mm</small>
+      <small>v1.43 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -226,6 +226,7 @@
           <img id="handPhotoPreview" alt="撮影した手書き図面">
           <canvas id="handSourceCanvas" hidden></canvas>
           <button id="handRecognizeBtn" class="primary wide" type="button">この写真を読み取る</button>
+          <button id="handAssistBtnTop" class="wide hand-assist-open" type="button">✋ 写真をタップして確実に補正</button>
         </div>
 
         <div id="handReviewArea" class="hand-review-area hidden">
@@ -282,8 +283,8 @@
     </section>
   </main>
 
-  <script src="./app.js?v=142"></script>
-  <script type="module" src="./handwriting-ai.js?v=142"></script>
-  <script src="./handwriting.js?v=142"></script>
+  <script src="./app.js?v=143"></script>
+  <script type="module" src="./handwriting-ai.js?v=143"></script>
+  <script src="./handwriting.js?v=143"></script>
 </body>
 </html>

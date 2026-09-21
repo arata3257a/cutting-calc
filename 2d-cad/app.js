@@ -276,6 +276,7 @@ function drawShape(s,isPreview=false){
       let label;
       if(s.holeKind==="counterbore") label="ザグリ Ø"+round(s.r*2)+" / Ø"+round(s.counterD||0);
       else if(s.holeKind==="countersink") label="皿穴 Ø"+round(s.r*2)+" / Ø"+round(s.counterD||0);
+      else if(/^M\d/i.test(s.holeKind||"")) label=s.holeKind;
       else if(s.holeKind && s.holeKind!=="through") label=s.holeKind+" 下穴 Ø"+round(Math.abs(s.r*2));
       else label="穴 Ø"+round(Math.abs(s.r*2));
       const labelR=Math.max(Math.abs(s.r),Math.abs((s.counterD||0)/2));
@@ -2568,7 +2569,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js?v=141",{updateViaCache:"none"})
+      .register("./sw.js?v=142",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(() => {});
   });

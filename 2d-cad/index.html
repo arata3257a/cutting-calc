@@ -18,7 +18,7 @@
   <header>
     <div class="brand">
       <strong>2D CAD かんたん作図</strong>
-      <small>v1.38 / mm</small>
+      <small>v1.39 / mm</small>
     </div>
     <div class="header-actions">
       <button id="undoBtn" title="戻る">↶</button>
@@ -200,6 +200,7 @@
       <button id="handDrawBtn" class="hand-entry-btn">📷 手書き図面</button>
       <button id="sheetBtn">図面情報</button>
       <input id="handCameraInput" type="file" accept="image/*" capture="environment" hidden>
+      <input id="handGalleryInput" type="file" accept="image/*" hidden>
       <input id="importInput" type="file" accept=".json,application/json" hidden>
       <input id="dxfInput" type="file" accept=".dxf,text/plain" hidden>
     </section>
@@ -215,7 +216,7 @@
 
         <div class="hand-actions-top">
           <button id="handCameraBtn" class="primary" type="button">📷 カメラで撮影</button>
-          <button id="handRetakeBtn" type="button">撮り直す / 画像を選ぶ</button>
+          <button id="handGalleryBtn" type="button">🖼️ 画像を選ぶ</button>
         </div>
 
         <div id="handStatus" class="hand-status">手書き図面を撮影してください。</div>
@@ -263,7 +264,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=136"></script>
-  <script src="./handwriting.js?v=138"></script>
+  <script src="./app.js?v=139"></script>
+  <script src="./handwriting.js?v=139"></script>
 </body>
 </html>

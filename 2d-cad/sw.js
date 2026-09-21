@@ -27,6 +27,10 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+  const url=new URL(event.request.url);
+  // Large AI model/CDN files manage their own browser cache. Do not duplicate
+  // them in this app's service-worker cache.
+  if(url.origin!==self.location.origin) return;
   event.respondWith(
     fetch(event.request,{cache:["document","script","style"].includes(event.request.destination)?"no-store":"default"}).then(response => {
       const copy=response.clone();

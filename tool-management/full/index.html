@@ -9,7 +9,7 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap"><div class="trial" style="background:#052e16;border-color:#22c55e;color:#bbf7d0;">通常版｜期限なし</div>
 <div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料・期限なし｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
 <div class="bar"><div class="search"><input id="q" placeholder="工具番号・工具名・サイズ・メーカー・場所で検索" oninput="render()"><select id="sf" onchange="render()"><option value="all">在庫すべて</option><option value="low">少ない</option><option value="zero">在庫0</option></select></div><div class="tabs" id="tabs"><button class="tab on" data-c="all">すべて</button><button class="tab" data-c="タップ">タップ</button><button class="tab" data-c="エンドミル">エンドミル</button><button class="tab" data-c="ドリル">ドリル</button><button class="tab" data-c="その他">その他</button><button class="tab" data-c="history">入出庫履歴</button></div></div>
 <div id="stats" class="stats"></div><div id="content"></div>

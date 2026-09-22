@@ -3,18 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NC工具管理｜通常版</title>
+<title>NC工具管理｜通常版・期限なし</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0f172a;color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif}.wrap{max-width:1100px;margin:auto;padding:14px 12px 80px}.trial{padding:10px;margin-bottom:10px;text-align:center;border:1px solid #f59e0b;border-radius:12px;background:#451a03;color:#fde68a;font-weight:800}.head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.head h1{font-size:22px;margin:0}.sub{font-size:12px;color:#94a3b8;margin-top:4px}.actions,.row,.tabs,.cardActions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid #334155;background:#1f2937;color:#fff;border-radius:10px;padding:10px 12px;font-weight:700}.primary{background:#38bdf8;color:#082f49;border:0}.ok{background:#22c55e;color:#052e16;border:0}.warn{background:#f59e0b;color:#451a03;border:0}.danger{background:#ef4444;border:0}.bar{position:sticky;top:0;z-index:10;background:#111827ee;border:1px solid #334155;border-radius:14px;padding:10px;margin-top:12px;backdrop-filter:blur(8px)}input,select,textarea{width:100%;border:1px solid #334155;background:#0b1220;color:#fff;border-radius:10px;padding:10px}.search{display:grid;grid-template-columns:1fr 140px;gap:8px}.tabs{margin-top:8px;overflow:auto}.tab{white-space:nowrap;padding:8px 11px;border-radius:999px;border:1px solid #334155;background:#0b1220;color:#94a3b8}.tab.on{background:#38bdf8;color:#082f49;border-color:#38bdf8}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.stat,.card{background:#111827;border:1px solid #334155;border-radius:14px;padding:12px}.stat b{font-size:24px}.stat span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}.list{display:grid;gap:9px}.top{display:flex;justify-content:space-between;gap:10px}.no{font-size:12px;color:#38bdf8;font-weight:800}.name{font-size:17px;font-weight:800;margin:3px 0 7px}.meta{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:12px;border:1px solid #334155;padding:4px 7px;border-radius:999px}.stock{text-align:center;min-width:70px;border:1px solid #334155;border-radius:11px;padding:7px}.stock b{font-size:20px}.low{color:#fbbf24;border-color:#f59e0b}.zero{color:#f87171;border-color:#ef4444}.place,.note{font-size:13px;margin-top:8px}.note{color:#94a3b8}.cardActions{margin-top:10px}.small{padding:7px 9px;font-size:12px}.empty{text-align:center;padding:42px 10px;color:#94a3b8;border:1px dashed #334155;border-radius:14px}.hist{display:grid;grid-template-columns:145px 80px 1fr 70px;gap:8px;padding:10px 0;border-bottom:1px solid #334155;font-size:12px}.modal{display:none;position:fixed;inset:0;background:#000a;z-index:50;align-items:center;justify-content:center;padding:16px}.modal.show{display:flex}.dialog{width:min(680px,100%);max-height:92vh;overflow:auto;background:#111827;border:1px solid #334155;border-radius:16px;padding:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.g label{font-size:11px;color:#94a3b8;display:block;margin-bottom:4px}.full{grid-column:1/-1}.dlgActions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.lock{text-align:center}.lock h2{margin-top:0}.foot{text-align:center;color:#64748b;font-size:11px;margin-top:18px;line-height:1.6}@media(max-width:650px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.full{grid-column:auto}.hist{grid-template-columns:1fr 70px}.hist .desc{grid-column:1/-1}}
 </style>
 </head>
 <body>
 <div class="wrap">
-<div id="trial" class="trial">お試し期間を確認中…</div>
-<div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
+<div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料・期限なし｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
 <div class="bar"><div class="search"><input id="q" placeholder="工具番号・工具名・サイズ・メーカー・場所で検索" oninput="render()"><select id="sf" onchange="render()"><option value="all">在庫すべて</option><option value="low">少ない</option><option value="zero">在庫0</option></select></div><div class="tabs" id="tabs"><button class="tab on" data-c="all">すべて</button><button class="tab" data-c="タップ">タップ</button><button class="tab" data-c="エンドミル">エンドミル</button><button class="tab" data-c="ドリル">ドリル</button><button class="tab" data-c="その他">その他</button><button class="tab" data-c="history">入出庫履歴</button></div></div>
 <div id="stats" class="stats"></div><div id="content"></div>
-<div class="foot">データはこのブラウザ内に保存されます。通常版です。お試し版とは別の保存領域を使用します。<br>ブラウザデータ削除や別端末では保存内容・開始日は共有されません。</div>
+<div class="foot">データはこのブラウザ内に保存されます。通常版です。利用期限はありません。お試し版とは別の保存領域を使用します。<br>ブラウザデータ削除や別端末では保存内容・開始日は共有されません。</div>
 </div>
 
 <div id="editModal" class="modal"><div class="dialog"><h2 id="editTitle">工具登録</h2><div class="grid">
@@ -26,10 +25,8 @@
 
 <div id="moveModal" class="modal"><div class="dialog" style="width:min(430px,100%)"><h2 id="moveTitle">入出庫</h2><div class="g"><label>数量</label><input id="moveQty" type="number" min="1" value="1"></div><div class="g" style="margin-top:9px"><label>メモ</label><input id="moveMemo" placeholder="例：MC-1で使用"></div><div class="dlgActions"><button class="btn" onclick="closeMove()">キャンセル</button><button class="btn primary" onclick="doMove()">確定</button></div></div></div>
 
-<div id="expired" class="modal"><div class="dialog lock" style="width:min(500px,100%)"><h2>1週間のお試し期間が終了しました</h2><p>登録データはこの端末内に残っています。</p><button class="btn" onclick="backup()">バックアップを保存</button></div></div>
-
 <script>
-var KEY='nc_tool_manager_full_public_v1',START='nc_tool_manager_full_unused_v1',DAYS=7,cat='all',editId=null,moveCtx=null;
+var KEY='nc_tool_manager_full_public_v1',cat='all',editId=null,moveCtx=null;
 function id(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function now(){return new Date().toISOString()}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -55,6 +52,6 @@ function dl(s,n,type){var a=document.createElement('a'),u=URL.createObjectURL(ne
 function backup(){dl(JSON.stringify({app:'NC工具管理',version:1,exportedAt:now(),tools:data.tools,history:data.history},null,2),'NC工具管理_バックアップ.json','application/json')}
 function restore(e){if(!guard()){e.target.value='';return}var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var x=JSON.parse(r.result);if(!Array.isArray(x.tools)||!Array.isArray(x.history))throw 0;if(confirm('現在のデータを置き換えますか？')){data={tools:x.tools,history:x.history};save();render()}}catch(z){alert('読み込めないファイルです')}e.target.value=''};r.readAsText(f,'UTF-8')}
 function csv(){if(!guard())return;function c(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}var rows=[['工具番号','工具名','サイズ','種類','メーカー','在庫数','警告ライン','保管場所','備考']].concat(data.tools.map(function(t){return [t.no,t.name,t.size,t.type,t.maker,t.stock,t.min,t.loc,t.note]}));dl('\ufeff'+rows.map(function(r){return r.map(c).join(',')}).join('\r\n'),'NC工具一覧.csv','text/csv;charset=utf-8')}
-trial();render();setInterval(trial,60000);
+render();
 </script>
 </body></html>

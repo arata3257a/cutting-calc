@@ -26,10 +26,10 @@
   </div>
 </div>
 <div class="wrap"><div class="trial" style="background:#052e16;border-color:#22c55e;color:#bbf7d0;">通常版｜期限なし</div>
-<div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料・期限なし｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
+<div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料・期限なし｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button id="appDownloadBtn" class="btn primary" onclick="downloadAppOnce()">通常版をダウンロード</button><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
 <div class="bar"><div class="search"><input id="q" placeholder="工具番号・工具名・サイズ・メーカー・場所で検索" oninput="render()"><select id="sf" onchange="render()"><option value="all">在庫すべて</option><option value="low">少ない</option><option value="zero">在庫0</option></select></div><div class="tabs" id="tabs"><button class="tab on" data-c="all">すべて</button><button class="tab" data-c="タップ">タップ</button><button class="tab" data-c="エンドミル">エンドミル</button><button class="tab" data-c="ドリル">ドリル</button><button class="tab" data-c="その他">その他</button><button class="tab" data-c="history">入出庫履歴</button></div></div>
 <div id="stats" class="stats"></div><div id="content"></div>
-<div class="foot">データはこのブラウザ内に保存されます。通常版です。利用期限はありません。お試し版とは別の保存領域を使用します。<br>ブラウザデータ削除や別端末では保存内容・開始日は共有されません。</div>
+<div class="foot">データはこのブラウザ内に保存されます。通常版です。利用期限はありません。お試し版とは別の保存領域を使用します。<br>通常版のダウンロードは、この端末・ブラウザにつき1回のみです。ブラウザデータ削除や別端末では制限状態は共有されません。</div>
 </div>
 
 <div id="editModal" class="modal"><div class="dialog"><h2 id="editTitle">工具登録</h2><div class="grid">
@@ -44,6 +44,7 @@
 <script>
 const FULL_APP_PASSWORD = '0309';
 const FULL_APP_UNLOCK_KEY = 'nc_tool_manager_full_unlocked_session_v1';
+const FULL_APP_DOWNLOAD_KEY = 'nc_tool_manager_full_downloaded_once_v1';
 
 function unlockApp(){
   const input = document.getElementById('loginPassword');
@@ -58,6 +59,42 @@ function unlockApp(){
     input.focus();
   }
 }
+function updateDownloadButton(){
+  const btn = document.getElementById('appDownloadBtn');
+  if(!btn) return;
+  const used = localStorage.getItem(FULL_APP_DOWNLOAD_KEY)==='1';
+  btn.disabled = used;
+  btn.textContent = used ? 'ダウンロード済み' : '通常版をダウンロード';
+  if(used){
+    btn.style.opacity='0.55';
+    btn.style.cursor='not-allowed';
+  }
+}
+async function downloadAppOnce(){
+  if(localStorage.getItem(FULL_APP_DOWNLOAD_KEY)==='1'){
+    alert('この端末・ブラウザではすでに1回ダウンロード済みです。');
+    updateDownloadButton();
+    return;
+  }
+  try{
+    const res = await fetch(location.href, {cache:'no-store'});
+    const text = await res.text();
+    const blob = new Blob([text], {type:'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'NC_tool_manager_full.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    localStorage.setItem(FULL_APP_DOWNLOAD_KEY,'1');
+    updateDownloadButton();
+    alert('ダウンロードしました。この端末・ブラウザでは再ダウンロードできません。');
+  }catch(e){
+    alert('ダウンロードに失敗しました。通信状態を確認してください。');
+  }
+}
 function initPasswordLock(){
   if(sessionStorage.getItem(FULL_APP_UNLOCK_KEY)==='1'){
     document.getElementById('loginScreen').style.display='none';
@@ -69,7 +106,10 @@ function initPasswordLock(){
     setTimeout(()=>input.focus(),50);
   }
 }
-document.addEventListener('DOMContentLoaded',initPasswordLock);
+document.addEventListener('DOMContentLoaded',function(){
+  initPasswordLock();
+  updateDownloadButton();
+});
 
 var KEY='nc_tool_manager_full_public_v1',cat='all',editId=null,moveCtx=null;
 function id(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}

@@ -6,9 +6,25 @@
 <title>NC工具管理｜通常版・期限なし</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0f172a;color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif}.wrap{max-width:1100px;margin:auto;padding:14px 12px 80px}.trial{padding:10px;margin-bottom:10px;text-align:center;border:1px solid #f59e0b;border-radius:12px;background:#451a03;color:#fde68a;font-weight:800}.head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.head h1{font-size:22px;margin:0}.sub{font-size:12px;color:#94a3b8;margin-top:4px}.actions,.row,.tabs,.cardActions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid #334155;background:#1f2937;color:#fff;border-radius:10px;padding:10px 12px;font-weight:700}.primary{background:#38bdf8;color:#082f49;border:0}.ok{background:#22c55e;color:#052e16;border:0}.warn{background:#f59e0b;color:#451a03;border:0}.danger{background:#ef4444;border:0}.bar{position:sticky;top:0;z-index:10;background:#111827ee;border:1px solid #334155;border-radius:14px;padding:10px;margin-top:12px;backdrop-filter:blur(8px)}input,select,textarea{width:100%;border:1px solid #334155;background:#0b1220;color:#fff;border-radius:10px;padding:10px}.search{display:grid;grid-template-columns:1fr 140px;gap:8px}.tabs{margin-top:8px;overflow:auto}.tab{white-space:nowrap;padding:8px 11px;border-radius:999px;border:1px solid #334155;background:#0b1220;color:#94a3b8}.tab.on{background:#38bdf8;color:#082f49;border-color:#38bdf8}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.stat,.card{background:#111827;border:1px solid #334155;border-radius:14px;padding:12px}.stat b{font-size:24px}.stat span{display:block;font-size:11px;color:#94a3b8;margin-top:2px}.list{display:grid;gap:9px}.top{display:flex;justify-content:space-between;gap:10px}.no{font-size:12px;color:#38bdf8;font-weight:800}.name{font-size:17px;font-weight:800;margin:3px 0 7px}.meta{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:12px;border:1px solid #334155;padding:4px 7px;border-radius:999px}.stock{text-align:center;min-width:70px;border:1px solid #334155;border-radius:11px;padding:7px}.stock b{font-size:20px}.low{color:#fbbf24;border-color:#f59e0b}.zero{color:#f87171;border-color:#ef4444}.place,.note{font-size:13px;margin-top:8px}.note{color:#94a3b8}.cardActions{margin-top:10px}.small{padding:7px 9px;font-size:12px}.empty{text-align:center;padding:42px 10px;color:#94a3b8;border:1px dashed #334155;border-radius:14px}.hist{display:grid;grid-template-columns:145px 80px 1fr 70px;gap:8px;padding:10px 0;border-bottom:1px solid #334155;font-size:12px}.modal{display:none;position:fixed;inset:0;background:#000a;z-index:50;align-items:center;justify-content:center;padding:16px}.modal.show{display:flex}.dialog{width:min(680px,100%);max-height:92vh;overflow:auto;background:#111827;border:1px solid #334155;border-radius:16px;padding:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.g label{font-size:11px;color:#94a3b8;display:block;margin-bottom:4px}.full{grid-column:1/-1}.dlgActions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.lock{text-align:center}.lock h2{margin-top:0}.foot{text-align:center;color:#64748b;font-size:11px;margin-top:18px;line-height:1.6}@media(max-width:650px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.full{grid-column:auto}.hist{grid-template-columns:1fr 70px}.hist .desc{grid-column:1/-1}}
+
+.loginScreen{position:fixed;inset:0;z-index:9999;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:20px}
+.loginBox{width:min(420px,100%);background:#111827;border:1px solid #334155;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.loginBox h2{margin:0 0 8px;font-size:24px}
+.loginBox p{margin:0 0 16px;color:#94a3b8;font-size:13px}
+.loginBox input{margin-bottom:10px}
+.loginError{min-height:20px;color:#f87171;font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
+<div id="loginScreen" class="loginScreen">
+  <div class="loginBox">
+    <h2>NC工具管理｜通常版</h2>
+    <p>パスワードを入力してください。</p>
+    <input id="loginPassword" type="password" inputmode="numeric" autocomplete="current-password" placeholder="パスワード">
+    <button class="btn primary" style="width:100%" onclick="unlockApp()">開く</button>
+    <div id="loginError" class="loginError"></div>
+  </div>
+</div>
 <div class="wrap"><div class="trial" style="background:#052e16;border-color:#22c55e;color:#bbf7d0;">通常版｜期限なし</div>
 <div class="head"><div><h1>NC工具管理</h1><div class="sub">APIなし・無料・期限なし｜工具検索・在庫・入出庫履歴</div></div><div class="actions"><button class="btn primary" onclick="openEdit()">＋工具登録</button><button class="btn" onclick="backup()">バックアップ</button><button class="btn" onclick="document.getElementById('imp').click()">復元</button><button class="btn" onclick="csv()">CSV</button><input id="imp" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
 <div class="bar"><div class="search"><input id="q" placeholder="工具番号・工具名・サイズ・メーカー・場所で検索" oninput="render()"><select id="sf" onchange="render()"><option value="all">在庫すべて</option><option value="low">少ない</option><option value="zero">在庫0</option></select></div><div class="tabs" id="tabs"><button class="tab on" data-c="all">すべて</button><button class="tab" data-c="タップ">タップ</button><button class="tab" data-c="エンドミル">エンドミル</button><button class="tab" data-c="ドリル">ドリル</button><button class="tab" data-c="その他">その他</button><button class="tab" data-c="history">入出庫履歴</button></div></div>
@@ -26,6 +42,35 @@
 <div id="moveModal" class="modal"><div class="dialog" style="width:min(430px,100%)"><h2 id="moveTitle">入出庫</h2><div class="g"><label>数量</label><input id="moveQty" type="number" min="1" value="1"></div><div class="g" style="margin-top:9px"><label>メモ</label><input id="moveMemo" placeholder="例：MC-1で使用"></div><div class="dlgActions"><button class="btn" onclick="closeMove()">キャンセル</button><button class="btn primary" onclick="doMove()">確定</button></div></div></div>
 
 <script>
+const FULL_APP_PASSWORD = '0309';
+const FULL_APP_UNLOCK_KEY = 'nc_tool_manager_full_unlocked_session_v1';
+
+function unlockApp(){
+  const input = document.getElementById('loginPassword');
+  const error = document.getElementById('loginError');
+  if(input.value === FULL_APP_PASSWORD){
+    sessionStorage.setItem(FULL_APP_UNLOCK_KEY,'1');
+    document.getElementById('loginScreen').style.display='none';
+    error.textContent='';
+  }else{
+    error.textContent='パスワードが違います。';
+    input.value='';
+    input.focus();
+  }
+}
+function initPasswordLock(){
+  if(sessionStorage.getItem(FULL_APP_UNLOCK_KEY)==='1'){
+    document.getElementById('loginScreen').style.display='none';
+  }else{
+    const input=document.getElementById('loginPassword');
+    input.addEventListener('keydown',function(e){
+      if(e.key==='Enter') unlockApp();
+    });
+    setTimeout(()=>input.focus(),50);
+  }
+}
+document.addEventListener('DOMContentLoaded',initPasswordLock);
+
 var KEY='nc_tool_manager_full_public_v1',cat='all',editId=null,moveCtx=null;
 function id(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function now(){return new Date().toISOString()}

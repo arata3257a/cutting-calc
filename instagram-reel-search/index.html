@@ -13,14 +13,37 @@
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
       <h1>伸びているリールを発掘</h1>
-      <p class="lead">完全無料。候補を集めて、1投稿ごとの再生数 ÷ フォロワー数で判定します。</p>
+      <p class="lead">#ハッシュタグを入れるだけで、Meta公式APIからリール候補URLを④に表示します。</p>
     </header>
+
+    <section class="panel setup-panel">
+      <details id="setupDetails">
+        <summary>初回設定（無料・Meta公式API）</summary>
+        <p class="sub">Instagramプロアカウントに紐づくIG User IDとアクセストークンを入力します。GitHubには保存されません。</p>
+        <div class="grid">
+          <label>Instagram User ID
+            <input id="igUserId" inputmode="numeric" placeholder="例: 1784...">
+          </label>
+          <label>Access Token
+            <input id="accessToken" type="password" autocomplete="off" placeholder="Metaアクセストークン">
+          </label>
+        </div>
+        <label class="checkrow">
+          <input id="rememberMeta" type="checkbox">
+          <span>この端末に設定を保存する</span>
+        </label>
+        <div class="setup-actions">
+          <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener">Graph API Explorerを開く</a>
+          <a href="https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-hashtag-search" target="_blank" rel="noopener">MetaのHashtag Search仕様</a>
+        </div>
+      </details>
+    </section>
 
     <section class="panel hero-panel">
       <div class="section-head">
         <div>
-          <h2>① Instagramで候補を探す</h2>
-          <p class="sub">検索したいハッシュタグを入力すると、Instagram検索へのリンクを作ります。</p>
+          <h2>① #ハッシュタグ検索</h2>
+          <p class="sub">スペース区切りで複数入力できます。検索すると④へ自動表示します。</p>
         </div>
         <span class="badge">無料</span>
       </div>
@@ -29,20 +52,21 @@
         <textarea id="hashtags" rows="3" placeholder="#DIY #加工 #ライフハック"></textarea>
       </label>
 
-      <button id="makeSearchBtn" class="primary">検索リンクを作る</button>
-      <div id="searchLinks" class="search-links"></div>
+      <button id="officialSearchBtn" class="primary">公式APIで検索 → ④に表示</button>
+      <div id="progress" class="progress" hidden></div>
 
-      <div class="guide">
-        <strong>使い方</strong>
-        <span>1. 検索リンクからInstagramを開く</span>
-        <span>2. 14日以内のリールを確認する</span>
-        <span>3. 候補のURL・フォロワー・投稿数・再生数・投稿日を下に入力</span>
-        <span>4. 条件判定すると、合格した投稿URLだけ表示</span>
+      <div class="note-box">
+        <strong>自動でできること</strong>
+        <span>・ハッシュタグ検索</span>
+        <span>・リール投稿URL取得</span>
+        <span>・投稿日取得</span>
+        <span>・14日以内だけ残す</span>
+        <span>・7日以内を優先表示</span>
       </div>
     </section>
 
     <section class="panel">
-      <h2>② 判定条件</h2>
+      <h2>② 本来の判定条件</h2>
       <div class="grid">
         <label>最低フォロワー
           <input id="minFollowers" type="number" min="0" value="10000">
@@ -54,59 +78,53 @@
           <input id="minRatio" type="number" min="1" step="0.1" value="3">
         </label>
         <label>最大経過日数
-          <input id="maxDays" type="number" min="1" value="14">
+          <input id="maxDays" type="number" min="1" max="14" value="14">
         </label>
         <label>優先日数
-          <input id="bestDays" type="number" min="1" value="7">
+          <input id="bestDays" type="number" min="1" max="14" value="7">
         </label>
       </div>
+      <p class="note">※ Meta公式のハッシュタグ検索結果からは、第三者投稿者のフォロワー数・総投稿数・そのリールの再生数を取得できないため、3倍条件は自動検索時点では未判定です。</p>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>③ 候補を入力</h2>
-          <p class="sub">候補リール1本につき1行です。URLは必ず入れてください。</p>
+          <h2>③ 数値を確認した候補だけ判定</h2>
+          <p class="sub">④の候補を開いて数値を確認した場合だけ入力します。ここは任意です。</p>
         </div>
-        <button id="addBtn" class="secondary">＋候補を追加</button>
-      </div>
-
-      <div class="bulk-box">
-        <label class="full">URLだけ先にまとめて追加
-          <textarea id="bulkUrls" rows="4" placeholder="https://www.instagram.com/reel/xxxxx/&#10;https://www.instagram.com/reel/yyyyy/"></textarea>
-        </label>
-        <button id="bulkAddBtn" class="secondary wide">URLをまとめて候補へ追加</button>
+        <button id="addBtn" class="secondary">＋手動追加</button>
       </div>
 
       <div id="inputList"></div>
-      <button id="runBtn" class="primary">条件で判定する</button>
+      <button id="runBtn" class="secondary wide">入力済み候補を3倍条件で判定</button>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>④ 条件に合った投稿</h2>
-          <p id="summary" class="sub">判定後、候補投稿のURLをここに表示します。</p>
+          <h2>④ 検索候補の投稿URL</h2>
+          <p id="summary" class="sub">①で検索するとここに表示されます。</p>
         </div>
         <span id="count" class="badge">0件</span>
       </div>
 
       <div class="sortbar">
-        <button class="chip active" data-sort="best">おすすめ順</button>
-        <button class="chip" data-sort="ratio">倍率順</button>
+        <button class="chip active" data-sort="best">7日以内優先</button>
         <button class="chip" data-sort="newest">新しい順</button>
+        <button class="chip" data-sort="ratio">倍率順</button>
         <button id="exportBtn" class="chip">CSV保存</button>
       </div>
 
       <div id="results" class="results">
-        <p class="empty">条件に合う候補がここに表示されます。</p>
+        <p class="empty">#ハッシュタグを入力して検索してください。</p>
       </div>
     </section>
 
     <template id="rowTemplate">
       <div class="candidate">
-        <input class="url" type="url" placeholder="リール投稿URL（必須）">
-        <input class="username" placeholder="@username">
+        <input class="url" type="url" placeholder="リール投稿URL">
+        <input class="username" placeholder="@username（任意）">
         <input class="followers" type="number" placeholder="フォロワー数">
         <input class="posts" type="number" placeholder="投稿数">
         <input class="views" type="number" placeholder="この1投稿の再生数">

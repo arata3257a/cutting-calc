@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="Instagram動画などを端末内で日本語文字起こしするPWA" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <title>動画文字起こし</title>
+  <style>
+    :root { font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#1f2937; background:#f7f7f8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; }
+    main { max-width:720px; margin:0 auto; padding:18px 16px 42px; }
+    h1 { font-size:1.55rem; margin:8px 0 6px; }
+    .lead { color:#6b7280; margin:0 0 18px; line-height:1.6; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; box-shadow:0 8px 28px rgba(0,0,0,.04); margin-bottom:14px; }
+    .filebox { border:2px dashed #cbd5e1; border-radius:14px; padding:18px; text-align:center; background:#fafafa; }
+    input[type=file] { width:100%; }
+    .meta { margin-top:10px; font-size:.9rem; color:#64748b; word-break:break-all; }
+    button { width:100%; border:0; border-radius:12px; padding:14px 16px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:10px; }
+    button.primary { background:#111827; color:white; }
+    button.secondary { background:#eef2f7; color:#111827; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .status { min-height:46px; display:flex; align-items:center; gap:10px; line-height:1.45; }
+    progress { width:100%; height:10px; margin-top:8px; }
+    textarea { width:100%; min-height:230px; resize:vertical; border:1px solid #d1d5db; border-radius:12px; padding:12px; font-size:1rem; line-height:1.65; background:#fff; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .note { font-size:.86rem; color:#6b7280; line-height:1.6; }
+    .ok { color:#166534; }
+    .err { color:#b91c1c; }
+    @media (max-width:520px) { .row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>動画文字起こし</h1>
+    <p class="lead">Instagramのリール・画面録画などを選んで、日本語を文字にします。音声は外部APIへ送信しません。</p>
+    <section class="card">
+      <div class="filebox">
+        <input id="fileInput" type="file" accept="video/*,audio/*" />
+        <div id="fileMeta" class="meta">動画または音声ファイルを選択してください</div>
+      </div>
+      <button id="startBtn" class="primary" disabled>文字起こし開始</button>
+      <div class="status"><span id="statusText">準備待ち</span></div>
+      <progress id="progressBar" max="100" value="0"></progress>
+      <p class="note">初回のみWhisperのAIモデルをダウンロードします。通信量が発生するためWi‑Fi推奨です。2回目以降はブラウザのキャッシュが利用されます。</p>
+    </section>
+    <section class="card">
+      <textarea id="resultText" placeholder="文字起こし結果がここに表示されます"></textarea>
+      <div class="row">
+        <button id="copyBtn" class="secondary" disabled>全文コピー</button>
+        <button id="clearBtn" class="secondary">クリア</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

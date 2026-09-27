@@ -1,12 +1,19 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
-const template = $("#rowTemplate");
-const list = $("#inputList");
-const results = $("#results");
-const count = $("#count");
-const summary = $("#summary");
+const REEL_ACTOR = "zaver.api~instagram-reel-scraper";
+const PROFILE_ACTOR = "zaver.api~instagram-profile-scraper";
+const APIFY_API = "https://api.apify.com/v2";
 
+const results = $("#results");
+const allResults = $("#allResults");
+const count = $("#count");
+const allCount = $("#allCount");
+const summary = $("#summary");
+const progress = $("#progress");
+const tokenStatus = $("#tokenStatus");
+
+let lastAll = [];
 let lastFiltered = [];
 let currentSort = "best";
 
@@ -18,6 +25,14 @@ function escapeHtml(str) {
 
 function formatNum(n) {
   return new Intl.NumberFormat("ja-JP").format(Number(n) || 0);
+}
+
+function parseHashtags(text) {
+  return [...new Set(
+    String(text || "").split(/[\s,、]+/)
+      .map(s => s.trim().replace(/^#/, ""))
+      .filter(Boolean)
+  )];
 }
 
 function toDateInput(value) {
@@ -41,6 +56,9 @@ function normalizeUrl(url) {
   if (!s) return "";
   try {
     const u = new URL(s);
+    if (u.hostname.includes("instagram.com") && u.pathname.startsWith("/p/")) {
+      u.pathname = u.pathname.replace(/^\/p\//, "/reel/");
+    }
     u.search = "";
     u.hash = "";
     return u.toString();
@@ -49,175 +67,281 @@ function normalizeUrl(url) {
   }
 }
 
-function parseHashtags(text) {
-  return [...new Set(
-    text.split(/[\s,、]+/)
-      .map(s => s.trim().replace(/^#/, ""))
-      .filter(Boolean)
-  )];
-}
-
-function buildSearchLinks() {
-  const tags = parseHashtags($("#hashtags").value);
-  const box = $("#searchLinks");
-
-  if (!tags.length) {
-    box.innerHTML = '<p class="empty small">#ハッシュタグを入力してください。</p>';
-    return;
-  }
-
-  box.innerHTML = tags.map(tag => {
-    const url = "https://www.instagram.com/explore/tags/" + encodeURIComponent(tag) + "/";
-    return `
-      <a class="search-link" href="${url}" target="_blank" rel="noopener">
-        <span>#${escapeHtml(tag)}</span>
-        <strong>Instagramで検索 →</strong>
-      </a>`;
-  }).join("");
-}
-
-function addCandidate(data = {}) {
-  const node = template.content.firstElementChild.cloneNode(true);
-  node.querySelector(".url").value = data.url || "";
-  node.querySelector(".username").value = data.username || "";
-  node.querySelector(".followers").value = data.followers ?? "";
-  node.querySelector(".posts").value = data.posts ?? "";
-  node.querySelector(".views").value = data.views ?? "";
-  node.querySelector(".date").value = toDateInput(data.date || "");
-  node.querySelector(".remove").addEventListener("click", () => node.remove());
-  list.appendChild(node);
-}
-
-function addBulkUrls() {
-  const urls = $("#bulkUrls").value
-    .split(/\r?\n/)
-    .map(normalizeUrl)
-    .filter(Boolean);
-
-  const unique = [...new Set(urls)];
-  if (!unique.length) return;
-
-  const existing = new Set(
-    $$(".candidate .url").map(el => normalizeUrl(el.value)).filter(Boolean)
-  );
-
-  const rows = $$(".candidate");
-  const first = rows[0];
-  const firstIsEmpty = rows.length === 1 &&
-    first &&
-    !first.querySelector(".url").value &&
-    !first.querySelector(".followers").value &&
-    !first.querySelector(".views").value;
-
-  if (firstIsEmpty) list.innerHTML = "";
-
-  unique.filter(url => !existing.has(url)).forEach(url => addCandidate({ url }));
-  $("#bulkUrls").value = "";
-}
-
 function getRules() {
   return {
-    minFollowers: Number($("#minFollowers").value),
-    maxPostsExclusive: Number($("#maxPostsExclusive").value),
-    minRatio: Number($("#minRatio").value),
-    maxDays: Number($("#maxDays").value),
-    bestDays: Number($("#bestDays").value)
+    minFollowers: Number($("#minFollowers").value) || 10000,
+    maxPostsExclusive: Number($("#maxPostsExclusive").value) || 180,
+    minRatio: Number($("#minRatio").value) || 3,
+    maxDays: Math.min(14, Number($("#maxDays").value) || 14),
+    bestDays: Math.min(14, Number($("#bestDays").value) || 7)
   };
 }
 
-function readCandidates() {
-  return $$(".candidate").map(row => {
-    const followers = Number(row.querySelector(".followers").value);
-    const posts = Number(row.querySelector(".posts").value);
-    const views = Number(row.querySelector(".views").value);
-    const date = row.querySelector(".date").value;
+function setProgress(message, kind = "") {
+  progress.hidden = false;
+  progress.className = "progress" + (kind ? " " + kind : "");
+  progress.textContent = message;
+}
+
+function setTokenStatus(message, kind = "") {
+  tokenStatus.hidden = false;
+  tokenStatus.className = "status-box" + (kind ? " " + kind : "");
+  tokenStatus.textContent = message;
+}
+
+async function apifyFetch(url, token, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.message || ("HTTP " + res.status);
+    throw new Error(msg);
+  }
+  return data;
+}
+
+async function testToken() {
+  const token = $("#apifyToken").value.trim();
+  if (!token) return setTokenStatus("APIトークンを入力してください。", "error");
+
+  $("#testTokenBtn").disabled = true;
+  try {
+    const data = await apifyFetch(APIFY_API + "/users/me", token);
+    const username = data?.data?.username || data?.username || "Apify";
+    setTokenStatus("接続OK：" + username, "success");
+
+    if ($("#rememberToken").checked) localStorage.setItem("reelFinderApifyToken", token);
+    else localStorage.removeItem("reelFinderApifyToken");
+  } catch (err) {
+    setTokenStatus("接続できません：" + (err.message || err), "error");
+  } finally {
+    $("#testTokenBtn").disabled = false;
+  }
+}
+
+async function runActor(actorId, input, token) {
+  const url = APIFY_API + "/acts/" + actorId + "/run-sync-get-dataset-items?clean=true";
+  const data = await apifyFetch(url, token, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+  return Array.isArray(data) ? data : [];
+}
+
+function normalizeReel(row) {
+  const username = String(
+    row.username ?? row.owner_username ?? row.ownerUsername ?? row.author_username ?? ""
+  ).replace(/^@/, "").trim();
+
+  const views = Number(
+    row.views ?? row.plays ?? row.play_count ?? row.playCount ?? row.videoPlayCount ?? 0
+  );
+
+  const date = toDateInput(
+    row.taken_at ?? row.timestamp ?? row.created_at ?? row.createdAt ?? row.date ?? ""
+  );
+
+  return {
+    source: String(row.source ?? ""),
+    username,
+    views,
+    date,
+    days: daysAgo(date),
+    url: normalizeUrl(row.url ?? row.post_url ?? row.postUrl ?? row.permalink ?? ""),
+    caption: String(row.caption ?? ""),
+    thumbnail: String(row.thumbnail_url ?? row.thumbnailUrl ?? "")
+  };
+}
+
+function normalizeProfile(row) {
+  return {
+    username: String(row.username ?? row.source ?? "").replace(/^@/, "").trim(),
+    followers: Number(row.followers ?? row.followers_count ?? row.followersCount ?? 0),
+    posts: Number(row.posts_count ?? row.postsCount ?? row.media_count ?? row.mediaCount ?? 0)
+  };
+}
+
+function evaluate(item, rules) {
+  const reasons = [];
+  if (!item.followers) reasons.push("フォロワー取得不可");
+  else if (item.followers < rules.minFollowers) reasons.push("フォロワー不足");
+
+  if (!item.posts) reasons.push("投稿数取得不可");
+  else if (item.posts >= rules.maxPostsExclusive) reasons.push("投稿数オーバー");
+
+  if (!item.views) reasons.push("再生数取得不可");
+  if (!(item.ratio >= rules.minRatio)) reasons.push("3倍未満");
+
+  if (!(item.days >= 0 && item.days <= rules.maxDays)) reasons.push("期間外");
+
+  return { ...item, passed: reasons.length === 0, reasons };
+}
+
+function mergeData(reels, profiles) {
+  const profileMap = new Map(
+    profiles.filter(p => p.username).map(p => [p.username.toLowerCase(), p])
+  );
+
+  return reels.map(reel => {
+    const profile = profileMap.get(reel.username.toLowerCase()) || {};
+    const followers = Number(profile.followers || 0);
+    const posts = Number(profile.posts || 0);
+    const ratio = followers > 0 ? reel.views / followers : 0;
 
     return {
-      url: normalizeUrl(row.querySelector(".url").value),
-      username: row.querySelector(".username").value.trim().replace(/^@/, ""),
+      ...reel,
       followers,
       posts,
-      views,
-      date,
-      days: daysAgo(date),
-      ratio: followers > 0 ? views / followers : 0
+      ratio
     };
   });
 }
 
-function runFilter() {
-  const r = getRules();
-
-  lastFiltered = readCandidates().filter(x =>
-    x.url &&
-    x.followers >= r.minFollowers &&
-    x.posts > 0 &&
-    x.posts < r.maxPostsExclusive &&
-    x.ratio >= r.minRatio &&
-    x.days >= 0 &&
-    x.days <= r.maxDays
-  );
-
-  render(lastFiltered);
-}
-
 function sortItems(items) {
-  const r = getRules();
-
+  const rules = getRules();
   return [...items].sort((a, b) => {
     if (currentSort === "ratio") return b.ratio - a.ratio || a.days - b.days;
     if (currentSort === "newest") return a.days - b.days || b.ratio - a.ratio;
 
-    const aBest = a.days <= r.bestDays ? 1 : 0;
-    const bBest = b.days <= r.bestDays ? 1 : 0;
+    const aBest = a.days <= rules.bestDays ? 1 : 0;
+    const bBest = b.days <= rules.bestDays ? 1 : 0;
     return bBest - aBest || b.ratio - a.ratio || a.days - b.days;
   });
 }
 
-function render(items) {
-  const r = getRules();
-  const sorted = sortItems(items);
+function cardHtml(x, compact = false) {
+  const rules = getRules();
+  const best = x.days <= rules.bestDays;
+  const tag = x.passed
+    ? '<span class="status passed">条件一致</span>'
+    : '<span class="status failed">' + escapeHtml(x.reasons.join("・")) + '</span>';
 
+  return `
+    <article class="card ${best && x.passed ? "best" : ""} ${compact ? "compact" : ""}">
+      <div class="topline">
+        <div>
+          <strong>@${escapeHtml(x.username || "unknown")}</strong>
+          ${tag}
+        </div>
+        <span class="tag">${Number.isFinite(x.days) ? (best ? "🔥 " : "") + x.days + "日前" : "-"}</span>
+      </div>
+
+      <div class="ratio">${x.ratio ? x.ratio.toFixed(2) + "倍" : "-"}</div>
+
+      <div class="meta">
+        <span>👥 ${formatNum(x.followers)}人</span>
+        <span>🎞 ${formatNum(x.posts)}投稿</span>
+        <span>▶ ${formatNum(x.views)}再生</span>
+        <span>📅 ${escapeHtml(x.date)}</span>
+      </div>
+
+      ${x.caption && !compact ? '<div class="caption">' + escapeHtml(x.caption.slice(0, 140)) + '</div>' : ''}
+
+      <div class="url-actions">
+        <a class="open-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">リールを開く</a>
+        <button class="copy-link" type="button" data-url="${escapeHtml(x.url)}">URLコピー</button>
+      </div>
+    </article>`;
+}
+
+function render() {
+  const sorted = sortItems(lastFiltered);
   count.textContent = sorted.length + "件";
-  summary.textContent = sorted.length
-    ? "条件一致 " + sorted.length + "件。投稿URLを表示しています。"
-    : "条件に合うリールはありません。";
+  summary.textContent = lastAll.length
+    ? "取得 " + lastAll.length + "件 → 条件一致 " + sorted.length + "件"
+    : "#検索すると、条件一致した投稿がここに出ます。";
 
-  if (!sorted.length) {
-    results.innerHTML = '<p class="empty">条件に合う候補はありません。</p>';
-    return;
+  results.innerHTML = sorted.length
+    ? sorted.map(x => cardHtml(x)).join("")
+    : '<p class="empty">条件に合うリールはありません。</p>';
+
+  allCount.textContent = lastAll.length + "件";
+  allResults.innerHTML = lastAll.length
+    ? sortItems(lastAll).map(x => cardHtml(x, true)).join("")
+    : '<p class="empty">まだ検索していません。</p>';
+}
+
+async function autoSearch() {
+  const token = $("#apifyToken").value.trim();
+  const tags = parseHashtags($("#hashtags").value);
+  const limit = Number($("#resultsLimit").value) || 30;
+  const rules = getRules();
+
+  if (!token) return setProgress("① Apify APIトークンを入力してください。", "error");
+  if (!tags.length) return setProgress("検索する#ハッシュタグを入力してください。", "error");
+
+  if ($("#rememberToken").checked) localStorage.setItem("reelFinderApifyToken", token);
+  else localStorage.removeItem("reelFinderApifyToken");
+
+  $("#autoSearchBtn").disabled = true;
+  lastAll = [];
+  lastFiltered = [];
+  render();
+
+  try {
+    setProgress("① リールを取得中…");
+
+    const reelRows = await runActor(REEL_ACTOR, {
+      directUrls: tags.map(tag => "#" + tag),
+      resultsLimit: limit,
+      onlyPostsNewerThan: rules.maxDays + " days"
+    }, token);
+
+    const seen = new Set();
+    const reels = reelRows
+      .map(normalizeReel)
+      .filter(x => {
+        if (!x.username || !x.url || !x.views || !x.date) return false;
+        if (x.days < 0 || x.days > rules.maxDays) return false;
+        if (seen.has(x.url)) return false;
+        seen.add(x.url);
+        return true;
+      });
+
+    if (!reels.length) {
+      setProgress("リールが見つかりませんでした。別のハッシュタグを試してください。", "error");
+      return;
+    }
+
+    const usernames = [...new Set(reels.map(x => x.username.toLowerCase()))];
+    setProgress("② " + reels.length + "件取得。投稿者 " + usernames.length + "アカウントを確認中…");
+
+    const profileRows = await runActor(PROFILE_ACTOR, {
+      usernames,
+      includeLatestPosts: false
+    }, token);
+
+    const profiles = profileRows.map(normalizeProfile);
+    const merged = mergeData(reels, profiles).map(item => evaluate(item, rules));
+
+    lastAll = merged;
+    lastFiltered = merged.filter(x => x.passed);
+    render();
+
+    setProgress(
+      "完了：リール " + reels.length + "件 / 投稿者 " + profiles.length + "件 / 条件一致 " + lastFiltered.length + "件",
+      "success"
+    );
+  } catch (err) {
+    console.error(err);
+    setProgress("検索できませんでした：" + (err.message || err), "error");
+  } finally {
+    $("#autoSearchBtn").disabled = false;
   }
-
-  results.innerHTML = sorted.map(x => {
-    const best = x.days <= r.bestDays;
-    const user = x.username ? "@" + escapeHtml(x.username) : "投稿者名未入力";
-
-    return `
-      <article class="card ${best ? "best" : ""}">
-        <div class="topline">
-          <strong>${user}</strong>
-          <span class="tag">${best ? "🔥 " + x.days + "日前" : x.days + "日前"}</span>
-        </div>
-
-        <div class="ratio">${x.ratio.toFixed(2)}倍</div>
-
-        <div class="meta">
-          <span>👥 ${formatNum(x.followers)}人</span>
-          <span>🎞 ${formatNum(x.posts)}投稿</span>
-          <span>▶ ${formatNum(x.views)}再生</span>
-          <span>📅 ${escapeHtml(x.date)}</span>
-        </div>
-
-        <div class="url-block">
-          <div class="url-label">候補投稿URL</div>
-          <div class="url-text">${escapeHtml(x.url)}</div>
-          <div class="url-actions">
-            <a class="open-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">投稿を開く</a>
-            <button class="copy-link" type="button" data-url="${escapeHtml(x.url)}">URLをコピー</button>
-          </div>
-        </div>
-      </article>`;
-  }).join("");
 }
 
 async function copyUrl(url, button) {
@@ -243,10 +367,7 @@ function csvEscape(v) {
 }
 
 function exportCsv() {
-  if (!lastFiltered.length) {
-    alert("CSVに保存する検索結果がありません。");
-    return;
-  }
+  if (!lastFiltered.length) return alert("CSVに保存する検索結果がありません。");
 
   const rows = [
     ["username","followers","posts","views","ratio","days","date","url"],
@@ -264,25 +385,40 @@ function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-$("#makeSearchBtn").addEventListener("click", buildSearchLinks);
-$("#addBtn").addEventListener("click", () => addCandidate());
-$("#bulkAddBtn").addEventListener("click", addBulkUrls);
-$("#runBtn").addEventListener("click", runFilter);
+function updateCostEstimate() {
+  const tags = Math.max(1, parseHashtags($("#hashtags").value).length);
+  const limit = Number($("#resultsLimit").value) || 30;
+  const maxResults = tags * limit;
+  const estimated = maxResults * (0.00099 + 0.00149);
+  $("#costEstimate").textContent = "$" + estimated.toFixed(2);
+  $(".cost-box small").textContent =
+    tags + "タグ × 最大" + limit + "件・全て別アカウントの場合";
+}
+
+$("#testTokenBtn").addEventListener("click", testToken);
+$("#autoSearchBtn").addEventListener("click", autoSearch);
+$("#resultsLimit").addEventListener("change", updateCostEstimate);
+$("#hashtags").addEventListener("input", updateCostEstimate);
 $("#exportBtn").addEventListener("click", exportCsv);
 
-results.addEventListener("click", event => {
+document.addEventListener("click", event => {
   const btn = event.target.closest(".copy-link");
-  if (!btn) return;
-  copyUrl(btn.dataset.url, btn);
+  if (btn) copyUrl(btn.dataset.url, btn);
 });
 
 $$("[data-sort]").forEach(btn => btn.addEventListener("click", () => {
   currentSort = btn.dataset.sort;
   $$("[data-sort]").forEach(b => b.classList.toggle("active", b === btn));
-  render(lastFiltered);
+  render();
 }));
 
-addCandidate();
+const savedToken = localStorage.getItem("reelFinderApifyToken");
+if (savedToken) {
+  $("#apifyToken").value = savedToken;
+  $("#rememberToken").checked = true;
+}
+
+updateCostEstimate();
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js").catch(() => {});

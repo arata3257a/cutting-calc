@@ -13,43 +13,36 @@
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
       <h1>伸びているリールを発掘</h1>
-      <p class="lead">リール1本の再生数 ÷ 投稿者フォロワー数で「伸び倍率」を判定します。</p>
+      <p class="lead">完全無料。候補を集めて、1投稿ごとの再生数 ÷ フォロワー数で判定します。</p>
     </header>
 
     <section class="panel hero-panel">
       <div class="section-head">
         <div>
-          <h2>自動検索</h2>
-          <p class="sub">ハッシュタグから14日以内のリールを取得し、投稿者情報と照合します。</p>
+          <h2>① Instagramで候補を探す</h2>
+          <p class="sub">検索したいハッシュタグを入力すると、Instagram検索へのリンクを作ります。</p>
         </div>
-        <span class="badge">BETA</span>
+        <span class="badge">無料</span>
       </div>
 
       <label class="full">検索ハッシュタグ
         <textarea id="hashtags" rows="3" placeholder="#DIY #加工 #ライフハック"></textarea>
       </label>
 
-      <div class="grid">
-        <label>1タグあたり取得件数
-          <input id="resultsLimit" type="number" min="5" max="200" step="5" value="50">
-        </label>
-        <label>Apify APIトークン
-          <input id="apifyToken" type="password" autocomplete="off" placeholder="apify_api_...">
-        </label>
+      <button id="makeSearchBtn" class="primary">検索リンクを作る</button>
+      <div id="searchLinks" class="search-links"></div>
+
+      <div class="guide">
+        <strong>使い方</strong>
+        <span>1. 検索リンクからInstagramを開く</span>
+        <span>2. 14日以内のリールを確認する</span>
+        <span>3. 候補のURL・フォロワー・投稿数・再生数・投稿日を下に入力</span>
+        <span>4. 条件判定すると、合格した投稿URLだけ表示</span>
       </div>
-
-      <label class="checkrow">
-        <input id="rememberToken" type="checkbox">
-        <span>この端末だけにトークンを保存する</span>
-      </label>
-
-      <button id="autoSearchBtn" class="primary">自動検索を開始</button>
-      <div id="progress" class="progress" hidden></div>
-      <p class="note">※ APIトークンはGitHubには保存しません。自動検索は公開Instagramデータを取得する外部サービスを使います。</p>
     </section>
 
     <section class="panel">
-      <h2>判定条件</h2>
+      <h2>② 判定条件</h2>
       <div class="grid">
         <label>最低フォロワー
           <input id="minFollowers" type="number" min="0" value="10000">
@@ -67,34 +60,44 @@
           <input id="bestDays" type="number" min="1" value="7">
         </label>
       </div>
-      <button id="runBtn" class="secondary wide">現在の候補を再判定</button>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>候補データ</h2>
-          <p class="sub">自動取得できない時は手入力でも使えます。</p>
+          <h2>③ 候補を入力</h2>
+          <p class="sub">候補リール1本につき1行です。URLは必ず入れてください。</p>
         </div>
         <button id="addBtn" class="secondary">＋候補を追加</button>
       </div>
+
+      <div class="bulk-box">
+        <label class="full">URLだけ先にまとめて追加
+          <textarea id="bulkUrls" rows="4" placeholder="https://www.instagram.com/reel/xxxxx/&#10;https://www.instagram.com/reel/yyyyy/"></textarea>
+        </label>
+        <button id="bulkAddBtn" class="secondary wide">URLをまとめて候補へ追加</button>
+      </div>
+
       <div id="inputList"></div>
+      <button id="runBtn" class="primary">条件で判定する</button>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>検索結果</h2>
-          <p id="summary" class="sub">条件に合うリールを表示します。</p>
+          <h2>④ 条件に合った投稿</h2>
+          <p id="summary" class="sub">判定後、候補投稿のURLをここに表示します。</p>
         </div>
         <span id="count" class="badge">0件</span>
       </div>
+
       <div class="sortbar">
         <button class="chip active" data-sort="best">おすすめ順</button>
         <button class="chip" data-sort="ratio">倍率順</button>
         <button class="chip" data-sort="newest">新しい順</button>
         <button id="exportBtn" class="chip">CSV保存</button>
       </div>
+
       <div id="results" class="results">
         <p class="empty">条件に合う候補がここに表示されます。</p>
       </div>
@@ -102,12 +105,12 @@
 
     <template id="rowTemplate">
       <div class="candidate">
+        <input class="url" type="url" placeholder="リール投稿URL（必須）">
         <input class="username" placeholder="@username">
-        <input class="followers" type="number" placeholder="フォロワー">
+        <input class="followers" type="number" placeholder="フォロワー数">
         <input class="posts" type="number" placeholder="投稿数">
         <input class="views" type="number" placeholder="この1投稿の再生数">
         <input class="date" type="date">
-        <input class="url" type="url" placeholder="リールURL">
         <button class="remove" type="button">削除</button>
       </div>
     </template>

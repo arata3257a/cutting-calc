@@ -1,4 +1,4 @@
-const CACHE_NAME = 'video-transcriber-v1';
+const CACHE_NAME = 'video-transcriber-v2';
 const APP_SHELL = ['./','./index.html','./app.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',(event)=>{
@@ -13,11 +13,15 @@ self.addEventListener('activate',(event)=>{
 
 self.addEventListener('fetch',(event)=>{
   if (event.request.method !== 'GET') return;
-  event.respondWith(caches.match(event.request).then((cached)=>cached || fetch(event.request).then((response)=>{
-    if (new URL(event.request.url).origin === self.location.origin) {
-      const clone = response.clone();
-      caches.open(CACHE_NAME).then((cache)=>cache.put(event.request,clone));
-    }
-    return response;
-  })));
+  event.respondWith(
+    fetch(event.request)
+      .then((response)=>{
+        if (new URL(event.request.url).origin === self.location.origin) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache)=>cache.put(event.request,clone));
+        }
+        return response;
+      })
+      .catch(()=>caches.match(event.request))
+  );
 });

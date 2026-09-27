@@ -10,6 +10,7 @@ on:
       - "card-3d-generator/**"
       - "card-3d-generator-v2/**"
       - "card-3d-generator-mobile/**"
+      - "instagram-reel-search/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

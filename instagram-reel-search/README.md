@@ -1,28 +1,33 @@
 # Instagram Reel Search
 
-無料・初回設定なしのInstagramリール判定アプリです。
+個人利用向けの自動Instagramリール発掘アプリです。
 
-## 流れ
+## 処理
 1. #ハッシュタグを入力
-2. Instagramのハッシュタグ検索を開く
-3. 候補リールのURL・フォロワー数・投稿数・再生数・投稿日を入力
-4. 条件判定
-5. 合格した投稿URLを一覧表示
+2. ApifyのInstagram Reel Scraperでリールを取得
+3. 投稿日14日以内に限定
+4. 投稿者usernameを抽出
+5. Instagram Profile Scraperでfollowers / posts_countを取得
+6. リール1本のviews ÷ followers を計算
+7. 条件一致だけを表示
 
-## 判定条件
-- フォロワー: 10,000人以上
-- 総投稿数: 180投稿未満
-- 1投稿の再生数: 投稿者フォロワー数の3倍以上
-- 投稿日: 14日以内
-- 優先表示: 7日以内
+## 初期条件
+- followers >= 10,000
+- posts_count < 180
+- views / followers >= 3
+- 投稿日14日以内
+- 7日以内を優先
 
-判定式:
-リール1本の再生数 ÷ 投稿者フォロワー数
+## Apify
+- Reel Scraper: zaver.api/instagram-reel-scraper
+- Profile Scraper: zaver.api/instagram-profile-scraper
+- 無料プランの月$5クレジットを使用可能
+- 1タグ最大取得数をアプリ側で制限可能
+- APIトークンはGitHubには保存しない
+- 「端末に保存」を選んだ場合のみlocalStorageへ保存
 
-## 補足
-- Meta Access Token不要
-- Facebookページ連携不要
-- 有料API不要
-- 複数URLまとめて追加可能
-- 倍率順・新しい順・7日以内優先
-- CSV保存対応
+## 料金目安
+Reel Scraper: $0.99 / 1,000 reels
+Profile Scraper: $1.49 / 1,000 profiles
+
+30件/タグで、30件すべてが別アカウントなら最大目安は約$0.07/タグです。

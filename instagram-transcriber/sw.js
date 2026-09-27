@@ -1,4 +1,4 @@
-const CACHE_NAME = 'video-transcriber-v4';
+const CACHE_NAME = 'video-transcriber-v5';
 const APP_SHELL = ['./','./index.html','./app.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',(event)=>{

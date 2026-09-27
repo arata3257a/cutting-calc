@@ -4,6 +4,9 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 const fileInput = document.getElementById('fileInput');
+const screenInput = document.getElementById('screenInput');
+const mediaBtn = document.getElementById('mediaBtn');
+const screenBtn = document.getElementById('screenBtn');
 const fileMeta = document.getElementById('fileMeta');
 const startBtn = document.getElementById('startBtn');
 const statusText = document.getElementById('statusText');
@@ -15,44 +18,56 @@ const clearBtn = document.getElementById('clearBtn');
 let selectedFile = null;
 let transcriber = null;
 
-fileInput.addEventListener('change', () => {
-  selectedFile = fileInput.files?.[0] ?? null;
+screenBtn.addEventListener('click', () => screenInput.click());
+mediaBtn.addEventListener('click', () => fileInput.click());
+
+screenInput.addEventListener('change', () => selectFile(screenInput.files?.[0] ?? null, '画面録画'));
+fileInput.addEventListener('change', () => selectFile(fileInput.files?.[0] ?? null, '動画・音声'));
+
+function selectFile(file, kind) {
+  selectedFile = file;
   startBtn.disabled = !selectedFile;
   resultText.value = '';
   copyBtn.disabled = true;
   progressBar.value = 0;
+
   if (!selectedFile) {
-    fileMeta.textContent = '動画または音声ファイルを選択してください';
+    fileMeta.textContent = 'まだファイルが選ばれていません';
+    setStatus('準備待ち');
     return;
   }
+
   const mb = (selectedFile.size / 1024 / 1024).toFixed(1);
-  fileMeta.textContent = `${selectedFile.name} / ${mb} MB`;
-  statusText.textContent = '文字起こしできます';
-});
+  fileMeta.textContent = `${kind}: ${selectedFile.name} / ${mb} MB`;
+  setStatus('文字起こしできます');
+}
 
 clearBtn.addEventListener('click', () => {
   resultText.value = '';
   copyBtn.disabled = true;
-  statusText.textContent = selectedFile ? '文字起こしできます' : '準備待ち';
+  setStatus(selectedFile ? '文字起こしできます' : '準備待ち');
   progressBar.value = 0;
 });
 
 copyBtn.addEventListener('click', async () => {
   if (!resultText.value.trim()) return;
   await navigator.clipboard.writeText(resultText.value);
-  statusText.textContent = 'コピーしました';
-  statusText.className = 'ok';
+  setStatus('コピーしました', 'ok');
 });
 
 startBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
+
   try {
     lockUi(true);
     setStatus('動画の音声を読み込んでいます…');
     progressBar.value = 5;
+
     const audio = await fileToMono16k(selectedFile);
     if (!audio.length) throw new Error('音声を読み取れませんでした。');
+
     progressBar.value = 20;
+
     if (!transcriber) {
       setStatus('Whisper AIを準備しています… 初回は少し時間がかかります');
       transcriber = await pipeline('automatic-speech-recognition','onnx-community/whisper-tiny',{
@@ -65,24 +80,28 @@ startBtn.addEventListener('click', async () => {
         },
       });
     }
+
     setStatus('日本語を文字起こししています…');
     progressBar.value = Math.max(progressBar.value, 60);
+
     const output = await transcriber(audio,{
       language:'japanese',
       task:'transcribe',
       chunk_length_s:30,
       stride_length_s:5,
     });
+
     const text = (output?.text ?? '').trim();
     if (!text) throw new Error('音声は読み取れましたが、文字を認識できませんでした。');
+
     resultText.value = cleanupText(text);
     copyBtn.disabled = false;
     progressBar.value = 100;
-    setStatus('文字起こし完了','ok');
+    setStatus('文字起こし完了', 'ok');
   } catch (error) {
     console.error(error);
     progressBar.value = 0;
-    setStatus(`エラー: ${error?.message ?? '処理できませんでした'}`,'err');
+    setStatus(`エラー: ${error?.message ?? '処理できませんでした'}`, 'err');
   } finally {
     lockUi(false);
   }
@@ -91,19 +110,30 @@ startBtn.addEventListener('click', async () => {
 function lockUi(busy) {
   startBtn.disabled = busy || !selectedFile;
   fileInput.disabled = busy;
-  startBtn.textContent = busy ? '処理中…' : '文字起こし開始';
+  screenInput.disabled = busy;
+  mediaBtn.disabled = busy;
+  screenBtn.disabled = busy;
+  startBtn.textContent = busy ? '処理中…' : '② 文字起こし開始';
 }
-function setStatus(message,className='') {
+
+function setStatus(message, className='') {
   statusText.textContent = message;
   statusText.className = className;
 }
+
 function cleanupText(text) {
-  return text.replace(/\s+([、。！？])/g,'$1').replace(/([、。！？])\s+/g,'$1').replace(/\s{2,}/g,' ').trim();
+  return text
+    .replace(/\s+([、。！？])/g,'$1')
+    .replace(/([、。！？])\s+/g,'$1')
+    .replace(/\s{2,}/g,' ')
+    .trim();
 }
+
 async function fileToMono16k(file) {
   const arrayBuffer = await file.arrayBuffer();
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) throw new Error('このブラウザは音声処理に対応していません。');
+
   const ctx = new AudioCtx();
   try {
     const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
@@ -115,21 +145,26 @@ async function fileToMono16k(file) {
     await ctx.close();
   }
 }
+
 function mixToMono(audioBuffer) {
   const channels = audioBuffer.numberOfChannels;
   const length = audioBuffer.length;
   const mono = new Float32Array(length);
+
   for (let c=0;c<channels;c++) {
     const data = audioBuffer.getChannelData(c);
     for (let i=0;i<length;i++) mono[i] += data[i] / channels;
   }
   return mono;
 }
+
 function resampleLinear(input,inputRate,outputRate) {
   if (inputRate === outputRate) return input;
+
   const ratio = inputRate / outputRate;
   const outLength = Math.max(1, Math.round(input.length / ratio));
   const output = new Float32Array(outLength);
+
   for (let i=0;i<outLength;i++) {
     const pos = i * ratio;
     const left = Math.floor(pos);
@@ -139,6 +174,7 @@ function resampleLinear(input,inputRate,outputRate) {
   }
   return output;
 }
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 }

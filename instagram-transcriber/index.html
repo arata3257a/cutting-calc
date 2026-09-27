@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#ffffff" />
-  <meta name="description" content="Instagram動画などを端末内で日本語文字起こしするPWA" />
+  <meta name="description" content="Instagram動画や画面録画を端末内で日本語文字起こしするPWA" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <title>動画文字起こし</title>
@@ -14,15 +14,21 @@
     body { margin:0; min-height:100vh; }
     main { max-width:720px; margin:0 auto; padding:18px 16px 42px; }
     h1 { font-size:1.55rem; margin:8px 0 6px; }
+    h2 { font-size:1.05rem; margin:0 0 8px; }
     .lead { color:#6b7280; margin:0 0 18px; line-height:1.6; }
     .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; box-shadow:0 8px 28px rgba(0,0,0,.04); margin-bottom:14px; }
-    .filebox { border:2px dashed #cbd5e1; border-radius:14px; padding:18px; text-align:center; background:#fafafa; }
-    input[type=file] { width:100%; }
-    .meta { margin-top:10px; font-size:.9rem; color:#64748b; word-break:break-all; }
-    button { width:100%; border:0; border-radius:12px; padding:14px 16px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:10px; }
-    button.primary { background:#111827; color:white; }
-    button.secondary { background:#eef2f7; color:#111827; }
+    .filebox { border:2px dashed #cbd5e1; border-radius:14px; padding:14px; text-align:center; background:#fafafa; }
+    .pickers { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    input[type=file] { display:none; }
+    button { width:100%; border:0; border-radius:12px; padding:14px 16px; font-size:1rem; font-weight:700; cursor:pointer; }
+    button.primary { background:#111827; color:white; margin-top:12px; }
+    button.secondary { background:#eef2f7; color:#111827; margin-top:10px; }
+    button.picker { background:#fff; border:1px solid #d1d5db; color:#111827; min-height:64px; }
+    button.picker strong { display:block; font-size:1rem; margin-bottom:3px; }
+    button.picker span { display:block; font-size:.78rem; font-weight:500; color:#64748b; }
     button:disabled { opacity:.5; cursor:not-allowed; }
+    .meta { margin-top:12px; font-size:.9rem; color:#64748b; word-break:break-all; }
+    .hint { margin:10px 0 0; font-size:.83rem; line-height:1.55; color:#6b7280; text-align:left; }
     .status { min-height:46px; display:flex; align-items:center; gap:10px; line-height:1.45; }
     progress { width:100%; height:10px; margin-top:8px; }
     textarea { width:100%; min-height:230px; resize:vertical; border:1px solid #d1d5db; border-radius:12px; padding:12px; font-size:1rem; line-height:1.65; background:#fff; }
@@ -30,24 +36,41 @@
     .note { font-size:.86rem; color:#6b7280; line-height:1.6; }
     .ok { color:#166534; }
     .err { color:#b91c1c; }
-    @media (max-width:520px) { .row { grid-template-columns:1fr; } }
+    @media (max-width:520px) { .pickers,.row { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
   <main>
     <h1>動画文字起こし</h1>
-    <p class="lead">Instagramのリール・画面録画などを選んで、日本語を文字にします。音声は外部APIへ送信しません。</p>
+    <p class="lead">Instagramの動画が保存できないときは、画面録画したファイルを選べばOKです。</p>
+
     <section class="card">
+      <h2>① ファイルを選ぶ</h2>
       <div class="filebox">
+        <div class="pickers">
+          <button id="screenBtn" class="picker" type="button">
+            <strong>📱 画面録画を選ぶ</strong>
+            <span>Instagramを画面録画したMP4など</span>
+          </button>
+          <button id="mediaBtn" class="picker" type="button">
+            <strong>🎬 動画・音声を選ぶ</strong>
+            <span>保存済みのMP4・M4Aなど</span>
+          </button>
+        </div>
+        <input id="screenInput" type="file" accept="video/*" />
         <input id="fileInput" type="file" accept="video/*,audio/*" />
-        <div id="fileMeta" class="meta">動画または音声ファイルを選択してください</div>
+        <div id="fileMeta" class="meta">まだファイルが選ばれていません</div>
+        <p class="hint">画面録画するときは、スマホの録画設定で「デバイスの音声」をONにしてください。マイク音声だけだとリールの音が入らない場合があります。</p>
       </div>
-      <button id="startBtn" class="primary" disabled>文字起こし開始</button>
+
+      <button id="startBtn" class="primary" disabled>② 文字起こし開始</button>
       <div class="status"><span id="statusText">準備待ち</span></div>
       <progress id="progressBar" max="100" value="0"></progress>
-      <p class="note">初回のみWhisperのAIモデルをダウンロードします。通信量が発生するためWi‑Fi推奨です。2回目以降はブラウザのキャッシュが利用されます。</p>
+      <p class="note">初回のみWhisperのAIモデルをダウンロードします。通信量が発生するためWi‑Fi推奨です。音声は文字起こしAPIへ送信せず、ブラウザ内で処理します。</p>
     </section>
+
     <section class="card">
+      <h2>③ 結果</h2>
       <textarea id="resultText" placeholder="文字起こし結果がここに表示されます"></textarea>
       <div class="row">
         <button id="copyBtn" class="secondary" disabled>全文コピー</button>

@@ -102,8 +102,8 @@ startBtn.addEventListener('click', async () => {
     progressBar.value = 20;
 
     if (!transcriber) {
-      setStatus('高精度Whisper AIを準備しています… 初回は少し時間がかかります');
-      transcriber = await pipeline('automatic-speech-recognition','onnx-community/whisper-base',{
+      setStatus('高精度Whisper smallを準備しています… 初回は時間がかかります');
+      transcriber = await pipeline('automatic-speech-recognition','onnx-community/whisper-small',{
         dtype:'q8',
         device:'wasm',
         progress_callback:(p)=>{
@@ -117,13 +117,23 @@ startBtn.addEventListener('click', async () => {
     setStatus('日本語を文字起こししています…');
     progressBar.value = Math.max(progressBar.value, 60);
 
-    const output = await transcriber(audio,{
+    const seconds = audio.length / 16000;
+    const options = {
       language:'japanese',
       task:'transcribe',
-      chunk_length_s:15,
-      stride_length_s:3,
+      num_beams:3,
+      temperature:0,
       return_timestamps:true,
-    });
+    };
+
+    // 30秒未満は分割せず、文脈を保ったまま認識する。
+    // 長い動画だけ重なりを持たせて分割する。
+    if (seconds > 28) {
+      options.chunk_length_s = 25;
+      options.stride_length_s = 5;
+    }
+
+    const output = await transcriber(audio, options);
 
     const text = (output?.text ?? '').trim();
     if (!text) throw new Error('音声は読み取れましたが、文字を認識できませんでした。');

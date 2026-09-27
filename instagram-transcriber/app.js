@@ -12,6 +12,7 @@ const startBtn = document.getElementById('startBtn');
 const statusText = document.getElementById('statusText');
 const progressBar = document.getElementById('progressBar');
 const resultText = document.getElementById('resultText');
+const rawText = document.getElementById('rawText');
 const copyBtn = document.getElementById('copyBtn');
 const clearBtn = document.getElementById('clearBtn');
 
@@ -34,6 +35,7 @@ async function selectFile(file, kind) {
   selectedBuffer = null;
   startBtn.disabled = true;
   resultText.value = '';
+  rawText.value = '';
   copyBtn.disabled = true;
   progressBar.value = 0;
 
@@ -133,12 +135,15 @@ startBtn.addEventListener('click', async () => {
       options.stride_length_s = 5;
     }
 
+    options.return_timestamps = 'word';
     const output = await transcriber(audio, options);
 
     const text = (output?.text ?? '').trim();
     if (!text) throw new Error('音声は読み取れましたが、文字を認識できませんでした。');
 
-    resultText.value = cleanupText(text);
+    const raw = cleanupText(text);
+    rawText.value = raw;
+    resultText.value = formatTranscript(output, raw);
     copyBtn.disabled = false;
     progressBar.value = 100;
     setStatus('文字起こし完了', 'ok');
@@ -171,6 +176,70 @@ function cleanupText(text) {
     .replace(/([、。！？])\s+/g,'$1')
     .replace(/\s{2,}/g,' ')
     .trim();
+}
+
+function correctCommonMisrecognitions(text) {
+  const replacements = [
+    [/一寸ペーパー/g, 'キッチンペーパー'],
+    [/いっすんペーパー/g, 'キッチンペーパー'],
+    [/キチンペーパー/g, 'キッチンペーパー'],
+    [/フライパンー/g, 'フライパン'],
+  ];
+  return replacements.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), text);
+}
+
+function formatTranscript(output, fallbackText) {
+  const chunks = Array.isArray(output?.chunks) ? output.chunks : [];
+  let formatted = '';
+
+  if (chunks.length > 1) {
+    let previousEnd = null;
+
+    for (const chunk of chunks) {
+      const piece = cleanupText(chunk?.text ?? '');
+      if (!piece) continue;
+
+      const ts = Array.isArray(chunk?.timestamp) ? chunk.timestamp : [];
+      const start = Number.isFinite(ts[0]) ? ts[0] : null;
+      const end = Number.isFinite(ts[1]) ? ts[1] : null;
+
+      if (formatted && previousEnd !== null && start !== null) {
+        const gap = start - previousEnd;
+        if (gap >= 0.65 && !/[。！？]\n?$/.test(formatted)) {
+          formatted += '。\n';
+        } else if (gap >= 0.28 && !/[、。！？]\n?$/.test(formatted)) {
+          formatted += '、';
+        }
+      }
+
+      formatted += piece.replace(/^\s+/, '');
+      if (end !== null) previousEnd = end;
+    }
+  } else {
+    formatted = fallbackText;
+  }
+
+  formatted = correctCommonMisrecognitions(formatted);
+
+  // タイムスタンプで区切れなかった場合だけ、強い文末表現を補助的に整える。
+  if (!/[。！？]/.test(formatted)) {
+    formatted = formatted
+      .replace(/(と思ってない)(?=\S)/g, '$1？\n')
+      .replace(/(するかも)(?=\S)/g, '$1。\n')
+      .replace(/(入れます|炒めていきます|擦っていきます|洗います|してください|してみてね)(?=\S|$)/g, '$1。\n');
+  }
+
+  formatted = formatted
+    .replace(/。{2,}/g, '。')
+    .replace(/、{2,}/g, '、')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  if (formatted && !/[。！？]$/.test(formatted)) {
+    formatted += '。';
+  }
+
+  return formatted;
 }
 
 async function bufferToMono16k(arrayBuffer) {

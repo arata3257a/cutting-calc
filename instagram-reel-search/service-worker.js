@@ -1,4 +1,4 @@
-const CACHE = "reel-finder-v5";
+const CACHE = "reel-finder-v6";
 const ASSETS = ["./","./index.html","./style.css","./app.js","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install", event => {
   self.skipWaiting();

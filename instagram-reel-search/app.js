@@ -4,21 +4,19 @@ const template = $("#rowTemplate");
 const list = $("#inputList");
 const results = $("#results");
 const count = $("#count");
-const progress = $("#progress");
 const summary = $("#summary");
 
-const APIFY_ACTOR = "zaver.api~instagram-scraper";
 let lastFiltered = [];
 let currentSort = "best";
 
 function addCandidate(data = {}) {
   const node = template.content.firstElementChild.cloneNode(true);
+  node.querySelector(".url").value = data.url || "";
   node.querySelector(".username").value = data.username || "";
   node.querySelector(".followers").value = data.followers ?? "";
   node.querySelector(".posts").value = data.posts ?? "";
   node.querySelector(".views").value = data.views ?? "";
   node.querySelector(".date").value = toDateInput(data.date || "");
-  node.querySelector(".url").value = data.url || "";
   node.querySelector(".remove").addEventListener("click", () => node.remove());
   list.appendChild(node);
 }
@@ -39,19 +37,34 @@ function daysAgo(dateString) {
   return Math.floor((today - d) / 86400000);
 }
 
+function normalizeUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  try {
+    const u = new URL(s);
+    if (!/(^|\.)instagram\.com$/i.test(u.hostname)) return s;
+    u.search = "";
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return s;
+  }
+}
+
 function readCandidates() {
   return $$(".candidate").map((row) => {
     const followers = Number(row.querySelector(".followers").value);
     const posts = Number(row.querySelector(".posts").value);
     const views = Number(row.querySelector(".views").value);
     const date = row.querySelector(".date").value;
+    const url = normalizeUrl(row.querySelector(".url").value);
     return {
       username: row.querySelector(".username").value.trim().replace(/^@/, "") || "(名称なし)",
       followers,
       posts,
       views,
       date,
-      url: row.querySelector(".url").value.trim(),
+      url,
       days: daysAgo(date),
       ratio: followers > 0 ? views / followers : 0
     };
@@ -71,6 +84,7 @@ function getRules() {
 function runFilter() {
   const rules = getRules();
   lastFiltered = readCandidates().filter(x =>
+    x.url &&
     x.followers >= rules.minFollowers &&
     x.posts < rules.maxPostsExclusive &&
     x.ratio >= rules.minRatio &&
@@ -103,20 +117,22 @@ function escapeHtml(str) {
 function render(items, bestDays) {
   const sorted = sortItems(items, bestDays);
   count.textContent = sorted.length + "件";
-  summary.textContent = sorted.length ? `条件一致 ${sorted.length}件。7日以内を優先表示します。` : "条件に合うリールはありません。";
+  summary.textContent = sorted.length
+    ? `条件一致 ${sorted.length}件。候補投稿のURLを表示しています。`
+    : "条件に合うリールはありません。";
+
   if (!sorted.length) {
     results.innerHTML = '<p class="empty">条件に合う候補はありません。</p>';
     return;
   }
-  results.innerHTML = sorted.map(x => {
+
+  results.innerHTML = sorted.map((x, index) => {
     const best = x.days <= bestDays;
-    const link = x.url
-      ? '<a class="link" href="' + escapeHtml(x.url) + '" target="_blank" rel="noopener">Instagramで見る →</a>'
-      : "";
+    const user = x.username === "(名称なし)" ? "投稿者名未入力" : "@" + escapeHtml(x.username);
     return `
       <article class="card ${best ? "best" : ""}">
         <div class="topline">
-          <strong>@${escapeHtml(x.username)}</strong>
+          <strong>${user}</strong>
           <span class="tag">${best ? "🔥 " + x.days + "日前" : x.days + "日前"}</span>
         </div>
         <div class="ratio">${x.ratio.toFixed(2)}倍</div>
@@ -126,140 +142,84 @@ function render(items, bestDays) {
           <span>▶ ${formatNum(x.views)}再生</span>
           <span>📅 ${escapeHtml(x.date)}</span>
         </div>
-        ${link}
+
+        <div class="url-block">
+          <div class="url-label">候補投稿URL</div>
+          <div class="url-text">${escapeHtml(x.url)}</div>
+          <div class="url-actions">
+            <a class="open-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">投稿を開く</a>
+            <button class="copy-link" type="button" data-url="${escapeHtml(x.url)}" data-index="${index}">URLをコピー</button>
+          </div>
+        </div>
       </article>`;
   }).join("");
 }
 
 function parseHashtags(text) {
-  return [...new Set(text.split(/[\s,、]+/).map(s => s.trim().replace(/^#/, "")).filter(Boolean))];
+  return [...new Set(
+    text.split(/[\s,、]+/)
+      .map(s => s.trim().replace(/^#/, ""))
+      .filter(Boolean)
+  )];
 }
 
-function setProgress(message, kind = "info") {
-  progress.hidden = false;
-  progress.className = `progress ${kind}`;
-  progress.textContent = message;
-}
-
-async function apifyRun(input, token) {
-  const url = `https://api.apify.com/v2/acts/${APIFY_ACTOR}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&clean=true`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input)
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`取得エラー ${res.status}: ${text.slice(0, 180)}`);
-  }
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
-
-function firstNumber(obj, keys) {
-  for (const key of keys) {
-    const value = obj?.[key];
-    if (value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value))) return Number(value);
-  }
-  return 0;
-}
-
-function firstText(obj, keys) {
-  for (const key of keys) {
-    const value = obj?.[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
-function normalizeReel(row) {
-  const username = firstText(row, ["username", "owner_username", "ownerUsername", "authorUsername", "author_username"]).replace(/^@/, "");
-  const views = firstNumber(row, ["views", "plays", "play_count", "playCount", "videoPlayCount", "video_play_count", "igPlayCount", "ig_play_count"]);
-  const date = firstText(row, ["taken_at", "timestamp", "createdAt", "created_at", "date"]);
-  const url = firstText(row, ["url", "postUrl", "post_url", "permalink"]);
-  return { username, views, date, url, raw: row };
-}
-
-function normalizeProfile(row) {
-  return {
-    username: firstText(row, ["username", "userName", "owner_username"]).replace(/^@/, ""),
-    followers: firstNumber(row, ["followers", "followers_count", "followersCount", "followerCount", "authorFollowerCount"]),
-    posts: firstNumber(row, ["posts_count", "postsCount", "media_count", "mediaCount", "posts"])
-  };
-}
-
-function fillCandidates(items) {
-  list.innerHTML = "";
-  items.forEach(addCandidate);
-  if (!items.length) addCandidate();
-}
-
-async function autoSearch() {
-  const token = $("#apifyToken").value.trim();
+function buildSearchLinks() {
   const tags = parseHashtags($("#hashtags").value);
-  const limit = Math.max(5, Math.min(200, Number($("#resultsLimit").value) || 50));
-  const rules = getRules();
+  const box = $("#searchLinks");
 
-  if (!token) return setProgress("Apify APIトークンを入力してください。", "error");
-  if (!tags.length) return setProgress("検索するハッシュタグを1つ以上入力してください。", "error");
+  if (!tags.length) {
+    box.innerHTML = '<p class="empty small">ハッシュタグを入力してください。</p>';
+    return;
+  }
 
-  if ($("#rememberToken").checked) localStorage.setItem("reelFinderApifyToken", token);
-  else localStorage.removeItem("reelFinderApifyToken");
+  box.innerHTML = tags.map(tag => {
+    const url = `https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`;
+    return `
+      <a class="search-link" href="${url}" target="_blank" rel="noopener">
+        <span>#${escapeHtml(tag)}</span>
+        <strong>Instagramで検索 →</strong>
+      </a>`;
+  }).join("");
+}
 
-  $("#autoSearchBtn").disabled = true;
+function addBulkUrls() {
+  const urls = $("#bulkUrls").value
+    .split(/\r?\n/)
+    .map(normalizeUrl)
+    .filter(Boolean);
+
+  const unique = [...new Set(urls)];
+  if (!unique.length) return;
+
+  const existing = new Set(
+    $$(".candidate .url").map(el => normalizeUrl(el.value)).filter(Boolean)
+  );
+
+  const emptyFirst = $$(".candidate").length === 1 &&
+    !$(".candidate .url").value &&
+    !$(".candidate .followers").value &&
+    !$(".candidate .views").value;
+
+  if (emptyFirst) list.innerHTML = "";
+
+  unique.filter(url => !existing.has(url)).forEach(url => addCandidate({ url }));
+  $("#bulkUrls").value = "";
+}
+
+async function copyUrl(url, button) {
   try {
-    setProgress(`① ${tags.length}個のハッシュタグからリールを取得中…`);
-    const reelsRaw = await apifyRun({
-      directUrls: tags.map(t => `#${t}`),
-      resultsType: "reels",
-      resultsLimit: limit,
-      onlyPostsNewerThan: `${rules.maxDays} days`
-    }, token);
-
-    const reels = reelsRaw.map(normalizeReel).filter(x => x.username && x.views > 0 && x.date);
-    const recent = reels.filter(x => {
-      const d = daysAgo(toDateInput(x.date));
-      return d >= 0 && d <= rules.maxDays;
-    });
-    const usernames = [...new Set(recent.map(x => x.username))];
-
-    if (!usernames.length) {
-      fillCandidates([]);
-      runFilter();
-      return setProgress("対象期間内のリールを取得できませんでした。別のハッシュタグでも試してください。", "error");
-    }
-
-    setProgress(`② ${usernames.length}アカウントのフォロワー数・投稿数を取得中…`);
-    const profilesRaw = await apifyRun({
-      directUrls: usernames,
-      resultsType: "details",
-      resultsLimit: 1
-    }, token);
-
-    const profileMap = new Map();
-    profilesRaw.map(normalizeProfile).filter(p => p.username).forEach(p => profileMap.set(p.username.toLowerCase(), p));
-
-    const merged = recent.map(r => {
-      const p = profileMap.get(r.username.toLowerCase()) || {};
-      return {
-        username: r.username,
-        followers: p.followers || 0,
-        posts: p.posts || 0,
-        views: r.views,
-        date: toDateInput(r.date),
-        url: r.url
-      };
-    }).filter(x => x.followers > 0 && x.posts > 0);
-
-    fillCandidates(merged);
-    runFilter();
-    const missing = recent.length - merged.length;
-    setProgress(`完了：候補 ${recent.length}件を確認し、投稿者情報と照合できた ${merged.length}件を判定しました。${missing ? ` 未照合 ${missing}件。` : ""}`, "success");
-  } catch (err) {
-    console.error(err);
-    setProgress(`検索できませんでした。${err.message || err}`, "error");
-  } finally {
-    $("#autoSearchBtn").disabled = false;
+    await navigator.clipboard.writeText(url);
+    const old = button.textContent;
+    button.textContent = "コピー済み";
+    setTimeout(() => button.textContent = old, 1200);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    button.textContent = "コピー済み";
   }
 }
 
@@ -269,8 +229,16 @@ function csvEscape(v) {
 }
 
 function exportCsv() {
-  if (!lastFiltered.length) return setProgress("CSVに保存する検索結果がありません。", "error");
-  const rows = [["username","followers","posts","views","ratio","days","date","url"], ...lastFiltered.map(x => [x.username,x.followers,x.posts,x.views,x.ratio.toFixed(2),x.days,x.date,x.url])];
+  if (!lastFiltered.length) {
+    alert("CSVに保存する検索結果がありません。");
+    return;
+  }
+  const rows = [
+    ["username","followers","posts","views","ratio","days","date","url"],
+    ...lastFiltered.map(x => [
+      x.username,x.followers,x.posts,x.views,x.ratio.toFixed(2),x.days,x.date,x.url
+    ])
+  ];
   const csv = "\uFEFF" + rows.map(r => r.map(csvEscape).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
@@ -280,22 +248,23 @@ function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+$("#makeSearchBtn").addEventListener("click", buildSearchLinks);
 $("#addBtn").addEventListener("click", () => addCandidate());
+$("#bulkAddBtn").addEventListener("click", addBulkUrls);
 $("#runBtn").addEventListener("click", runFilter);
-$("#autoSearchBtn").addEventListener("click", autoSearch);
 $("#exportBtn").addEventListener("click", exportCsv);
+
+results.addEventListener("click", (event) => {
+  const btn = event.target.closest(".copy-link");
+  if (!btn) return;
+  copyUrl(btn.dataset.url, btn);
+});
 
 $$('[data-sort]').forEach(btn => btn.addEventListener("click", () => {
   currentSort = btn.dataset.sort;
   $$('[data-sort]').forEach(b => b.classList.toggle("active", b === btn));
   render(lastFiltered, getRules().bestDays);
 }));
-
-const savedToken = localStorage.getItem("reelFinderApifyToken");
-if (savedToken) {
-  $("#apifyToken").value = savedToken;
-  $("#rememberToken").checked = true;
-}
 
 addCandidate();
 

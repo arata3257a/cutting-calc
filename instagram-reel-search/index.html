@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>リール発掘検索</title>
+  <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -12,17 +13,49 @@
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
       <h1>伸びているリールを発掘</h1>
-      <p class="lead">1投稿ごとの再生数を、投稿者のフォロワー数と比較して判定します。</p>
+      <p class="lead">リール1本の再生数 ÷ 投稿者フォロワー数で「伸び倍率」を判定します。</p>
     </header>
 
+    <section class="panel hero-panel">
+      <div class="section-head">
+        <div>
+          <h2>自動検索</h2>
+          <p class="sub">ハッシュタグから14日以内のリールを取得し、投稿者情報と照合します。</p>
+        </div>
+        <span class="badge">BETA</span>
+      </div>
+
+      <label class="full">検索ハッシュタグ
+        <textarea id="hashtags" rows="3" placeholder="#DIY #加工 #ライフハック"></textarea>
+      </label>
+
+      <div class="grid">
+        <label>1タグあたり取得件数
+          <input id="resultsLimit" type="number" min="5" max="200" step="5" value="50">
+        </label>
+        <label>Apify APIトークン
+          <input id="apifyToken" type="password" autocomplete="off" placeholder="apify_api_...">
+        </label>
+      </div>
+
+      <label class="checkrow">
+        <input id="rememberToken" type="checkbox">
+        <span>この端末だけにトークンを保存する</span>
+      </label>
+
+      <button id="autoSearchBtn" class="primary">自動検索を開始</button>
+      <div id="progress" class="progress" hidden></div>
+      <p class="note">※ APIトークンはGitHubには保存しません。自動検索は公開Instagramデータを取得する外部サービスを使います。</p>
+    </section>
+
     <section class="panel">
-      <h2>検索条件</h2>
+      <h2>判定条件</h2>
       <div class="grid">
         <label>最低フォロワー
           <input id="minFollowers" type="number" min="0" value="10000">
         </label>
-        <label>最大投稿数
-          <input id="maxPosts" type="number" min="1" value="179">
+        <label>投稿数（未満）
+          <input id="maxPostsExclusive" type="number" min="1" value="180">
         </label>
         <label>最低再生倍率
           <input id="minRatio" type="number" min="1" step="0.1" value="3">
@@ -34,12 +67,15 @@
           <input id="bestDays" type="number" min="1" value="7">
         </label>
       </div>
-      <button id="runBtn" class="primary">条件で絞り込む</button>
+      <button id="runBtn" class="secondary wide">現在の候補を再判定</button>
     </section>
 
     <section class="panel">
       <div class="section-head">
-        <h2>候補データ</h2>
+        <div>
+          <h2>候補データ</h2>
+          <p class="sub">自動取得できない時は手入力でも使えます。</p>
+        </div>
         <button id="addBtn" class="secondary">＋候補を追加</button>
       </div>
       <div id="inputList"></div>
@@ -47,8 +83,17 @@
 
     <section class="panel">
       <div class="section-head">
-        <h2>検索結果</h2>
+        <div>
+          <h2>検索結果</h2>
+          <p id="summary" class="sub">条件に合うリールを表示します。</p>
+        </div>
         <span id="count" class="badge">0件</span>
+      </div>
+      <div class="sortbar">
+        <button class="chip active" data-sort="best">おすすめ順</button>
+        <button class="chip" data-sort="ratio">倍率順</button>
+        <button class="chip" data-sort="newest">新しい順</button>
+        <button id="exportBtn" class="chip">CSV保存</button>
       </div>
       <div id="results" class="results">
         <p class="empty">条件に合う候補がここに表示されます。</p>

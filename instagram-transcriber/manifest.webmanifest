@@ -1,0 +1,17 @@
+{
+  "name": "動画文字起こし",
+  "short_name": "文字起こし",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f7f8",
+  "theme_color": "#ffffff",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

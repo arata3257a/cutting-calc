@@ -13,11 +13,36 @@
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
       <h1>伸びているリールを発掘</h1>
-      <p class="lead">初回設定なし・完全無料。候補リールを入力して、1投稿ごとの再生数 ÷ フォロワー数で判定します。</p>
+      <p class="lead">#検索 → 候補を追加 → 1投稿ごとの再生数 ÷ フォロワー数で判定します。</p>
     </header>
 
+    <section class="panel hero-panel">
+      <div class="section-head">
+        <div>
+          <h2>① #ハッシュタグ検索</h2>
+          <p class="sub">検索したいハッシュタグを入力すると、Instagramの検索ページを開けます。</p>
+        </div>
+        <span class="badge">無料</span>
+      </div>
+
+      <label class="full">検索ハッシュタグ
+        <textarea id="hashtags" rows="3" placeholder="#加工 #DIY #ライフハック"></textarea>
+      </label>
+
+      <button id="makeSearchBtn" class="primary">#検索する</button>
+      <div id="searchLinks" class="search-links"></div>
+
+      <div class="guide">
+        <strong>使い方</strong>
+        <span>1. #検索でInstagramを開く</span>
+        <span>2. 14日以内の候補リールを探す</span>
+        <span>3. 投稿URLと数値を③へ入力</span>
+        <span>4. 条件判定すると合格URLだけ④に表示</span>
+      </div>
+    </section>
+
     <section class="panel">
-      <h2>① 判定条件</h2>
+      <h2>② 判定条件</h2>
       <div class="grid">
         <label>最低フォロワー
           <input id="minFollowers" type="number" min="0" value="10000">
@@ -40,10 +65,17 @@
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>② 候補リールを入力</h2>
+          <h2>③ 候補リールを入力</h2>
           <p class="sub">候補1投稿につき1行です。</p>
         </div>
         <button id="addBtn" class="secondary">＋候補を追加</button>
+      </div>
+
+      <div class="bulk-box">
+        <label class="full">投稿URLをまとめて追加
+          <textarea id="bulkUrls" rows="4" placeholder="https://www.instagram.com/reel/xxxxx/&#10;https://www.instagram.com/reel/yyyyy/"></textarea>
+        </label>
+        <button id="bulkAddBtn" class="secondary wide">URLを候補へ追加</button>
       </div>
 
       <div id="inputList"></div>
@@ -53,8 +85,8 @@
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>③ 条件に合った投稿</h2>
-          <p id="summary" class="sub">判定後、候補投稿のURLをここに表示します。</p>
+          <h2>④ 条件に合った投稿</h2>
+          <p id="summary" class="sub">判定後、条件を通った投稿URLを表示します。</p>
         </div>
         <span id="count" class="badge">0件</span>
       </div>

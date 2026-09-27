@@ -135,7 +135,6 @@ startBtn.addEventListener('click', async () => {
       options.stride_length_s = 5;
     }
 
-    options.return_timestamps = 'word';
     const output = await transcriber(audio, options);
 
     const text = (output?.text ?? '').trim();
@@ -320,5 +319,5 @@ function normalizeAudio(input) {
 }
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=7'));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=8'));
 }

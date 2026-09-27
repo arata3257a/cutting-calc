@@ -16,17 +16,23 @@ const copyBtn = document.getElementById('copyBtn');
 const clearBtn = document.getElementById('clearBtn');
 
 let selectedFile = null;
+let selectedBuffer = null;
 let transcriber = null;
 
 screenBtn.addEventListener('click', () => screenInput.click());
 mediaBtn.addEventListener('click', () => fileInput.click());
 
-screenInput.addEventListener('change', () => selectFile(screenInput.files?.[0] ?? null, '画面録画'));
-fileInput.addEventListener('change', () => selectFile(fileInput.files?.[0] ?? null, '動画・音声'));
+screenInput.addEventListener('change', async () => {
+  await selectFile(screenInput.files?.[0] ?? null, '画面録画');
+});
+fileInput.addEventListener('change', async () => {
+  await selectFile(fileInput.files?.[0] ?? null, '動画・音声');
+});
 
-function selectFile(file, kind) {
+async function selectFile(file, kind) {
   selectedFile = file;
-  startBtn.disabled = !selectedFile;
+  selectedBuffer = null;
+  startBtn.disabled = true;
   resultText.value = '';
   copyBtn.disabled = true;
   progressBar.value = 0;
@@ -39,13 +45,35 @@ function selectFile(file, kind) {
 
   const mb = (selectedFile.size / 1024 / 1024).toFixed(1);
   fileMeta.textContent = `${kind}: ${selectedFile.name} / ${mb} MB`;
-  setStatus('文字起こしできます');
+  setStatus('動画を読み込んでいます…');
+
+  try {
+    selectedBuffer = await readFileImmediately(selectedFile);
+    startBtn.disabled = false;
+    setStatus('読み込み完了。文字起こしできます', 'ok');
+  } catch (error) {
+    console.error(error);
+    selectedFile = null;
+    selectedBuffer = null;
+    startBtn.disabled = true;
+    setStatus('動画を読み込めませんでした。もう一度ファイルを選んでください。', 'err');
+  }
+}
+
+function readFileImmediately(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('ファイルを読み込めませんでした'));
+    reader.onabort = () => reject(new Error('ファイルの読み込みが中断されました'));
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 clearBtn.addEventListener('click', () => {
   resultText.value = '';
   copyBtn.disabled = true;
-  setStatus(selectedFile ? '文字起こしできます' : '準備待ち');
+  setStatus(selectedBuffer ? '文字起こしできます' : '準備待ち');
   progressBar.value = 0;
 });
 
@@ -56,14 +84,19 @@ copyBtn.addEventListener('click', async () => {
 });
 
 startBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (!selectedBuffer) {
+    setStatus('動画をもう一度選んでください。', 'err');
+    return;
+  }
 
   try {
     lockUi(true);
+    resultText.value = '';
+    copyBtn.disabled = true;
     setStatus('動画の音声を読み込んでいます…');
     progressBar.value = 5;
 
-    const audio = await fileToMono16k(selectedFile);
+    const audio = await bufferToMono16k(selectedBuffer);
     if (!audio.length) throw new Error('音声を読み取れませんでした。');
 
     progressBar.value = 20;
@@ -109,7 +142,7 @@ startBtn.addEventListener('click', async () => {
 });
 
 function lockUi(busy) {
-  startBtn.disabled = busy || !selectedFile;
+  startBtn.disabled = busy || !selectedBuffer;
   fileInput.disabled = busy;
   screenInput.disabled = busy;
   mediaBtn.disabled = busy;
@@ -130,8 +163,7 @@ function cleanupText(text) {
     .trim();
 }
 
-async function fileToMono16k(file) {
-  const arrayBuffer = await file.arrayBuffer();
+async function bufferToMono16k(arrayBuffer) {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) throw new Error('このブラウザは音声処理に対応していません。');
 
@@ -142,6 +174,7 @@ async function fileToMono16k(file) {
     const resampled = resampleLinear(mono, decoded.sampleRate, 16000);
     return normalizeAudio(resampled);
   } catch (e) {
+    console.error(e);
     throw new Error('動画の音声形式を読み取れません。ChromeでMP4またはM4Aを試してください。');
   } finally {
     await ctx.close();

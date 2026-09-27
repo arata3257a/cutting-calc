@@ -66,12 +66,16 @@
       <button id="startBtn" class="primary" disabled>② 文字起こし開始</button>
       <div class="status"><span id="statusText">準備待ち</span></div>
       <progress id="progressBar" max="100" value="0"></progress>
-      <p class="note">高精度版は初回のみ大きめのWhisper AIモデルをダウンロードします。Wi‑Fi推奨です。短い動画は分割せず全文脈で認識し、音声は文字起こしAPIへ送信せずブラウザ内で処理します。</p>
+      <p class="note">高精度Whisperで認識後、音声の間を使って句読点・改行を補い、よくある誤変換も補正します。元の認識結果も残します。音声は文字起こしAPIへ送信せずブラウザ内で処理します。</p>
     </section>
 
     <section class="card">
       <h2>③ 結果</h2>
-      <textarea id="resultText" placeholder="文字起こし結果がここに表示されます"></textarea>
+      <textarea id="resultText" placeholder="整えた文字起こし結果がここに表示されます"></textarea>
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;color:#64748b;font-weight:700;">元の認識結果を見る</summary>
+        <textarea id="rawText" readonly style="min-height:140px;margin-top:10px;background:#f8fafc;" placeholder="元のWhisper認識結果"></textarea>
+      </details>
       <div class="row">
         <button id="copyBtn" class="secondary" disabled>全文コピー</button>
         <button id="clearBtn" class="secondary">クリア</button>

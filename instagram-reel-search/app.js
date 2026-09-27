@@ -49,6 +49,33 @@ function normalizeUrl(url) {
   }
 }
 
+function parseHashtags(text) {
+  return [...new Set(
+    text.split(/[\s,、]+/)
+      .map(s => s.trim().replace(/^#/, ""))
+      .filter(Boolean)
+  )];
+}
+
+function buildSearchLinks() {
+  const tags = parseHashtags($("#hashtags").value);
+  const box = $("#searchLinks");
+
+  if (!tags.length) {
+    box.innerHTML = '<p class="empty small">#ハッシュタグを入力してください。</p>';
+    return;
+  }
+
+  box.innerHTML = tags.map(tag => {
+    const url = "https://www.instagram.com/explore/tags/" + encodeURIComponent(tag) + "/";
+    return `
+      <a class="search-link" href="${url}" target="_blank" rel="noopener">
+        <span>#${escapeHtml(tag)}</span>
+        <strong>Instagramで検索 →</strong>
+      </a>`;
+  }).join("");
+}
+
 function addCandidate(data = {}) {
   const node = template.content.firstElementChild.cloneNode(true);
   node.querySelector(".url").value = data.url || "";
@@ -59,6 +86,33 @@ function addCandidate(data = {}) {
   node.querySelector(".date").value = toDateInput(data.date || "");
   node.querySelector(".remove").addEventListener("click", () => node.remove());
   list.appendChild(node);
+}
+
+function addBulkUrls() {
+  const urls = $("#bulkUrls").value
+    .split(/\r?\n/)
+    .map(normalizeUrl)
+    .filter(Boolean);
+
+  const unique = [...new Set(urls)];
+  if (!unique.length) return;
+
+  const existing = new Set(
+    $$(".candidate .url").map(el => normalizeUrl(el.value)).filter(Boolean)
+  );
+
+  const rows = $$(".candidate");
+  const first = rows[0];
+  const firstIsEmpty = rows.length === 1 &&
+    first &&
+    !first.querySelector(".url").value &&
+    !first.querySelector(".followers").value &&
+    !first.querySelector(".views").value;
+
+  if (firstIsEmpty) list.innerHTML = "";
+
+  unique.filter(url => !existing.has(url)).forEach(url => addCandidate({ url }));
+  $("#bulkUrls").value = "";
 }
 
 function getRules() {
@@ -77,6 +131,7 @@ function readCandidates() {
     const posts = Number(row.querySelector(".posts").value);
     const views = Number(row.querySelector(".views").value);
     const date = row.querySelector(".date").value;
+
     return {
       url: normalizeUrl(row.querySelector(".url").value),
       username: row.querySelector(".username").value.trim().replace(/^@/, ""),
@@ -92,6 +147,7 @@ function readCandidates() {
 
 function runFilter() {
   const r = getRules();
+
   lastFiltered = readCandidates().filter(x =>
     x.url &&
     x.followers >= r.minFollowers &&
@@ -101,11 +157,13 @@ function runFilter() {
     x.days >= 0 &&
     x.days <= r.maxDays
   );
+
   render(lastFiltered);
 }
 
 function sortItems(items) {
   const r = getRules();
+
   return [...items].sort((a, b) => {
     if (currentSort === "ratio") return b.ratio - a.ratio || a.days - b.days;
     if (currentSort === "newest") return a.days - b.days || b.ratio - a.ratio;
@@ -122,7 +180,7 @@ function render(items) {
 
   count.textContent = sorted.length + "件";
   summary.textContent = sorted.length
-    ? "条件一致 " + sorted.length + "件。候補投稿URLを表示しています。"
+    ? "条件一致 " + sorted.length + "件。投稿URLを表示しています。"
     : "条件に合うリールはありません。";
 
   if (!sorted.length) {
@@ -133,6 +191,7 @@ function render(items) {
   results.innerHTML = sorted.map(x => {
     const best = x.days <= r.bestDays;
     const user = x.username ? "@" + escapeHtml(x.username) : "投稿者名未入力";
+
     return `
       <article class="card ${best ? "best" : ""}">
         <div class="topline">
@@ -192,14 +251,7 @@ function exportCsv() {
   const rows = [
     ["username","followers","posts","views","ratio","days","date","url"],
     ...lastFiltered.map(x => [
-      x.username,
-      x.followers,
-      x.posts,
-      x.views,
-      x.ratio.toFixed(2),
-      x.days,
-      x.date,
-      x.url
+      x.username,x.followers,x.posts,x.views,x.ratio.toFixed(2),x.days,x.date,x.url
     ])
   ];
 
@@ -212,7 +264,9 @@ function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+$("#makeSearchBtn").addEventListener("click", buildSearchLinks);
 $("#addBtn").addEventListener("click", () => addCandidate());
+$("#bulkAddBtn").addEventListener("click", addBulkUrls);
 $("#runBtn").addEventListener("click", runFilter);
 $("#exportBtn").addEventListener("click", exportCsv);
 

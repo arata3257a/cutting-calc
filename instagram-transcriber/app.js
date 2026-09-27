@@ -69,8 +69,8 @@ startBtn.addEventListener('click', async () => {
     progressBar.value = 20;
 
     if (!transcriber) {
-      setStatus('Whisper AIを準備しています… 初回は少し時間がかかります');
-      transcriber = await pipeline('automatic-speech-recognition','onnx-community/whisper-tiny',{
+      setStatus('高精度Whisper AIを準備しています… 初回は少し時間がかかります');
+      transcriber = await pipeline('automatic-speech-recognition','onnx-community/whisper-base',{
         dtype:'q8',
         device:'wasm',
         progress_callback:(p)=>{
@@ -87,8 +87,9 @@ startBtn.addEventListener('click', async () => {
     const output = await transcriber(audio,{
       language:'japanese',
       task:'transcribe',
-      chunk_length_s:30,
-      stride_length_s:5,
+      chunk_length_s:15,
+      stride_length_s:3,
+      return_timestamps:true,
     });
 
     const text = (output?.text ?? '').trim();
@@ -138,7 +139,8 @@ async function fileToMono16k(file) {
   try {
     const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
     const mono = mixToMono(decoded);
-    return resampleLinear(mono, decoded.sampleRate, 16000);
+    const resampled = resampleLinear(mono, decoded.sampleRate, 16000);
+    return normalizeAudio(resampled);
   } catch (e) {
     throw new Error('動画の音声形式を読み取れません。ChromeでMP4またはM4Aを試してください。');
   } finally {
@@ -171,6 +173,36 @@ function resampleLinear(input,inputRate,outputRate) {
     const right = Math.min(left + 1, input.length - 1);
     const frac = pos - left;
     output[i] = input[left] * (1-frac) + input[right] * frac;
+  }
+  return output;
+}
+
+function normalizeAudio(input) {
+  if (!input.length) return input;
+
+  let peak = 0;
+  let sumSquares = 0;
+
+  for (let i=0;i<input.length;i++) {
+    const v = input[i];
+    const a = Math.abs(v);
+    if (a > peak) peak = a;
+    sumSquares += v * v;
+  }
+
+  if (peak < 0.00001) return input;
+
+  const rms = Math.sqrt(sumSquares / input.length);
+  const targetRms = 0.12;
+  const gainByRms = rms > 0 ? targetRms / rms : 1;
+  const gainByPeak = 0.95 / peak;
+  const gain = Math.max(1, Math.min(8, gainByRms, gainByPeak));
+
+  if (gain <= 1.01) return input;
+
+  const output = new Float32Array(input.length);
+  for (let i=0;i<input.length;i++) {
+    output[i] = Math.max(-1, Math.min(1, input[i] * gain));
   }
   return output;
 }

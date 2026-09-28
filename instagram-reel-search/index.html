@@ -13,91 +13,89 @@
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
       <h1>リール発掘検索</h1>
-      <p class="lead">まず3つの必須条件で足切り。通った投稿だけ再生数を確認します。</p>
+      <p class="lead">入力した瞬間に判定。検索日は今日で固定します。</p>
     </header>
 
     <section class="must-panel">
-      <div class="must-title">必須条件</div>
-      <div class="must-grid">
-        <div><strong>10,000人以上</strong><span>フォロワー</span></div>
-        <div><strong>180投稿未満</strong><span>総投稿数</span></div>
-        <div><strong>検索日から7日以内</strong><span>投稿日</span></div>
-      </div>
+      <div><strong>10,000人以上</strong><span>フォロワー</span></div>
+      <div><strong>180投稿未満</strong><span>総投稿数</span></div>
+      <div><strong>7日以内</strong><span>投稿からの日数</span></div>
     </section>
 
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <h2>① Instagramで探す</h2>
-          <p class="sub">ハッシュタグを入力してInstagramを開きます。</p>
-        </div>
-        <span class="badge">無料・連携なし</span>
+    <section class="panel finder-panel">
+      <div class="search-date-row">
+        <span>検索日</span>
+        <strong id="searchDateLabel">今日</strong>
       </div>
 
-      <label class="full">ハッシュタグ
-        <textarea id="hashtags" rows="2" placeholder="#加工 #DIY #ライフハック"></textarea>
-      </label>
-
-      <button id="makeSearchBtn" class="primary">#検索する</button>
+      <div class="hashtag-row">
+        <input id="hashtags" type="text" placeholder="#加工" autocomplete="off">
+        <button id="searchBtn" class="secondary">Instagramで検索</button>
+      </div>
       <div id="searchLinks" class="search-links"></div>
-    </section>
 
-    <section class="panel">
+      <hr>
+
       <div class="section-head">
         <div>
-          <h2>② 候補を3条件で判定</h2>
-          <p class="sub">Instagramの共有から開いた場合はURLが自動で入ります。</p>
+          <h2>候補をチェック</h2>
+          <p class="sub">上から3つ入れるだけ。自動で足切りします。</p>
         </div>
         <span id="shareBadge" class="badge" hidden>共有URL受取済み</span>
       </div>
 
-      <label class="full">検索日
-        <input id="searchDate" type="date">
-      </label>
-
-      <label class="full">リールURL
+      <label class="full">リールURL <small>（共有なら自動入力）</small>
         <input id="reelUrl" type="url" inputmode="url" placeholder="https://www.instagram.com/reel/...">
       </label>
 
-      <div class="form-grid">
+      <div class="two-col">
         <label>フォロワー数
-          <input id="followers" type="number" inputmode="numeric" min="0" placeholder="例 12500">
+          <input id="followers" type="text" inputmode="decimal" placeholder="1.2万 でもOK">
         </label>
         <label>総投稿数
-          <input id="posts" type="number" inputmode="numeric" min="0" placeholder="例 86">
+          <input id="posts" type="text" inputmode="numeric" placeholder="例 86">
         </label>
       </div>
 
-      <label class="full">投稿日
-        <input id="postDate" type="date">
-      </label>
-
-      <button id="screenBtn" class="primary">必須3条件を判定</button>
-      <div id="screenResult" class="result-box" hidden></div>
-
-      <div id="stage2" class="stage2" hidden>
-        <div class="stage2-head">
-          <strong>3条件クリア 🎯</strong>
-          <span>次に再生数だけ確認</span>
+      <div class="days-block">
+        <div class="label-row">
+          <strong>投稿日は何日前？</strong>
+          <span id="daySelectedText">未選択</span>
         </div>
-
-        <label class="full">このリール1本の再生数
-          <input id="views" type="number" inputmode="numeric" min="0" placeholder="例 45000">
-        </label>
-
-        <div id="targetViews" class="target-box"></div>
-        <button id="ratioBtn" class="primary">3倍判定する</button>
-        <div id="ratioResult" class="result-box" hidden></div>
+        <div id="dayButtons" class="day-buttons">
+          <button type="button" data-day="0">今日</button>
+          <button type="button" data-day="1">1日前</button>
+          <button type="button" data-day="2">2日前</button>
+          <button type="button" data-day="3">3日前</button>
+          <button type="button" data-day="4">4日前</button>
+          <button type="button" data-day="5">5日前</button>
+          <button type="button" data-day="6">6日前</button>
+          <button type="button" data-day="7">7日前</button>
+          <button type="button" data-day="8" class="old-day">8日以上</button>
+        </div>
       </div>
 
-      <button id="resetBtn" class="ghost">次の候補を調べる</button>
+      <div id="mustResult" class="live-result waiting">
+        フォロワー・投稿数・投稿日を入れると自動判定します
+      </div>
+
+      <div id="viewsStage" class="views-stage" hidden>
+        <div class="pass-head">必須3条件クリア 🎯</div>
+        <label class="full">このリールの再生数
+          <input id="views" type="text" inputmode="decimal" placeholder="4.5万 でもOK">
+        </label>
+        <div id="ratioLive" class="ratio-live">再生数を入力してください</div>
+        <button id="saveBtn" class="primary" hidden>この投稿を保存</button>
+      </div>
+
+      <button id="nextBtn" class="ghost">次の候補</button>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>③ 条件を通った投稿</h2>
-          <p class="sub">必須3条件＋再生数3倍をクリアした投稿だけ保存します。</p>
+          <h2>条件クリア一覧</h2>
+          <p class="sub">3条件＋再生数3倍を通った投稿だけ残ります。</p>
         </div>
         <span id="passedCount" class="badge">0件</span>
       </div>
@@ -106,21 +104,11 @@
         <p class="empty">まだ条件一致した投稿はありません。</p>
       </div>
 
-      <div class="footer-actions">
-        <button id="exportBtn" class="secondary">CSV保存</button>
-        <button id="clearPassedBtn" class="danger-ghost">保存結果を消去</button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <details>
-        <summary>使い方</summary>
-        <div class="guide">
-          <span>1. #検索でInstagramを開く</span>
-          <span>2. 気になるリールを見つける</span>
-          <span>3. 検索日を確認し、フォロワー数・総投稿数・投稿日だけ入力</span>
-          <span>4. 3条件を通った投稿だけ再生数を入力</span>
-          <span>5. フォロワー数の3倍以上なら③へ保存</span>
+      <details class="tools">
+        <summary>保存データの操作</summary>
+        <div class="footer-actions">
+          <button id="exportBtn" class="secondary">CSV保存</button>
+          <button id="clearPassedBtn" class="danger-ghost">すべて消去</button>
         </div>
       </details>
     </section>

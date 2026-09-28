@@ -44,14 +44,41 @@ function localDateString(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-function daysAgo(dateString) {
+function getSearchDate() {
+  const value = $("#searchDate").value;
+  if (!value) return new Date();
+
+  const parts = value.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date();
+
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function daysFromSearchDate(dateString) {
   if (!dateString) return Infinity;
+
   const parts = dateString.split("-").map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return Infinity;
+
   const post = new Date(parts[0], parts[1] - 1, parts[2]);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((today - post) / 86400000);
+  const search = getSearchDate();
+  const searchDay = new Date(search.getFullYear(), search.getMonth(), search.getDate());
+
+  return Math.round((searchDay - post) / 86400000);
+}
+
+function updatePostDateRange() {
+  const search = getSearchDate();
+  const maxDate = new Date(search.getFullYear(), search.getMonth(), search.getDate());
+  const minDate = new Date(search.getFullYear(), search.getMonth(), search.getDate() - MUST_MAX_DAYS);
+
+  $("#postDate").max = localDateString(maxDate);
+  $("#postDate").min = localDateString(minDate);
+
+  const current = $("#postDate").value;
+  if (current && (current < $("#postDate").min || current > $("#postDate").max)) {
+    $("#postDate").value = "";
+  }
 }
 
 function parseHashtags(text) {
@@ -106,6 +133,7 @@ function currentCandidate() {
     url: normalizeUrl($("#reelUrl").value),
     followers: Number($("#followers").value),
     posts: Number($("#posts").value),
+    searchDate: $("#searchDate").value,
     date: $("#postDate").value
   };
 }
@@ -130,7 +158,7 @@ function screenCandidate() {
     return setResult(result, "投稿日を入力してください。", "ng");
   }
 
-  const days = daysAgo(item.date);
+  const days = daysFromSearchDate(item.date);
   const checks = [
     {
       ok: item.followers >= MUST_FOLLOWERS,
@@ -144,8 +172,8 @@ function screenCandidate() {
     },
     {
       ok: days >= 0 && days <= MUST_MAX_DAYS,
-      okText: `✓ 投稿日 ${days}日前`,
-      ngText: days < 0 ? "✕ 投稿日が未来になっています" : `✕ 投稿日 ${days}日前（7日超過）`
+      okText: `✓ 投稿日 検索日から${days}日前`,
+      ngText: days < 0 ? "✕ 投稿日が検索日より後になっています" : `✕ 投稿日 検索日から${days}日前（7日超過）`
     }
   ];
 
@@ -175,7 +203,7 @@ function ratioCheck() {
     return setResult(result, "再生数を入力してください。", "ng");
   }
 
-  const days = daysAgo(item.date);
+  const days = daysFromSearchDate(item.date);
   if (
     item.followers < MUST_FOLLOWERS ||
     item.posts >= MUST_MAX_POSTS_EXCLUSIVE ||
@@ -200,6 +228,7 @@ function ratioCheck() {
     url: item.url,
     followers: item.followers,
     posts: item.posts,
+    searchDate: item.searchDate,
     date: item.date,
     days,
     views,
@@ -258,7 +287,8 @@ function renderPassed() {
         <span>👥 ${formatNum(x.followers)}人</span>
         <span>🎞 ${formatNum(x.posts)}投稿</span>
         <span>▶ ${formatNum(x.views)}再生</span>
-        <span>📅 ${escapeHtml(x.date)}（${x.days}日前）</span>
+        <span>🔎 ${escapeHtml(x.searchDate || "")} 検索</span>
+        <span>📅 ${escapeHtml(x.date)}（検索日から${x.days}日前）</span>
       </div>
 
       <div class="saved-url">${escapeHtml(x.url)}</div>
@@ -296,9 +326,9 @@ function exportCsv() {
   if (!passedItems.length) return alert("保存する結果がありません。");
 
   const rows = [
-    ["followers","posts","date","days","views","ratio","url"],
+    ["followers","posts","search_date","post_date","days_from_search","views","ratio","url"],
     ...passedItems.map(x => [
-      x.followers, x.posts, x.date, x.days, x.views, Number(x.ratio).toFixed(2), x.url
+      x.followers, x.posts, x.searchDate || "", x.date, x.days, x.views, Number(x.ratio).toFixed(2), x.url
     ])
   ];
 
@@ -363,9 +393,15 @@ $("#reelUrl").addEventListener("paste", () => {
 });
 
 const today = new Date();
-const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - MUST_MAX_DAYS);
-$("#postDate").max = localDateString(today);
-$("#postDate").min = localDateString(minDate);
+$("#searchDate").value = localDateString(today);
+updatePostDateRange();
+
+$("#searchDate").addEventListener("change", () => {
+  updatePostDateRange();
+  $("#screenResult").hidden = true;
+  $("#ratioResult").hidden = true;
+  $("#stage2").hidden = true;
+});
 
 renderPassed();
 receiveSharedUrl();

@@ -12,120 +12,111 @@
   <main class="wrap">
     <header>
       <p class="eyebrow">Instagram Reel Finder</p>
-      <h1>伸びているリールを自動発掘</h1>
-      <p class="lead">#ハッシュタグ検索 → リール一覧取得 → 投稿者情報取得 → 条件判定まで自動で行います。</p>
+      <h1>リール発掘検索</h1>
+      <p class="lead">まず3つの必須条件で足切り。通った投稿だけ再生数を確認します。</p>
     </header>
 
-    <section class="panel setup-panel">
-      <div class="section-head">
-        <div>
-          <h2>① Apify接続</h2>
-          <p class="sub">個人利用用。無料プランのAPIトークンを使います。</p>
-        </div>
-        <span class="badge">月$5無料枠</span>
+    <section class="must-panel">
+      <div class="must-title">必須条件</div>
+      <div class="must-grid">
+        <div><strong>10,000人以上</strong><span>フォロワー</span></div>
+        <div><strong>180投稿未満</strong><span>総投稿数</span></div>
+        <div><strong>7日以内</strong><span>投稿日</span></div>
       </div>
-
-      <label class="full">Apify APIトークン
-        <input id="apifyToken" type="password" autocomplete="off" placeholder="apify_api_...">
-      </label>
-
-      <label class="checkrow">
-        <input id="rememberToken" type="checkbox">
-        <span>この端末だけにトークンを保存する</span>
-      </label>
-
-      <div class="button-row">
-        <button id="testTokenBtn" class="secondary">接続確認</button>
-        <a class="external-btn" href="https://console.apify.com/account/integrations" target="_blank" rel="noopener">トークン取得</a>
-      </div>
-
-      <div id="tokenStatus" class="status-box" hidden></div>
-      <p class="note">トークンはGitHubには保存しません。保存を選んだ場合のみ、このブラウザ内に保存します。</p>
-    </section>
-
-    <section class="panel hero-panel">
-      <div class="section-head">
-        <div>
-          <h2>② #ハッシュタグ検索</h2>
-          <p class="sub">例：#加工 #DIY。検索するとInstagramのリールを自動取得します。</p>
-        </div>
-        <span class="badge">自動検索</span>
-      </div>
-
-      <label class="full">検索ハッシュタグ
-        <textarea id="hashtags" rows="3" placeholder="#加工 #DIY #ライフハック"></textarea>
-      </label>
-
-      <div class="grid">
-        <label>1タグの最大取得数
-          <select id="resultsLimit">
-            <option value="10">10件</option>
-            <option value="20">20件</option>
-            <option value="30" selected>30件</option>
-            <option value="50">50件</option>
-            <option value="100">100件</option>
-          </select>
-        </label>
-        <div class="cost-box">
-          <span>最大コスト目安</span>
-          <strong id="costEstimate">$0.07</strong>
-          <small>1タグ30件・全て別アカウントの場合</small>
-        </div>
-      </div>
-
-      <button id="autoSearchBtn" class="primary">#検索して条件判定</button>
-      <div id="progress" class="progress" hidden></div>
-    </section>
-
-    <section class="panel">
-      <h2>③ 判定条件</h2>
-      <div class="grid">
-        <label>最低フォロワー
-          <input id="minFollowers" type="number" min="0" value="10000">
-        </label>
-        <label>投稿数（未満）
-          <input id="maxPostsExclusive" type="number" min="1" value="180">
-        </label>
-        <label>最低再生倍率
-          <input id="minRatio" type="number" min="1" step="0.1" value="3">
-        </label>
-        <label>検索期間
-          <input id="maxDays" type="number" min="1" max="14" value="14">
-        </label>
-        <label>優先期間
-          <input id="bestDays" type="number" min="1" max="14" value="7">
-        </label>
-      </div>
-      <p class="formula">判定式：リール1本の再生数 ÷ その投稿者のフォロワー数 ≥ 3</p>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <h2>④ 条件に合ったリール</h2>
-          <p id="summary" class="sub">#検索すると、条件一致した投稿がここに出ます。</p>
+          <h2>① Instagramで探す</h2>
+          <p class="sub">ハッシュタグを入力してInstagramを開きます。</p>
         </div>
-        <span id="count" class="badge">0件</span>
+        <span class="badge">無料・連携なし</span>
       </div>
 
-      <div class="sortbar">
-        <button class="chip active" data-sort="best">7日以内優先</button>
-        <button class="chip" data-sort="ratio">倍率順</button>
-        <button class="chip" data-sort="newest">新しい順</button>
-        <button id="exportBtn" class="chip">CSV保存</button>
+      <label class="full">ハッシュタグ
+        <textarea id="hashtags" rows="2" placeholder="#加工 #DIY #ライフハック"></textarea>
+      </label>
+
+      <button id="makeSearchBtn" class="primary">#検索する</button>
+      <div id="searchLinks" class="search-links"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>② 候補を3条件で判定</h2>
+          <p class="sub">Instagramの共有から開いた場合はURLが自動で入ります。</p>
+        </div>
+        <span id="shareBadge" class="badge" hidden>共有URL受取済み</span>
       </div>
 
-      <div id="results" class="results">
-        <p class="empty">#ハッシュタグを入力して検索してください。</p>
+      <label class="full">リールURL
+        <input id="reelUrl" type="url" inputmode="url" placeholder="https://www.instagram.com/reel/...">
+      </label>
+
+      <div class="form-grid">
+        <label>フォロワー数
+          <input id="followers" type="number" inputmode="numeric" min="0" placeholder="例 12500">
+        </label>
+        <label>総投稿数
+          <input id="posts" type="number" inputmode="numeric" min="0" placeholder="例 86">
+        </label>
+      </div>
+
+      <label class="full">投稿日
+        <input id="postDate" type="date">
+      </label>
+
+      <button id="screenBtn" class="primary">必須3条件を判定</button>
+      <div id="screenResult" class="result-box" hidden></div>
+
+      <div id="stage2" class="stage2" hidden>
+        <div class="stage2-head">
+          <strong>3条件クリア 🎯</strong>
+          <span>次に再生数だけ確認</span>
+        </div>
+
+        <label class="full">このリール1本の再生数
+          <input id="views" type="number" inputmode="numeric" min="0" placeholder="例 45000">
+        </label>
+
+        <div id="targetViews" class="target-box"></div>
+        <button id="ratioBtn" class="primary">3倍判定する</button>
+        <div id="ratioResult" class="result-box" hidden></div>
+      </div>
+
+      <button id="resetBtn" class="ghost">次の候補を調べる</button>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>③ 条件を通った投稿</h2>
+          <p class="sub">必須3条件＋再生数3倍をクリアした投稿だけ保存します。</p>
+        </div>
+        <span id="passedCount" class="badge">0件</span>
+      </div>
+
+      <div id="passedList" class="results">
+        <p class="empty">まだ条件一致した投稿はありません。</p>
+      </div>
+
+      <div class="footer-actions">
+        <button id="exportBtn" class="secondary">CSV保存</button>
+        <button id="clearPassedBtn" class="danger-ghost">保存結果を消去</button>
       </div>
     </section>
 
     <section class="panel">
       <details>
-        <summary>取得したリール一覧を見る <span id="allCount" class="mini-count">0件</span></summary>
-        <p class="sub">条件外も含む取得結果です。どの条件で外れたか確認できます。</p>
-        <div id="allResults" class="results compact-results">
-          <p class="empty">まだ検索していません。</p>
+        <summary>使い方</summary>
+        <div class="guide">
+          <span>1. #検索でInstagramを開く</span>
+          <span>2. 気になるリールを見つける</span>
+          <span>3. フォロワー数・総投稿数・投稿日だけ入力</span>
+          <span>4. 3条件を通った投稿だけ再生数を入力</span>
+          <span>5. フォロワー数の3倍以上なら③へ保存</span>
         </div>
       </details>
     </section>

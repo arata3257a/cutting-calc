@@ -1,33 +1,29 @@
 # Instagram Reel Search
 
-個人利用向けの自動Instagramリール発掘アプリです。
+外部API・トークン・課金なしの個人向けリール発掘補助アプリです。
 
-## 処理
-1. #ハッシュタグを入力
-2. ApifyのInstagram Reel Scraperでリールを取得
-3. 投稿日14日以内に限定
-4. 投稿者usernameを抽出
-5. Instagram Profile Scraperでfollowers / posts_countを取得
-6. リール1本のviews ÷ followers を計算
-7. 条件一致だけを表示
+## 必須条件（固定）
+- フォロワー 10,000人以上
+- 総投稿数 180投稿未満
+- 投稿日 7日以内
 
-## 初期条件
-- followers >= 10,000
-- posts_count < 180
-- views / followers >= 3
-- 投稿日14日以内
-- 7日以内を優先
+この3条件をすべて通った候補だけ、次の再生数判定へ進みます。
 
-## Apify
-- Reel Scraper: zaver.api/instagram-reel-scraper
-- Profile Scraper: zaver.api/instagram-profile-scraper
-- 無料プランの月$5クレジットを使用可能
-- 1タグ最大取得数をアプリ側で制限可能
-- APIトークンはGitHubには保存しない
-- 「端末に保存」を選んだ場合のみlocalStorageへ保存
+## 2段階判定
+1. リールURL、フォロワー数、総投稿数、投稿日を入力
+2. 必須3条件を判定
+3. 通過した候補だけ再生数を入力
+4. 再生数 ÷ フォロワー数 >= 3 を判定
+5. 3倍以上だけ端末内へ保存
 
-## 料金目安
-Reel Scraper: $0.99 / 1,000 reels
-Profile Scraper: $1.49 / 1,000 profiles
+## 検索
+- #ハッシュタグからInstagramのタグページを開く
+- Instagram側で候補リールを探す
+- 外部スクレイピングサービスは使用しない
 
-30件/タグで、30件すべてが別アカウントなら最大目安は約$0.07/タグです。
+## Android共有
+PWAとしてホーム画面に追加した場合、Web Share Target対応ブラウザ/OSではInstagramの共有URLをアプリへ受け取れるようにしています。
+
+## 保存
+条件一致した投稿はlocalStorageに保存します。
+CSV出力、URLコピー、個別削除、全消去に対応しています。

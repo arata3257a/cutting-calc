@@ -1,11 +1,14 @@
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 
 const MUST_FOLLOWERS = 10000;
 const MUST_MAX_POSTS_EXCLUSIVE = 180;
 const MUST_MAX_DAYS = 7;
 const MIN_RATIO = 3;
-const STORAGE_KEY = "reelFinderPassedV2";
+const STORAGE_KEY = "reelFinderPassedV3";
+const OLD_STORAGE_KEY = "reelFinderPassedV2";
 
+let selectedDay = null;
 let passedItems = loadPassed();
 
 function escapeHtml(str) {
@@ -16,6 +19,49 @@ function escapeHtml(str) {
 
 function formatNum(n) {
   return new Intl.NumberFormat("ja-JP").format(Number(n) || 0);
+}
+
+function localDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function displayDate(date = new Date()) {
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function dateDaysAgo(days) {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - days);
+  return localDateString(d);
+}
+
+function parseJapaneseNumber(value) {
+  let s = String(value ?? "").trim()
+    .replace(/[，,\s]/g, "")
+    .replace(/人|回|再生|投稿/g, "");
+
+  if (!s) return NaN;
+
+  const man = s.match(/^([0-9０-９]+(?:[.．][0-9０-９]+)?)万$/);
+  if (man) {
+    const n = Number(
+      man[1]
+        .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+        .replace("．", ".")
+    );
+    return Number.isFinite(n) ? Math.round(n * 10000) : NaN;
+  }
+
+  s = s
+    .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace("．", ".");
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 function normalizeUrl(url) {
@@ -37,50 +83,6 @@ function isInstagramPostUrl(url) {
   return /^https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p)\//i.test(url);
 }
 
-function localDateString(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function getSearchDate() {
-  const value = $("#searchDate").value;
-  if (!value) return new Date();
-
-  const parts = value.split("-").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date();
-
-  return new Date(parts[0], parts[1] - 1, parts[2]);
-}
-
-function daysFromSearchDate(dateString) {
-  if (!dateString) return Infinity;
-
-  const parts = dateString.split("-").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return Infinity;
-
-  const post = new Date(parts[0], parts[1] - 1, parts[2]);
-  const search = getSearchDate();
-  const searchDay = new Date(search.getFullYear(), search.getMonth(), search.getDate());
-
-  return Math.round((searchDay - post) / 86400000);
-}
-
-function updatePostDateRange() {
-  const search = getSearchDate();
-  const maxDate = new Date(search.getFullYear(), search.getMonth(), search.getDate());
-  const minDate = new Date(search.getFullYear(), search.getMonth(), search.getDate() - MUST_MAX_DAYS);
-
-  $("#postDate").max = localDateString(maxDate);
-  $("#postDate").min = localDateString(minDate);
-
-  const current = $("#postDate").value;
-  if (current && (current < $("#postDate").min || current > $("#postDate").max)) {
-    $("#postDate").value = "";
-  }
-}
-
 function parseHashtags(text) {
   return [...new Set(
     String(text || "")
@@ -92,8 +94,17 @@ function parseHashtags(text) {
 
 function loadPassed() {
   try {
-    const items = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(items) ? items : [];
+    const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (Array.isArray(current) && current.length) return current;
+
+    const old = JSON.parse(localStorage.getItem(OLD_STORAGE_KEY) || "[]");
+    if (!Array.isArray(old)) return [];
+
+    return old.map(x => ({
+      ...x,
+      searchDate: x.searchDate || localDateString(new Date()),
+      days: Number.isFinite(Number(x.days)) ? Number(x.days) : 0
+    }));
   } catch {
     return [];
   }
@@ -103,10 +114,170 @@ function savePassed() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(passedItems));
 }
 
-function setResult(el, message, kind) {
-  el.hidden = false;
-  el.className = "result-box " + kind;
-  el.innerHTML = message;
+function currentValues() {
+  return {
+    url: normalizeUrl($("#reelUrl").value),
+    followers: parseJapaneseNumber($("#followers").value),
+    posts: parseJapaneseNumber($("#posts").value),
+    days: selectedDay
+  };
+}
+
+function setDay(day) {
+  selectedDay = day;
+  $$("#dayButtons button").forEach(btn => {
+    btn.classList.toggle("active", Number(btn.dataset.day) === day);
+  });
+
+  $("#daySelectedText").textContent =
+    day === null ? "未選択" :
+    day === 0 ? "今日" :
+    day >= 8 ? "8日以上" :
+    day + "日前";
+
+  evaluateMust();
+}
+
+function evaluateMust() {
+  const v = currentValues();
+  const result = $("#mustResult");
+  const stage = $("#viewsStage");
+  const save = $("#saveBtn");
+
+  stage.hidden = true;
+  save.hidden = true;
+  $("#views").value = "";
+  $("#ratioLive").textContent = "再生数を入力してください";
+
+  const haveFollowers = Number.isFinite(v.followers);
+  const havePosts = Number.isFinite(v.posts);
+  const haveDay = v.days !== null;
+
+  if (!haveFollowers || !havePosts || !haveDay) {
+    result.className = "live-result waiting";
+    result.textContent = "フォロワー・投稿数・投稿日を入れると自動判定します";
+    return;
+  }
+
+  const followerOK = v.followers >= MUST_FOLLOWERS;
+  const postsOK = v.posts < MUST_MAX_POSTS_EXCLUSIVE;
+  const dayOK = v.days >= 0 && v.days <= MUST_MAX_DAYS;
+
+  const lines = [
+    `${followerOK ? "✓" : "✕"} フォロワー ${formatNum(v.followers)}人`,
+    `${postsOK ? "✓" : "✕"} 投稿数 ${formatNum(v.posts)}`,
+    `${dayOK ? "✓" : "✕"} 投稿日 ${v.days >= 8 ? "8日以上" : v.days === 0 ? "今日" : v.days + "日前"}`
+  ];
+
+  if (!(followerOK && postsOK && dayOK)) {
+    result.className = "live-result ng";
+    result.innerHTML = "<strong>この候補は除外</strong>" +
+      lines.map(x => "<span>" + escapeHtml(x) + "</span>").join("");
+    return;
+  }
+
+  result.className = "live-result ok";
+  result.innerHTML = "<strong>必須3条件クリア</strong>" +
+    lines.map(x => "<span>" + escapeHtml(x) + "</span>").join("");
+
+  stage.hidden = false;
+  const target = Math.ceil(v.followers * MIN_RATIO);
+  $("#ratioLive").innerHTML =
+    `3倍の目安：<strong>${formatNum(target)}再生以上</strong>`;
+}
+
+function evaluateViews() {
+  const v = currentValues();
+  const views = parseJapaneseNumber($("#views").value);
+  const box = $("#ratioLive");
+  const save = $("#saveBtn");
+
+  save.hidden = true;
+
+  if (!Number.isFinite(views) || views <= 0 || !Number.isFinite(v.followers) || v.followers <= 0) {
+    const target = Number.isFinite(v.followers) ? Math.ceil(v.followers * MIN_RATIO) : 0;
+    box.className = "ratio-live";
+    box.innerHTML = target
+      ? `3倍の目安：<strong>${formatNum(target)}再生以上</strong>`
+      : "再生数を入力してください";
+    return;
+  }
+
+  const ratio = views / v.followers;
+  if (ratio >= MIN_RATIO) {
+    box.className = "ratio-live pass";
+    box.innerHTML = `🎯 <strong>${ratio.toFixed(2)}倍</strong>　3倍クリア`;
+    save.hidden = false;
+  } else {
+    box.className = "ratio-live fail";
+    box.innerHTML = `<strong>${ratio.toFixed(2)}倍</strong>　3倍未満`;
+  }
+}
+
+function saveCandidate() {
+  const v = currentValues();
+  const views = parseJapaneseNumber($("#views").value);
+  const ratio = views / v.followers;
+  const url = normalizeUrl($("#reelUrl").value);
+
+  if (
+    v.followers < MUST_FOLLOWERS ||
+    v.posts >= MUST_MAX_POSTS_EXCLUSIVE ||
+    v.days === null ||
+    v.days > MUST_MAX_DAYS ||
+    !Number.isFinite(views) ||
+    ratio < MIN_RATIO
+  ) return;
+
+  if (!url || !isInstagramPostUrl(url)) {
+    $("#reelUrl").focus();
+    $("#reelUrl").classList.add("input-alert");
+    setTimeout(() => $("#reelUrl").classList.remove("input-alert"), 1300);
+    alert("保存するにはリールURLを入れてください。Instagramの共有から開くと自動入力できます。");
+    return;
+  }
+
+  const saved = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    url,
+    followers: v.followers,
+    posts: v.posts,
+    searchDate: localDateString(new Date()),
+    date: dateDaysAgo(v.days),
+    days: v.days,
+    views,
+    ratio,
+    savedAt: new Date().toISOString()
+  };
+
+  const existing = passedItems.findIndex(x => x.url === saved.url);
+  if (existing >= 0) passedItems[existing] = saved;
+  else passedItems.unshift(saved);
+
+  savePassed();
+  renderPassed();
+
+  $("#saveBtn").textContent = "保存しました ✓";
+  setTimeout(() => {
+    resetCandidate();
+    $("#saveBtn").textContent = "この投稿を保存";
+  }, 650);
+}
+
+function resetCandidate() {
+  $("#reelUrl").value = "";
+  $("#followers").value = "";
+  $("#posts").value = "";
+  $("#views").value = "";
+  $("#shareBadge").hidden = true;
+  selectedDay = null;
+  $$("#dayButtons button").forEach(btn => btn.classList.remove("active"));
+  $("#daySelectedText").textContent = "未選択";
+  $("#viewsStage").hidden = true;
+  $("#saveBtn").hidden = true;
+  $("#mustResult").className = "live-result waiting";
+  $("#mustResult").textContent = "フォロワー・投稿数・投稿日を入れると自動判定します";
+  $("#followers").focus();
 }
 
 function buildSearchLinks() {
@@ -114,154 +285,14 @@ function buildSearchLinks() {
   const box = $("#searchLinks");
 
   if (!tags.length) {
-    box.innerHTML = '<p class="empty small">#ハッシュタグを入力してください。</p>';
+    box.innerHTML = '<span class="hint">#ハッシュタグを入力してください</span>';
     return;
   }
 
   box.innerHTML = tags.map(tag => {
     const url = "https://www.instagram.com/explore/tags/" + encodeURIComponent(tag) + "/";
-    return `
-      <a class="search-link" href="${url}" target="_blank" rel="noopener">
-        <span>#${escapeHtml(tag)}</span>
-        <strong>Instagramで開く →</strong>
-      </a>`;
+    return `<a href="${url}" target="_blank" rel="noopener">#${escapeHtml(tag)} を開く →</a>`;
   }).join("");
-}
-
-function currentCandidate() {
-  return {
-    url: normalizeUrl($("#reelUrl").value),
-    followers: Number($("#followers").value),
-    posts: Number($("#posts").value),
-    searchDate: $("#searchDate").value,
-    date: $("#postDate").value
-  };
-}
-
-function screenCandidate() {
-  const item = currentCandidate();
-  const result = $("#screenResult");
-  const stage2 = $("#stage2");
-  stage2.hidden = true;
-  $("#ratioResult").hidden = true;
-
-  if (!item.url || !isInstagramPostUrl(item.url)) {
-    return setResult(result, "InstagramのリールURLを入れてください。", "ng");
-  }
-  if (!Number.isFinite(item.followers) || item.followers <= 0) {
-    return setResult(result, "フォロワー数を入力してください。", "ng");
-  }
-  if (!Number.isFinite(item.posts) || item.posts <= 0) {
-    return setResult(result, "総投稿数を入力してください。", "ng");
-  }
-  if (!item.date) {
-    return setResult(result, "投稿日を入力してください。", "ng");
-  }
-
-  const days = daysFromSearchDate(item.date);
-  const checks = [
-    {
-      ok: item.followers >= MUST_FOLLOWERS,
-      okText: `✓ フォロワー ${formatNum(item.followers)}人`,
-      ngText: `✕ フォロワー ${formatNum(item.followers)}人（10,000人未満）`
-    },
-    {
-      ok: item.posts < MUST_MAX_POSTS_EXCLUSIVE,
-      okText: `✓ 投稿数 ${formatNum(item.posts)}`,
-      ngText: `✕ 投稿数 ${formatNum(item.posts)}（180投稿以上）`
-    },
-    {
-      ok: days >= 0 && days <= MUST_MAX_DAYS,
-      okText: `✓ 投稿日 検索日から${days}日前`,
-      ngText: days < 0 ? "✕ 投稿日が検索日より後になっています" : `✕ 投稿日 検索日から${days}日前（7日超過）`
-    }
-  ];
-
-  const passed = checks.every(c => c.ok);
-  const html = checks.map(c =>
-    `<div class="check-line ${c.ok ? "ok" : "bad"}">${escapeHtml(c.ok ? c.okText : c.ngText)}</div>`
-  ).join("");
-
-  if (!passed) {
-    return setResult(result, '<strong>この候補はここで除外</strong>' + html, "ng");
-  }
-
-  setResult(result, '<strong>必須3条件クリア</strong>' + html, "ok");
-  stage2.hidden = false;
-  const target = Math.ceil(item.followers * MIN_RATIO);
-  $("#targetViews").innerHTML =
-    `3倍クリアの目安：<strong>${formatNum(target)}再生以上</strong>`;
-  setTimeout(() => $("#views").focus(), 50);
-}
-
-function ratioCheck() {
-  const item = currentCandidate();
-  const views = Number($("#views").value);
-  const result = $("#ratioResult");
-
-  if (!Number.isFinite(views) || views <= 0) {
-    return setResult(result, "再生数を入力してください。", "ng");
-  }
-
-  const days = daysFromSearchDate(item.date);
-  if (
-    item.followers < MUST_FOLLOWERS ||
-    item.posts >= MUST_MAX_POSTS_EXCLUSIVE ||
-    days < 0 ||
-    days > MUST_MAX_DAYS
-  ) {
-    $("#stage2").hidden = true;
-    return setResult($("#screenResult"), "入力内容が変わりました。もう一度3条件を判定してください。", "ng");
-  }
-
-  const ratio = views / item.followers;
-  if (ratio < MIN_RATIO) {
-    return setResult(
-      result,
-      `<strong>${ratio.toFixed(2)}倍 → 3倍未満</strong><br>この候補は保存しません。`,
-      "ng"
-    );
-  }
-
-  const saved = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-    url: item.url,
-    followers: item.followers,
-    posts: item.posts,
-    searchDate: item.searchDate,
-    date: item.date,
-    days,
-    views,
-    ratio,
-    savedAt: new Date().toISOString()
-  };
-
-  const existingIndex = passedItems.findIndex(x => x.url === saved.url);
-  if (existingIndex >= 0) passedItems[existingIndex] = saved;
-  else passedItems.unshift(saved);
-
-  savePassed();
-  renderPassed();
-
-  setResult(
-    result,
-    `<strong>🎯 ${ratio.toFixed(2)}倍でクリア</strong><br>③の一覧に保存しました。`,
-    "ok"
-  );
-}
-
-function resetForm() {
-  $("#reelUrl").value = "";
-  $("#followers").value = "";
-  $("#posts").value = "";
-  $("#postDate").value = "";
-  $("#views").value = "";
-  $("#screenResult").hidden = true;
-  $("#ratioResult").hidden = true;
-  $("#stage2").hidden = true;
-  $("#shareBadge").hidden = true;
-  window.scrollTo({ top: $("#reelUrl").getBoundingClientRect().top + window.scrollY - 90, behavior: "smooth" });
-  $("#reelUrl").focus();
 }
 
 function renderPassed() {
@@ -282,17 +313,13 @@ function renderPassed() {
         </div>
         <button class="delete-btn" data-id="${escapeHtml(x.id)}">削除</button>
       </div>
-
       <div class="saved-meta">
         <span>👥 ${formatNum(x.followers)}人</span>
         <span>🎞 ${formatNum(x.posts)}投稿</span>
         <span>▶ ${formatNum(x.views)}再生</span>
-        <span>🔎 ${escapeHtml(x.searchDate || "")} 検索</span>
-        <span>📅 ${escapeHtml(x.date)}（検索日から${x.days}日前）</span>
+        <span>📅 ${Number(x.days)}日前</span>
       </div>
-
       <div class="saved-url">${escapeHtml(x.url)}</div>
-
       <div class="url-actions">
         <a class="open-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener">リールを開く</a>
         <button class="copy-btn" data-url="${escapeHtml(x.url)}">URLコピー</button>
@@ -301,15 +328,15 @@ function renderPassed() {
   `).join("");
 }
 
-async function copyText(text, button) {
+async function copyText(value, button) {
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(value);
     const old = button.textContent;
     button.textContent = "コピー済み";
     setTimeout(() => button.textContent = old, 1000);
   } catch {
     const ta = document.createElement("textarea");
-    ta.value = text;
+    ta.value = value;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand("copy");
@@ -326,9 +353,9 @@ function exportCsv() {
   if (!passedItems.length) return alert("保存する結果がありません。");
 
   const rows = [
-    ["followers","posts","search_date","post_date","days_from_search","views","ratio","url"],
+    ["followers","posts","days_ago","post_date","views","ratio","url"],
     ...passedItems.map(x => [
-      x.followers, x.posts, x.searchDate || "", x.date, x.days, x.views, Number(x.ratio).toFixed(2), x.url
+      x.followers, x.posts, x.days, x.date, x.views, Number(x.ratio).toFixed(2), x.url
     ])
   ];
 
@@ -356,22 +383,29 @@ function receiveSharedUrl() {
     $("#reelUrl").value = url;
     $("#shareBadge").hidden = false;
     history.replaceState(null, "", location.pathname);
-    setTimeout(() => $("#followers").focus(), 50);
+    setTimeout(() => $("#followers").focus(), 60);
   }
 }
 
-$("#makeSearchBtn").addEventListener("click", buildSearchLinks);
-$("#screenBtn").addEventListener("click", screenCandidate);
-$("#ratioBtn").addEventListener("click", ratioCheck);
-$("#resetBtn").addEventListener("click", resetForm);
-$("#exportBtn").addEventListener("click", exportCsv);
+$("#searchDateLabel").textContent = displayDate(new Date()) + "（今日）";
 
-$("#clearPassedBtn").addEventListener("click", () => {
-  if (!passedItems.length) return;
-  if (!confirm("保存した条件一致結果をすべて消しますか？")) return;
-  passedItems = [];
-  savePassed();
-  renderPassed();
+$("#searchBtn").addEventListener("click", buildSearchLinks);
+$("#followers").addEventListener("input", evaluateMust);
+$("#posts").addEventListener("input", evaluateMust);
+$("#views").addEventListener("input", evaluateViews);
+$("#saveBtn").addEventListener("click", saveCandidate);
+$("#nextBtn").addEventListener("click", resetCandidate);
+
+$("#dayButtons").addEventListener("click", event => {
+  const btn = event.target.closest("button[data-day]");
+  if (!btn) return;
+  setDay(Number(btn.dataset.day));
+});
+
+$("#reelUrl").addEventListener("paste", () => {
+  setTimeout(() => {
+    $("#reelUrl").value = normalizeUrl($("#reelUrl").value);
+  }, 0);
 });
 
 $("#passedList").addEventListener("click", event => {
@@ -386,21 +420,14 @@ $("#passedList").addEventListener("click", event => {
   }
 });
 
-$("#reelUrl").addEventListener("paste", () => {
-  setTimeout(() => {
-    $("#reelUrl").value = normalizeUrl($("#reelUrl").value);
-  }, 0);
-});
+$("#exportBtn").addEventListener("click", exportCsv);
 
-const today = new Date();
-$("#searchDate").value = localDateString(today);
-updatePostDateRange();
-
-$("#searchDate").addEventListener("change", () => {
-  updatePostDateRange();
-  $("#screenResult").hidden = true;
-  $("#ratioResult").hidden = true;
-  $("#stage2").hidden = true;
+$("#clearPassedBtn").addEventListener("click", () => {
+  if (!passedItems.length) return;
+  if (!confirm("保存した結果をすべて消しますか？")) return;
+  passedItems = [];
+  savePassed();
+  renderPassed();
 });
 
 renderPassed();

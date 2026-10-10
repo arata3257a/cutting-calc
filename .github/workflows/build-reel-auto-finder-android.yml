@@ -8,6 +8,9 @@ on:
       - "instagram-reel-auto-finder-android/**"
       - ".github/workflows/build-reel-auto-finder-android.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,12 +39,43 @@ jobs:
           gradle-version: "8.9"
 
       - name: Build debug APK
+        id: build
+        continue-on-error: true
         working-directory: instagram-reel-auto-finder-android
-        run: gradle :app:assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --stacktrace 2>&1 | tee build.log
 
-      - name: Upload APK
+      - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: reel-auto-finder-debug-apk
           path: instagram-reel-auto-finder-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish APK or build error log
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p downloads
+          rm -f downloads/reel-auto-finder-debug.apk downloads/reel-auto-finder-build-error.txt
+
+          if [ -f instagram-reel-auto-finder-android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp instagram-reel-auto-finder-android/app/build/outputs/apk/debug/app-debug.apk downloads/reel-auto-finder-debug.apk
+            BUILD_OK=1
+          else
+            cp instagram-reel-auto-finder-android/build.log downloads/reel-auto-finder-build-error.txt || echo "Build failed before log creation" > downloads/reel-auto-finder-build-error.txt
+            BUILD_OK=0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A downloads
+          git commit -m "Update Android reel finder build [skip ci]" || true
+          git push
+
+          if [ "$BUILD_OK" != "1" ]; then
+            exit 1
+          fi

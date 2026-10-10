@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Instagram リール自動発掘",
+  "version": "0.1.0",
+  "description": "Instagram上でリールを自動確認し、フォロワー1万人以上・投稿180未満・7日以内・再生3倍以上だけを抽出します。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.instagram.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

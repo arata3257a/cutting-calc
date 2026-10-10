@@ -1,5 +1,7 @@
 package com.arata.reelfinder;
 
+// JS_ESCAPES_FIXED_V1
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -148,7 +150,7 @@ public class MainActivity extends Activity {
 
     private static final String JS_PARSE_REEL = """
         (function(){
-          const raw = (document.body?.innerText || '').replace(/\u00a0/g, ' ');
+          const raw = (document.body?.innerText || '').replace(/\\u00a0/g, ' ');
           const reserved = new Set(['explore','reels','reel','p','accounts','direct','stories','about','legal','privacy','developer','web']);
           let username = '';
 
@@ -170,7 +172,7 @@ public class MainActivity extends Activity {
 
           if (!username) {
             const og = document.querySelector('meta[property="og:title"]')?.content || '';
-            const m = og.match(/^@?([A-Za-z0-9._]+)\s/);
+            const m = og.match(/^@?([A-Za-z0-9._]+)\\s/);
             if (m) username = m[1];
           }
 
@@ -179,10 +181,10 @@ public class MainActivity extends Activity {
 
           function parseNum(v) {
             if (!v) return 0;
-            let s = String(v).replace(/[\s,，]/g,'')
+            let s = String(v).replace(/[\\s,，]/g,'')
               .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
               .replace('．','.');
-            const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(万|[KkMmBb])?$/);
+            const m = s.match(/^([0-9]+(?:\\.[0-9]+)?)(万|[KkMmBb])?$/);
             if (!m) return Number(s) || 0;
             let n = Number(m[1]);
             const u = m[2];
@@ -195,8 +197,8 @@ public class MainActivity extends Activity {
 
           let views = 0;
           const patterns = [
-            /(?:再生数|再生|views?|plays?)\s*[:：]?\s*([0-9０-９.,．万KkMmBb]+)/i,
-            /([0-9０-９.,．万KkMmBb]+)\s*(?:回)?\s*(?:再生|views?|plays?)/i
+            /(?:再生数|再生|views?|plays?)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i,
+            /([0-9０-９.,．万KkMmBb]+)\\s*(?:回)?\\s*(?:再生|views?|plays?)/i
           ];
           for (const p of patterns) {
             const m = raw.match(p);
@@ -206,7 +208,7 @@ public class MainActivity extends Activity {
           if (!views) {
             const labels = Array.from(document.querySelectorAll('[aria-label],[title]'))
               .map(n => (n.getAttribute('aria-label') || '') + ' ' + (n.getAttribute('title') || ''))
-              .join('\n');
+              .join('\\n');
             for (const p of patterns) {
               const m = labels.match(p);
               if (m) { views = parseNum(m[1]); if (views) break; }
@@ -223,14 +225,14 @@ public class MainActivity extends Activity {
           const og = document.querySelector('meta[property="og:description"]')?.content || '';
           const header = document.querySelector('header')?.innerText || '';
           const body = (document.body?.innerText || '').slice(0, 7000);
-          const raw = [meta, og, header, body].join('\n').replace(/\u00a0/g, ' ');
+          const raw = [meta, og, header, body].join('\\n').replace(/\\u00a0/g, ' ');
 
           function parseNum(v) {
             if (!v) return 0;
-            let s = String(v).replace(/[\s,，]/g,'')
+            let s = String(v).replace(/[\\s,，]/g,'')
               .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
               .replace('．','.');
-            const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(万|[KkMmBb])?$/);
+            const m = s.match(/^([0-9]+(?:\\.[0-9]+)?)(万|[KkMmBb])?$/);
             if (!m) return Number(s) || 0;
             let n = Number(m[1]);
             const u = m[2];
@@ -253,14 +255,14 @@ public class MainActivity extends Activity {
           }
 
           const followers = firstNumber([
-            /([0-9０-９.,．万KkMmBb]+)\s*(?:Followers|フォロワー)/i,
-            /(?:Followers|フォロワー)\s*[:：]?\s*([0-9０-９.,．万KkMmBb]+)/i
+            /([0-9０-９.,．万KkMmBb]+)\\s*(?:Followers|フォロワー)/i,
+            /(?:Followers|フォロワー)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i
           ]);
 
           const posts = firstNumber([
-            /([0-9０-９.,．万KkMmBb]+)\s*(?:Posts|投稿)/i,
-            /(?:Posts|投稿)\s*[:：]?\s*([0-9０-９.,．万KkMmBb]+)/i,
-            /([0-9０-９.,．万KkMmBb]+)\s*件?(?:の)?投稿/i
+            /([0-9０-９.,．万KkMmBb]+)\\s*(?:Posts|投稿)/i,
+            /(?:Posts|投稿)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i,
+            /([0-9０-９.,．万KkMmBb]+)\\s*件?(?:の)?投稿/i
           ]);
 
           return JSON.stringify({followers, posts});

@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private static final int MAX_DAYS = 14;
     private static final double MIN_RATIO = 3.0;
 
-    private static final String PREFS = "condition_reel_finder";
+    private static final String PREFS = "condition_reel_finder_japan_v2";
     private static final String PREF_RESULTS = "results";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -55,16 +55,16 @@ public class MainActivity extends Activity {
     private WebView webView;
     private Spinner limitSpinner;
     private TextView statusView;
-    private Button startButton;
-    private Button stopButton;
     private Button resultsButton;
 
     private boolean running = false;
-    private Stage stage = Stage.HOME;
     private boolean stageHandled = false;
+    private Stage stage = Stage.HOME;
 
     private final List<String> currentReels = new ArrayList<>();
     private final Set<String> processedReels = new HashSet<>();
+    private final List<ResultItem> results = new ArrayList<>();
+
     private int reelIndex = 0;
     private int scrollRound = 0;
     private int candidateLimit = 20;
@@ -74,27 +74,25 @@ public class MainActivity extends Activity {
     private String currentReelUrl = "";
     private ReelMeta currentReel;
 
-    private final List<ResultItem> results = new ArrayList<>();
-
-    private enum Stage {
-        HOME, FEED, REEL, PROFILE
-    }
+    private enum Stage { HOME, FEED, REEL, PROFILE }
 
     private static class ReelMeta {
         String username = "";
         long views = 0;
         String datetime = "";
         long days = Long.MAX_VALUE;
+        boolean japanese = false;
+        boolean japanStrong = false;
     }
 
     private static class ResultItem {
-        String username;
-        String url;
-        long followers;
-        long posts;
-        long views;
-        long days;
-        double ratio;
+        String username = "";
+        String url = "";
+        long followers = 0;
+        long posts = 0;
+        long views = 0;
+        long days = 0;
+        double ratio = 0;
 
         JSONObject toJson() throws JSONException {
             JSONObject o = new JSONObject();
@@ -137,22 +135,21 @@ public class MainActivity extends Activity {
         })();
         """;
 
-    private static final String JS_SCROLL = "window.scrollBy(0, Math.max(window.innerHeight * 3, 2600));";
+    private static final String JS_SCROLL =
+        "window.scrollBy(0, Math.max(window.innerHeight * 3, 2600));";
 
     private static final String JS_PARSE_REEL = """
         (function(){
           const body = document.body?.innerText || '';
-          const meta = [
-            document.querySelector('meta[name="description"]')?.content || '',
-            document.querySelector('meta[property="og:description"]')?.content || '',
-            document.querySelector('meta[property="og:title"]')?.content || ''
-          ].join('\\n');
-          const raw = (body + '\\n' + meta).replace(/\\u00a0/g, ' ');
+          const article = document.querySelector('article')?.innerText || '';
+          const desc = document.querySelector('meta[name="description"]')?.content || '';
+          const ogDesc = document.querySelector('meta[property="og:description"]')?.content || '';
+          const ogTitle = document.querySelector('meta[property="og:title"]')?.content || '';
+          const raw = [body, desc, ogDesc, ogTitle].join('\\n').replace(/\\u00a0/g, ' ');
 
           const reserved = new Set(['explore','reels','reel','p','accounts','direct','stories','about','legal','privacy','developer','web']);
           let username = '';
           const scopes = [document.querySelector('article'), document];
-
           for (const scope of scopes) {
             if (!scope || username) continue;
             const anchors = Array.from(scope.querySelectorAll('a[href^="/"]'));
@@ -169,8 +166,7 @@ public class MainActivity extends Activity {
           }
 
           if (!username) {
-            const og = document.querySelector('meta[property="og:title"]')?.content || '';
-            const m = og.match(/^@?([A-Za-z0-9._]+)\\s/);
+            const m = ogTitle.match(/^@?([A-Za-z0-9._]+)[ ]/);
             if (m) username = m[1];
           }
 
@@ -197,7 +193,7 @@ public class MainActivity extends Activity {
             let s = String(v).replace(/[\\s,，]/g,'')
               .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
               .replace('．','.');
-            const m = s.match(/^([0-9]+(?:\\.[0-9]+)?)(万|[KkMmBb])?$/);
+            const m = s.match(/^([0-9]+(?:[.][0-9]+)?)(万|[KkMmBb])?$/);
             if (!m) return Number(s) || 0;
             let n = Number(m[1]);
             const u = m[2];
@@ -210,16 +206,12 @@ public class MainActivity extends Activity {
 
           let views = 0;
           const patterns = [
-            /(?:再生数|再生|views?|plays?)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i,
-            /([0-9０-９.,．万KkMmBb]+)\\s*(?:回)?\\s*(?:再生|views?|plays?)/i
+            /(?:再生数|再生|views?|plays?)[\\s:：]*([0-9０-９.,．万KkMmBb]+)/i,
+            /([0-9０-９.,．万KkMmBb]+)[\\s]*(?:回)?[\\s]*(?:再生|views?|plays?)/i
           ];
-
           for (const p of patterns) {
             const m = raw.match(p);
-            if (m) {
-              views = parseNum(m[1]);
-              if (views) break;
-            }
+            if (m) { views = parseNum(m[1]); if (views) break; }
           }
 
           if (!views) {
@@ -228,10 +220,7 @@ public class MainActivity extends Activity {
               .join('\\n');
             for (const p of patterns) {
               const m = labels.match(p);
-              if (m) {
-                views = parseNum(m[1]);
-                if (views) break;
-              }
+              if (m) { views = parseNum(m[1]); if (views) break; }
             }
           }
 
@@ -240,9 +229,9 @@ public class MainActivity extends Activity {
               .map(s => s.textContent || '')
               .filter(t => /play_count|video_play_count|view_count/.test(t));
             const scriptPatterns = [
-              /\"play_count\"\\s*:\\s*([0-9]+)/i,
-              /\"video_play_count\"\\s*:\\s*([0-9]+)/i,
-              /\"view_count\"\\s*:\\s*([0-9]+)/i
+              /"play_count"[\\s]*:[\\s]*([0-9]+)/i,
+              /"video_play_count"[\\s]*:[\\s]*([0-9]+)/i,
+              /"view_count"[\\s]*:[\\s]*([0-9]+)/i
             ];
             for (const text of scripts) {
               for (const p of scriptPatterns) {
@@ -255,7 +244,15 @@ public class MainActivity extends Activity {
             }
           }
 
-          return JSON.stringify({username, views, datetime});
+          const signalText = [desc, ogDesc, article]
+            .join(' ')
+            .replace(/フォロー中|フォロー|いいね|コメント|シェア|保存|再生数|再生|音源|翻訳を見る|件/g, ' ')
+            .replace(/Followers?|Following|Likes?|Comments?|Views?|Plays?/gi, ' ');
+
+          const japanStrong = /(日本|Japan|東京|Tokyo|大阪|Osaka|京都|Kyoto|北海道|Hokkaido|沖縄|Okinawa|福岡|Fukuoka|埼玉|Saitama|千葉|Chiba|神奈川|Kanagawa|横浜|Yokohama|愛知|Aichi|名古屋|Nagoya|兵庫|Hyogo|神戸|Kobe|静岡|Shizuoka|広島|Hiroshima|宮城|Miyagi|仙台|Sendai|新潟|Niigata|長野|Nagano|群馬|Gunma|栃木|Tochigi|茨城|Ibaraki|岐阜|Gifu|三重|Mie|滋賀|Shiga|奈良|Nara|和歌山|Wakayama|岡山|Okayama|山口|Yamaguchi|香川|Kagawa|愛媛|Ehime|熊本|Kumamoto|鹿児島|Kagoshima)/i.test(signalText);
+          const japanese = /[ぁ-んァ-ヶー]/.test(signalText);
+
+          return JSON.stringify({username, views, datetime, japanese, japanStrong});
         })();
         """;
 
@@ -264,15 +261,14 @@ public class MainActivity extends Activity {
           const meta = document.querySelector('meta[name="description"]')?.content || '';
           const og = document.querySelector('meta[property="og:description"]')?.content || '';
           const header = document.querySelector('header')?.innerText || '';
-          const body = (document.body?.innerText || '').slice(0, 7000);
-          const raw = [meta, og, header, body].join('\\n').replace(/\\u00a0/g, ' ');
+          const raw = [meta, og, header].join('\\n').replace(/\\u00a0/g, ' ');
 
           function parseNum(v) {
             if (!v) return 0;
             let s = String(v).replace(/[\\s,，]/g,'')
               .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
               .replace('．','.');
-            const m = s.match(/^([0-9]+(?:\\.[0-9]+)?)(万|[KkMmBb])?$/);
+            const m = s.match(/^([0-9]+(?:[.][0-9]+)?)(万|[KkMmBb])?$/);
             if (!m) return Number(s) || 0;
             let n = Number(m[1]);
             const u = m[2];
@@ -295,17 +291,26 @@ public class MainActivity extends Activity {
           }
 
           const followers = firstNumber([
-            /([0-9０-９.,．万KkMmBb]+)\\s*(?:Followers|フォロワー)/i,
-            /(?:Followers|フォロワー)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i
+            /([0-9０-９.,．万KkMmBb]+)[\\s]*(?:Followers|フォロワー)/i,
+            /(?:Followers|フォロワー)[\\s:：]*([0-9０-９.,．万KkMmBb]+)/i
           ]);
 
           const posts = firstNumber([
-            /([0-9０-９.,．万KkMmBb]+)\\s*(?:Posts|投稿)/i,
-            /(?:Posts|投稿)\\s*[:：]?\\s*([0-9０-９.,．万KkMmBb]+)/i,
-            /([0-9０-９.,．万KkMmBb]+)\\s*件?(?:の)?投稿/i
+            /([0-9０-９.,．万KkMmBb]+)[\\s]*(?:Posts|投稿)/i,
+            /(?:Posts|投稿)[\\s:：]*([0-9０-９.,．万KkMmBb]+)/i,
+            /([0-9０-９.,．万KkMmBb]+)[\\s]*件?(?:の)?投稿/i
           ]);
 
-          return JSON.stringify({followers, posts});
+          const signalText = [meta, og, header]
+            .join(' ')
+            .replace(/フォロワー|フォロー中|フォロー|投稿|メッセージ|連絡先|プロアカウント|件/g, ' ')
+            .replace(/Followers?|Following|Posts?|Message|Contact/gi, ' ')
+            .replace(/[0-9０-９.,．万KkMmBb]+/g, ' ');
+
+          const japanStrong = /(日本|Japan|東京|Tokyo|大阪|Osaka|京都|Kyoto|北海道|Hokkaido|沖縄|Okinawa|福岡|Fukuoka|埼玉|Saitama|千葉|Chiba|神奈川|Kanagawa|横浜|Yokohama|愛知|Aichi|名古屋|Nagoya|兵庫|Hyogo|神戸|Kobe|静岡|Shizuoka|広島|Hiroshima|宮城|Miyagi|仙台|Sendai|新潟|Niigata|長野|Nagano|群馬|Gunma|栃木|Tochigi|茨城|Ibaraki|岐阜|Gifu|三重|Mie|滋賀|Shiga|奈良|Nara|和歌山|Wakayama|岡山|Okayama|山口|Yamaguchi|香川|Kagawa|愛媛|Ehime|熊本|Kumamoto|鹿児島|Kagoshima)/i.test(signalText);
+          const japanese = /[ぁ-んァ-ヶー]/.test(signalText);
+
+          return JSON.stringify({followers, posts, japanese, japanStrong});
         })();
         """;
 
@@ -314,7 +319,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(Color.rgb(17, 24, 39));
-
         loadResults();
 
         LinearLayout root = new LinearLayout(this);
@@ -323,21 +327,21 @@ public class MainActivity extends Activity {
         root.setPadding(dp(10), dp(10), dp(10), dp(10));
 
         TextView title = new TextView(this);
-        title.setText("条件一致リール発掘");
+        title.setText("日本限定リール発掘");
         title.setTextSize(22);
         title.setTextColor(Color.rgb(17, 24, 39));
         title.setTypeface(null, 1);
         root.addView(title, matchWrap());
 
         TextView rules = new TextView(this);
-        rules.setText("1万人以上 / 180投稿未満 / 7〜14日前 / 再生3倍以上");
+        rules.setText("日本判定 / 1万人以上 / 180投稿未満 / 7〜14日前 / 再生3倍以上");
         rules.setTextSize(11);
         rules.setTextColor(Color.rgb(75, 85, 99));
         rules.setPadding(0, dp(3), 0, dp(5));
         root.addView(rules, matchWrap());
 
         TextView source = new TextView(this);
-        source.setText("キーワードなし。Instagramの発見・おすすめから候補を選別します。");
+        source.setText("キーワードなし。発見・おすすめから日本候補だけを厳しめに選別します。");
         source.setTextSize(11);
         source.setTextColor(Color.rgb(75, 85, 99));
         source.setPadding(0, 0, 0, dp(8));
@@ -357,24 +361,22 @@ public class MainActivity extends Activity {
         String[] limits = {"10件", "20件", "30件"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, limits);
         limitSpinner.setAdapter(adapter);
-        limitSpinner.setSelection(1);
+        limitSpinner.setSelection(0);
         limitRow.addView(limitSpinner, new LinearLayout.LayoutParams(dp(110), dp(48)));
         root.addView(limitRow, matchWrap());
 
         LinearLayout buttonRow = new LinearLayout(this);
         buttonRow.setOrientation(LinearLayout.HORIZONTAL);
-
-        startButton = makeButton("自動発掘スタート");
-        stopButton = makeButton("停止");
+        Button startButton = makeButton("自動発掘スタート");
+        Button stopButton = makeButton("停止");
         resultsButton = makeButton("結果 0件");
-
         buttonRow.addView(startButton, weighted());
         buttonRow.addView(stopButton, weighted());
         buttonRow.addView(resultsButton, weighted());
         root.addView(buttonRow, matchWrap());
 
         statusView = new TextView(this);
-        statusView.setText("下のInstagramが表示されたらスタートしてください。Instagram側がログインを求めた場合はログインが必要です。");
+        statusView.setText("Instagramが表示されたらスタートしてください。最初は10件推奨です。");
         statusView.setTextSize(12);
         statusView.setTextColor(Color.rgb(55, 65, 81));
         statusView.setPadding(dp(8), dp(8), dp(8), dp(8));
@@ -385,7 +387,6 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams webLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         webLp.topMargin = dp(8);
         root.addView(webView, webLp);
-
         setContentView(root);
 
         WebSettings settings = webView.getSettings();
@@ -404,7 +405,6 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-
                 if (url != null && url.contains("/accounts/login")) {
                     if (running) {
                         running = false;
@@ -413,10 +413,8 @@ public class MainActivity extends Activity {
                     stage = Stage.HOME;
                     return;
                 }
-
                 if (!running || stageHandled) return;
                 stageHandled = true;
-
                 Stage expected = stage;
                 handler.postDelayed(() -> {
                     if (!running || stage != expected) return;
@@ -430,7 +428,6 @@ public class MainActivity extends Activity {
         startButton.setOnClickListener(v -> startSearch());
         stopButton.setOnClickListener(v -> stopSearch("停止しました。"));
         resultsButton.setOnClickListener(v -> showResults());
-
         updateResultButton();
         webView.loadUrl("https://www.instagram.com/explore/");
     }
@@ -460,7 +457,6 @@ public class MainActivity extends Activity {
     private void startSearch() {
         String limitText = String.valueOf(limitSpinner.getSelectedItem());
         candidateLimit = limitText.startsWith("10") ? 10 : limitText.startsWith("30") ? 30 : 20;
-
         running = true;
         stageHandled = false;
         processedReels.clear();
@@ -469,7 +465,7 @@ public class MainActivity extends Activity {
         scrollRound = 0;
         feedMode = 0;
         checkedCount = 0;
-        status("発見・おすすめから候補リールを収集中…");
+        status("日本候補を発見・おすすめから収集中…");
         load(Stage.FEED, "https://www.instagram.com/explore/");
     }
 
@@ -483,10 +479,8 @@ public class MainActivity extends Activity {
 
     private void collectFeedReels() {
         if (!running || stage != Stage.FEED) return;
-
         webView.evaluateJavascript(JS_EXTRACT_REELS, value -> {
             if (!running || stage != Stage.FEED) return;
-
             String decoded = decodeJsString(value);
             try {
                 JSONArray arr = new JSONArray(decoded.isEmpty() ? "[]" : decoded);
@@ -496,29 +490,25 @@ public class MainActivity extends Activity {
                     currentReels.add(url);
                     if (currentReels.size() >= candidateLimit) break;
                 }
-            } catch (JSONException ignored) {
-            }
+            } catch (JSONException ignored) {}
 
             status("候補 " + currentReels.size() + "/" + candidateLimit + "件を収集中…");
-
             if (currentReels.size() >= candidateLimit || scrollRound >= 7) {
                 if (currentReels.size() < candidateLimit && feedMode == 0) {
                     feedMode = 1;
                     scrollRound = 0;
-                    status("発見で足りないため、リール画面から追加候補を収集中…");
+                    status("発見で足りないためリール画面から追加収集中…");
                     load(Stage.FEED, "https://www.instagram.com/reels/");
                     return;
                 }
-
                 if (currentReels.isEmpty()) {
-                    finishWithMessage("候補リールを取得できませんでした。Instagram画面の表示状態を確認してください。");
+                    finishWithMessage("候補リールを取得できませんでした。Instagram画面を確認してください。");
                 } else {
                     reelIndex = 0;
                     processNextReel();
                 }
                 return;
             }
-
             scrollRound++;
             webView.evaluateJavascript(JS_SCROLL, null);
             handler.postDelayed(this::collectFeedReels, 1600);
@@ -527,29 +517,24 @@ public class MainActivity extends Activity {
 
     private void processNextReel() {
         if (!running) return;
-
         if (reelIndex >= currentReels.size()) {
             finishSearch();
             return;
         }
-
         currentReelUrl = currentReels.get(reelIndex++);
         if (!processedReels.add(currentReelUrl)) {
             processNextReel();
             return;
         }
-
         checkedCount++;
-        status("候補 " + checkedCount + "/" + currentReels.size() + "件目を確認中…  条件一致 " + results.size() + "件");
+        status("候補 " + checkedCount + "/" + currentReels.size() + "件目を確認中…  合格 " + results.size() + "件");
         load(Stage.REEL, currentReelUrl);
     }
 
     private void parseReelPage() {
         if (!running || stage != Stage.REEL) return;
-
         webView.evaluateJavascript(JS_PARSE_REEL, value -> {
             if (!running || stage != Stage.REEL) return;
-
             String decoded = decodeJsString(value);
             try {
                 JSONObject o = new JSONObject(decoded.isEmpty() ? "{}" : decoded);
@@ -558,6 +543,8 @@ public class MainActivity extends Activity {
                 meta.views = o.optLong("views", 0);
                 meta.datetime = o.optString("datetime", "").trim();
                 meta.days = daysOld(meta.datetime);
+                meta.japanese = o.optBoolean("japanese", false);
+                meta.japanStrong = o.optBoolean("japanStrong", false);
                 currentReel = meta;
 
                 if (meta.username.isEmpty() || meta.views <= 0 || meta.datetime.isEmpty()) {
@@ -565,19 +552,11 @@ public class MainActivity extends Activity {
                     handler.postDelayed(this::processNextReel, 550);
                     return;
                 }
-
-                if (meta.days < MIN_DAYS) {
-                    status("投稿日が新しすぎるため除外（" + meta.days + "日前）→ 次へ");
+                if (meta.days < MIN_DAYS || meta.days > MAX_DAYS) {
+                    status("投稿日が7〜14日前ではないため除外（" + meta.days + "日前）→ 次へ");
                     handler.postDelayed(this::processNextReel, 450);
                     return;
                 }
-
-                if (meta.days > MAX_DAYS) {
-                    status("投稿日が古すぎるため除外（" + meta.days + "日前）→ 次へ");
-                    handler.postDelayed(this::processNextReel, 450);
-                    return;
-                }
-
                 load(Stage.PROFILE, "https://www.instagram.com/" + meta.username + "/");
             } catch (JSONException e) {
                 status("リール情報の解析に失敗 → 次へ");
@@ -588,19 +567,29 @@ public class MainActivity extends Activity {
 
     private void parseProfilePage() {
         if (!running || stage != Stage.PROFILE || currentReel == null) return;
-
         webView.evaluateJavascript(JS_PARSE_PROFILE, value -> {
             if (!running || stage != Stage.PROFILE) return;
-
             String decoded = decodeJsString(value);
             try {
                 JSONObject o = new JSONObject(decoded.isEmpty() ? "{}" : decoded);
                 long followers = o.optLong("followers", 0);
                 long posts = o.optLong("posts", 0);
+                boolean profileJapanese = o.optBoolean("japanese", false);
+                boolean profileJapanStrong = o.optBoolean("japanStrong", false);
 
                 if (followers <= 0 || posts <= 0) {
                     status("プロフィール情報を取得できないため除外 → 次へ");
                     handler.postDelayed(this::processNextReel, 550);
+                    return;
+                }
+
+                boolean japanPass = currentReel.japanStrong
+                    || profileJapanStrong
+                    || (currentReel.japanese && profileJapanese);
+
+                if (!japanPass) {
+                    status("日本判定が取れないため除外 → 次へ");
+                    handler.postDelayed(this::processNextReel, 500);
                     return;
                 }
 
@@ -621,11 +610,10 @@ public class MainActivity extends Activity {
                     item.days = currentReel.days;
                     item.ratio = ratio;
                     addResult(item);
-                    status("✅ 条件一致 " + String.format(Locale.US, "%.2f", ratio) + "倍 / " + currentReel.days + "日前 → 保存");
+                    status("🇯🇵 条件一致 " + String.format(Locale.US, "%.2f", ratio) + "倍 / " + currentReel.days + "日前 → 保存");
                 } else {
-                    status("条件外 → 次へ（" + formatNumber(followers) + "人 / " + posts + "投稿 / " + currentReel.days + "日前 / " + String.format(Locale.US, "%.2f", ratio) + "倍）");
+                    status("日本候補だが条件外 → 次へ（" + formatNumber(followers) + "人 / " + posts + "投稿 / " + currentReel.days + "日前 / " + String.format(Locale.US, "%.2f", ratio) + "倍）");
                 }
-
                 handler.postDelayed(this::processNextReel, 600);
             } catch (JSONException e) {
                 status("プロフィール解析に失敗 → 次へ");
@@ -642,7 +630,7 @@ public class MainActivity extends Activity {
     }
 
     private void finishSearch() {
-        finishWithMessage("完了：" + checkedCount + "件確認 / 条件一致 " + results.size() + "件。『結果』からURLを確認できます。");
+        finishWithMessage("完了：" + checkedCount + "件確認 / 日本＋条件一致 " + results.size() + "件。");
     }
 
     private void finishWithMessage(String message) {
@@ -655,7 +643,6 @@ public class MainActivity extends Activity {
 
     private long daysOld(String iso) {
         if (iso == null || iso.isEmpty()) return Long.MAX_VALUE;
-
         try {
             LocalDate post = OffsetDateTime.parse(iso)
                 .atZoneSameInstant(ZoneId.systemDefault())
@@ -667,8 +654,7 @@ public class MainActivity extends Activity {
                     LocalDate post = LocalDate.parse(iso.substring(0, 10));
                     return ChronoUnit.DAYS.between(post, LocalDate.now());
                 }
-            } catch (Exception ignoredAgain) {
-            }
+            } catch (Exception ignoredAgain) {}
         }
         return Long.MAX_VALUE;
     }
@@ -699,7 +685,6 @@ public class MainActivity extends Activity {
                 return;
             }
         }
-
         results.add(0, item);
         results.sort((a, b) -> Double.compare(b.ratio, a.ratio));
         saveResults();
@@ -707,14 +692,12 @@ public class MainActivity extends Activity {
     }
 
     private void updateResultButton() {
-        if (resultsButton != null) {
-            resultsButton.setText("結果 " + results.size() + "件");
-        }
+        if (resultsButton != null) resultsButton.setText("結果 " + results.size() + "件");
     }
 
     private void showResults() {
         if (results.isEmpty()) {
-            Toast.makeText(this, "条件一致したリールはまだありません。", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "日本＋条件一致したリールはまだありません。", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -728,7 +711,7 @@ public class MainActivity extends Activity {
         scroll.addView(text);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("条件一致 " + results.size() + "件")
+            .setTitle("🇯🇵 条件一致 " + results.size() + "件")
             .setView(scroll)
             .setPositiveButton("閉じる", null)
             .setNeutralButton("URL一括コピー", (d, which) -> copyResultUrls())
@@ -747,7 +730,6 @@ public class MainActivity extends Activity {
                 .setNegativeButton("キャンセル", null)
                 .show();
         }));
-
         dialog.show();
     }
 
@@ -755,7 +737,7 @@ public class MainActivity extends Activity {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < results.size(); i++) {
             ResultItem r = results.get(i);
-            sb.append(i + 1).append(". @").append(r.username).append("\n")
+            sb.append(i + 1).append(". 🇯🇵 @").append(r.username).append("\n")
                 .append(formatNumber(r.followers)).append("人 / ")
                 .append(r.posts).append("投稿 / ")
                 .append(r.days).append("日前 / ")
@@ -772,7 +754,6 @@ public class MainActivity extends Activity {
             if (sb.length() > 0) sb.append('\n');
             sb.append(r.url);
         }
-
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         cm.setPrimaryClip(ClipData.newPlainText("reel urls", sb.toString()));
         Toast.makeText(this, "URLをコピーしました。", Toast.LENGTH_SHORT).show();
@@ -781,39 +762,29 @@ public class MainActivity extends Activity {
     private void saveResults() {
         JSONArray arr = new JSONArray();
         for (ResultItem r : results) {
-            try {
-                arr.put(r.toJson());
-            } catch (JSONException ignored) {
-            }
+            try { arr.put(r.toJson()); } catch (JSONException ignored) {}
         }
         getSharedPreferences(PREFS, MODE_PRIVATE)
-            .edit()
-            .putString(PREF_RESULTS, arr.toString())
-            .apply();
+            .edit().putString(PREF_RESULTS, arr.toString()).apply();
     }
 
     private void loadResults() {
         results.clear();
         String raw = getSharedPreferences(PREFS, MODE_PRIVATE)
             .getString(PREF_RESULTS, "[]");
-
         try {
             JSONArray arr = new JSONArray(raw);
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.optJSONObject(i);
                 if (o != null) results.add(ResultItem.fromJson(o));
             }
-        } catch (JSONException ignored) {
-        }
+        } catch (JSONException ignored) {}
     }
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack() && !running) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
+        if (webView != null && webView.canGoBack() && !running) webView.goBack();
+        else super.onBackPressed();
     }
 
     @Override

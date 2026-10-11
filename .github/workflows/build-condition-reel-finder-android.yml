@@ -1,0 +1,83 @@
+name: Build Condition Reel Finder Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "instagram-condition-reel-finder-android/**"
+      - ".github/workflows/build-condition-reel-finder-android.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Prepare Android SDK and Gradle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+
+          curl -L --retry 3 https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/gradle
+          echo "/tmp/gradle/gradle-8.9/bin" >> "$GITHUB_PATH"
+
+      - name: Build debug APK
+        id: build
+        continue-on-error: true
+        working-directory: instagram-condition-reel-finder-android
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: condition-reel-finder-debug-apk
+          path: instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish APK or build error log
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p downloads
+          rm -f downloads/condition-reel-finder-debug.apk downloads/condition-reel-finder-build-error.txt
+
+          if [ -f instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk downloads/condition-reel-finder-debug.apk
+            BUILD_OK=1
+          else
+            cp instagram-condition-reel-finder-android/build.log downloads/condition-reel-finder-build-error.txt || echo "Build failed before log creation" > downloads/condition-reel-finder-build-error.txt
+            BUILD_OK=0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A downloads
+          git commit -m "Update condition reel finder Android build [skip ci]" || true
+          git push
+
+          if [ "$BUILD_OK" != "1" ]; then
+            exit 1
+          fi

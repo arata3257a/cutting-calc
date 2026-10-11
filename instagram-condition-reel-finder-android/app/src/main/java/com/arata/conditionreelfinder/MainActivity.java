@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
@@ -43,11 +44,11 @@ public class MainActivity extends Activity {
 
     private static final int MIN_FOLLOWERS = 10_000;
     private static final int MAX_POSTS_EXCLUSIVE = 180;
-    private static final int MIN_DAYS = 7;
-    private static final int MAX_DAYS = 14;
+    private static final int MIN_DAYS = 0;
+    private static final int MAX_DAYS = 7;
     private static final double MIN_RATIO = 3.0;
 
-    private static final String PREFS = "condition_reel_finder_japan_v2";
+    private static final String PREFS = "condition_reel_finder_japan_v3";
     private static final String PREF_RESULTS = "results";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -55,6 +56,9 @@ public class MainActivity extends Activity {
     private WebView webView;
     private Spinner limitSpinner;
     private TextView statusView;
+    private LinearLayout setupPanel;
+    private Button startButton;
+    private Button stopButton;
     private Button resultsButton;
 
     private boolean running = false;
@@ -324,28 +328,32 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(243, 244, 246));
-        root.setPadding(dp(10), dp(10), dp(10), dp(10));
+        root.setPadding(dp(6), dp(6), dp(6), dp(6));
+
+        setupPanel = new LinearLayout(this);
+        setupPanel.setOrientation(LinearLayout.VERTICAL);
+        root.addView(setupPanel, matchWrap());
 
         TextView title = new TextView(this);
-        title.setText("日本限定リール発掘");
-        title.setTextSize(22);
+        title.setText("日本候補リール発掘");
+        title.setTextSize(20);
         title.setTextColor(Color.rgb(17, 24, 39));
         title.setTypeface(null, 1);
-        root.addView(title, matchWrap());
+        setupPanel.addView(title, matchWrap());
 
         TextView rules = new TextView(this);
-        rules.setText("日本判定 / 1万人以上 / 180投稿未満 / 7〜14日前 / 再生3倍以上");
+        rules.setText("日本候補 / 1万人以上 / 180投稿未満 / 今日〜7日前 / 再生3倍以上");
         rules.setTextSize(11);
         rules.setTextColor(Color.rgb(75, 85, 99));
-        rules.setPadding(0, dp(3), 0, dp(5));
-        root.addView(rules, matchWrap());
+        rules.setPadding(0, dp(2), 0, dp(3));
+        setupPanel.addView(rules, matchWrap());
 
         TextView source = new TextView(this);
-        source.setText("キーワードなし。発見・おすすめから日本候補だけを厳しめに選別します。");
+        source.setText("キーワードなし。発見・おすすめから日本候補を厳しめに選別します。");
         source.setTextSize(11);
         source.setTextColor(Color.rgb(75, 85, 99));
-        source.setPadding(0, 0, 0, dp(8));
-        root.addView(source, matchWrap());
+        source.setPadding(0, 0, 0, dp(4));
+        setupPanel.addView(source, matchWrap());
 
         LinearLayout limitRow = new LinearLayout(this);
         limitRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -355,20 +363,20 @@ public class MainActivity extends Activity {
         limitLabel.setText("確認する候補数");
         limitLabel.setTextSize(12);
         limitLabel.setTextColor(Color.rgb(55, 65, 81));
-        limitRow.addView(limitLabel, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        limitRow.addView(limitLabel, new LinearLayout.LayoutParams(0, dp(42), 1f));
 
         limitSpinner = new Spinner(this);
         String[] limits = {"10件", "20件", "30件"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, limits);
         limitSpinner.setAdapter(adapter);
         limitSpinner.setSelection(0);
-        limitRow.addView(limitSpinner, new LinearLayout.LayoutParams(dp(110), dp(48)));
-        root.addView(limitRow, matchWrap());
+        limitRow.addView(limitSpinner, new LinearLayout.LayoutParams(dp(105), dp(42)));
+        setupPanel.addView(limitRow, matchWrap());
 
         LinearLayout buttonRow = new LinearLayout(this);
         buttonRow.setOrientation(LinearLayout.HORIZONTAL);
-        Button startButton = makeButton("自動発掘スタート");
-        Button stopButton = makeButton("停止");
+        startButton = makeButton("自動発掘スタート");
+        stopButton = makeButton("停止");
         resultsButton = makeButton("結果 0件");
         buttonRow.addView(startButton, weighted());
         buttonRow.addView(stopButton, weighted());
@@ -379,13 +387,14 @@ public class MainActivity extends Activity {
         statusView.setText("Instagramが表示されたらスタートしてください。最初は10件推奨です。");
         statusView.setTextSize(12);
         statusView.setTextColor(Color.rgb(55, 65, 81));
-        statusView.setPadding(dp(8), dp(8), dp(8), dp(8));
+        statusView.setPadding(dp(7), dp(6), dp(7), dp(6));
+        statusView.setMaxLines(2);
         statusView.setBackgroundColor(Color.WHITE);
         root.addView(statusView, matchWrap());
 
         webView = new WebView(this);
         LinearLayout.LayoutParams webLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        webLp.topMargin = dp(8);
+        webLp.topMargin = dp(4);
         root.addView(webView, webLp);
         setContentView(root);
 
@@ -408,6 +417,7 @@ public class MainActivity extends Activity {
                 if (url != null && url.contains("/accounts/login")) {
                     if (running) {
                         running = false;
+                        setSearchUi(false);
                         status("Instagram側からログインを求められました。ログイン後、もう一度スタートしてください。");
                     }
                     stage = Stage.HOME;
@@ -428,6 +438,7 @@ public class MainActivity extends Activity {
         startButton.setOnClickListener(v -> startSearch());
         stopButton.setOnClickListener(v -> stopSearch("停止しました。"));
         resultsButton.setOnClickListener(v -> showResults());
+        setSearchUi(false);
         updateResultButton();
         webView.loadUrl("https://www.instagram.com/explore/");
     }
@@ -441,8 +452,8 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams weighted() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        lp.setMargins(dp(2), dp(3), dp(2), dp(5));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        lp.setMargins(dp(2), dp(2), dp(2), dp(3));
         return lp;
     }
 
@@ -452,6 +463,12 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void setSearchUi(boolean searching) {
+        if (setupPanel != null) setupPanel.setVisibility(searching ? View.GONE : View.VISIBLE);
+        if (startButton != null) startButton.setVisibility(searching ? View.GONE : View.VISIBLE);
+        if (stopButton != null) stopButton.setVisibility(searching ? View.VISIBLE : View.GONE);
     }
 
     private void startSearch() {
@@ -465,6 +482,7 @@ public class MainActivity extends Activity {
         scrollRound = 0;
         feedMode = 0;
         checkedCount = 0;
+        setSearchUi(true);
         status("日本候補を発見・おすすめから収集中…");
         load(Stage.FEED, "https://www.instagram.com/explore/");
     }
@@ -474,6 +492,7 @@ public class MainActivity extends Activity {
         stage = Stage.HOME;
         stageHandled = false;
         handler.removeCallbacksAndMessages(null);
+        setSearchUi(false);
         status(message);
     }
 
@@ -553,7 +572,7 @@ public class MainActivity extends Activity {
                     return;
                 }
                 if (meta.days < MIN_DAYS || meta.days > MAX_DAYS) {
-                    status("投稿日が7〜14日前ではないため除外（" + meta.days + "日前）→ 次へ");
+                    status("投稿日が今日〜7日前ではないため除外（" + meta.days + "日前）→ 次へ");
                     handler.postDelayed(this::processNextReel, 450);
                     return;
                 }
@@ -588,7 +607,7 @@ public class MainActivity extends Activity {
                     || (currentReel.japanese && profileJapanese);
 
                 if (!japanPass) {
-                    status("日本判定が取れないため除外 → 次へ");
+                    status("日本候補判定が取れないため除外 → 次へ");
                     handler.postDelayed(this::processNextReel, 500);
                     return;
                 }
@@ -610,7 +629,7 @@ public class MainActivity extends Activity {
                     item.days = currentReel.days;
                     item.ratio = ratio;
                     addResult(item);
-                    status("🇯🇵 条件一致 " + String.format(Locale.US, "%.2f", ratio) + "倍 / " + currentReel.days + "日前 → 保存");
+                    status("🇯🇵候補 条件一致 " + String.format(Locale.US, "%.2f", ratio) + "倍 / " + currentReel.days + "日前 → 保存");
                 } else {
                     status("日本候補だが条件外 → 次へ（" + formatNumber(followers) + "人 / " + posts + "投稿 / " + currentReel.days + "日前 / " + String.format(Locale.US, "%.2f", ratio) + "倍）");
                 }
@@ -630,13 +649,14 @@ public class MainActivity extends Activity {
     }
 
     private void finishSearch() {
-        finishWithMessage("完了：" + checkedCount + "件確認 / 日本＋条件一致 " + results.size() + "件。");
+        finishWithMessage("完了：" + checkedCount + "件確認 / 日本候補＋条件一致 " + results.size() + "件。");
     }
 
     private void finishWithMessage(String message) {
         running = false;
         stage = Stage.HOME;
         stageHandled = false;
+        setSearchUi(false);
         status(message);
         updateResultButton();
     }
@@ -697,7 +717,7 @@ public class MainActivity extends Activity {
 
     private void showResults() {
         if (results.isEmpty()) {
-            Toast.makeText(this, "日本＋条件一致したリールはまだありません。", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "日本候補＋条件一致したリールはまだありません。", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -711,7 +731,7 @@ public class MainActivity extends Activity {
         scroll.addView(text);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("🇯🇵 条件一致 " + results.size() + "件")
+            .setTitle("🇯🇵候補 条件一致 " + results.size() + "件")
             .setView(scroll)
             .setPositiveButton("閉じる", null)
             .setNeutralButton("URL一括コピー", (d, which) -> copyResultUrls())
@@ -737,7 +757,7 @@ public class MainActivity extends Activity {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < results.size(); i++) {
             ResultItem r = results.get(i);
-            sb.append(i + 1).append(". 🇯🇵 @").append(r.username).append("\n")
+            sb.append(i + 1).append(". 🇯🇵候補 @").append(r.username).append("\n")
                 .append(formatNumber(r.followers)).append("人 / ")
                 .append(r.posts).append("投稿 / ")
                 .append(r.days).append("日前 / ")

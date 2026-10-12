@@ -62,7 +62,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: condition-reel-finder-v1.4-hashtag-apk
+          name: condition-reel-finder-v1.5-clear-search-apk
           path: instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -74,7 +74,7 @@ jobs:
           rm -f downloads/condition-reel-finder-build-error.txt
 
           if [ -f instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk /tmp/condition-reel-finder-v1.4-hashtag.apk
+            cp instagram-condition-reel-finder-android/app/build/outputs/apk/debug/app-debug.apk /tmp/condition-reel-finder-v1.5-clear-search.apk
             BUILD_OK=1
           else
             cp instagram-condition-reel-finder-android/build.log /tmp/condition-reel-finder-build-error.txt || echo "Build failed before log creation" > /tmp/condition-reel-finder-build-error.txt
@@ -86,8 +86,8 @@ jobs:
           git pull --rebase origin main
 
           if [ "$BUILD_OK" = "1" ]; then
-            cp /tmp/condition-reel-finder-v1.4-hashtag.apk downloads/condition-reel-finder-v1.4-hashtag.apk
-            cp /tmp/condition-reel-finder-v1.4-hashtag.apk downloads/condition-reel-finder-debug.apk
+            cp /tmp/condition-reel-finder-v1.5-clear-search.apk downloads/condition-reel-finder-v1.5-clear-search.apk
+            cp /tmp/condition-reel-finder-v1.5-clear-search.apk downloads/condition-reel-finder-debug.apk
             rm -f downloads/condition-reel-finder-build-error.txt
           else
             cp /tmp/condition-reel-finder-build-error.txt downloads/condition-reel-finder-build-error.txt

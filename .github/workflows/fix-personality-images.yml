@@ -1,0 +1,74 @@
+name: Fix personality result images
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-personality-images.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract and upscale embedded JPEG sprites
+        shell: bash
+        run: |
+          set -e
+          mkdir -p personality-app/assets
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64
+          for letter in 'ABCD':
+              p=Path(f'personality-app/assets/{letter}.svg')
+              s=p.read_text(encoding='utf-8')
+              m=re.search(r'data:image/jpeg;base64,([^"\']+)', s)
+              if not m:
+                  raise SystemExit(f'JPEG data not found in {p}')
+              Path(f'/tmp/{letter}.jpg').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          for L in A B C D; do
+            if command -v magick >/dev/null 2>&1; then
+              magick /tmp/$L.jpg -filter Lanczos -resize 200% -adaptive-sharpen 0x1.0 -quality 92 personality-app/assets/$L-v92.jpg
+            else
+              convert /tmp/$L.jpg -filter Lanczos -resize 200% -adaptive-sharpen 0x1.0 -quality 92 personality-app/assets/$L-v92.jpg
+            fi
+          done
+
+      - name: Point app to direct JPEG sprites
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('personality-app/v91-engine1.js')
+          s=p.read_text(encoding='utf-8')
+          old='const SHEETS={A:"assets/A.svg?v=91",B:"assets/B.svg?v=91",C:"assets/C.svg?v=91",D:"assets/D.svg?v=91"};'
+          new='const SHEETS={A:"assets/A-v92.jpg?v=92",B:"assets/B-v92.jpg?v=92",C:"assets/C-v92.jpg?v=92",D:"assets/D-v92.jpg?v=92"};'
+          if old not in s:
+              raise SystemExit('SHEETS line not found')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+
+          p=Path('personality-app/v91-style.css')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('width:min(100%,370px);aspect-ratio:561/701','width:min(100%,330px);aspect-ratio:4/5')
+          s=s.replace('.art{width:100%}', '.art{width:min(100%,330px)}')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('personality-app/index.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('v=91','v=92')
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Commit fixed assets
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add personality-app/assets/A-v92.jpg personality-app/assets/B-v92.jpg personality-app/assets/C-v92.jpg personality-app/assets/D-v92.jpg personality-app/v91-engine1.js personality-app/v91-style.css personality-app/index.html
+          git commit -m 'Fix personality character image rendering [skip ci]' || exit 0
+          git push

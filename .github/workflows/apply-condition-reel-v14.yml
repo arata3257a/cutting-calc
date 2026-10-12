@@ -1,0 +1,29 @@
+name: Apply Condition Reel Finder v1.4 Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/patch_condition_reel_v14.py"
+      - ".github/workflows/apply-condition-reel-v14.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/patch_condition_reel_v14.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram-condition-reel-finder-android/app/src/main/java/com/arata/conditionreelfinder/MainActivity.java
+          git commit -m "Improve hashtag discovery and search guidance" || exit 0
+          git pull --rebase origin main
+          git push

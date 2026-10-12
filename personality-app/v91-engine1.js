@@ -1,5 +1,5 @@
 const GENERAL_TRAITS=CORE.gt,MAKER_TRAITS=CORE.mt,GENERAL_QUESTIONS=CORE.gq,MAKER_QUESTIONS=CORE.mq,GENERAL_PROTOTYPES=CORE.gp,MAKER_PROTOTYPES=CORE.mp;
-const SHEETS={A:"assets/A-v92.jpg?v=92",B:"assets/B-v92.jpg?v=92",C:"assets/C-v92.jpg?v=92",D:"assets/D-v92.jpg?v=92"};
+const SHEETS={A:"assets/A-v92.jpg?v=93",B:"assets/B-v92.jpg?v=93",C:"assets/C-v92.jpg?v=93",D:"assets/D-v92.jpg?v=93"};
 const SHEET_POS={"1":"0% 0%","2":"100% 0%","3":"0% 100%","4":"100% 100%"};
 
 const GENERAL_TIE_BANK=[

@@ -1,0 +1,31 @@
+name: Patch Condition Reel Finder Visible Metrics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/patch-condition-reel-finder-current-info.py"
+      - ".github/workflows/patch-condition-reel-finder-current-info.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply patch
+        run: python3 tools/patch-condition-reel-finder-current-info.py
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram-condition-reel-finder-android/app/src/main/java/com/arata/conditionreelfinder/MainActivity.java \
+                  instagram-condition-reel-finder-android/app/build.gradle.kts
+          git commit -m "Show reel metrics during search [skip ci]" || true
+          git push

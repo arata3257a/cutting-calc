@@ -7,11 +7,11 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.arata.conditionreelfinder.hashtag14fixed"
+        applicationId = "com.arata.conditionreelfinder.hashtag15clear"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.4.1-installfix"
+        versionCode = 8
+        versionName = "1.5-clear-search"
     }
 
     compileOptions {

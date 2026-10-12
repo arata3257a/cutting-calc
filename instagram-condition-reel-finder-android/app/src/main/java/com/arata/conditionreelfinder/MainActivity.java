@@ -374,44 +374,62 @@ public class MainActivity extends Activity {
         setupPanel.addView(rules, matchWrap());
 
         TextView source = new TextView(this);
-        source.setText("おすすめ検索 / #検索。#検索は複数タグをまとめて指定できます。");
+        source.setText("#検索を使う場合はタグを入力してスタート。おすすめ検索とは完全に分けています。");
         source.setTextSize(11);
         source.setTextColor(Color.rgb(75, 85, 99));
         source.setPadding(0, 0, 0, dp(4));
         setupPanel.addView(source, matchWrap());
 
-        LinearLayout modeRow = new LinearLayout(this);
-        modeRow.setOrientation(LinearLayout.HORIZONTAL);
-        modeRow.setGravity(Gravity.CENTER_VERTICAL);
-
         TextView modeLabel = new TextView(this);
         modeLabel.setText("検索方法");
         modeLabel.setTextSize(12);
         modeLabel.setTextColor(Color.rgb(55, 65, 81));
-        modeRow.addView(modeLabel, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        modeLabel.setPadding(0, dp(2), 0, dp(3));
+        setupPanel.addView(modeLabel, matchWrap());
 
+        // startSearch() の既存ロジックを保つため、内部状態は Spinner で保持する。
+        // 画面では分かりやすい2ボタンとして見せる。
         modeSpinner = new Spinner(this);
         String[] modes = {"おすすめから探す", "#から探す"};
         ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes);
         modeSpinner.setAdapter(modeAdapter);
-        modeRow.addView(modeSpinner, new LinearLayout.LayoutParams(dp(170), dp(42)));
-        setupPanel.addView(modeRow, matchWrap());
+        modeSpinner.setSelection(1); // 初期状態は #検索
+
+        TextView selectedMode = new TextView(this);
+        selectedMode.setText("選択中：#検索");
+        selectedMode.setTextSize(13);
+        selectedMode.setTypeface(null, 1);
+        selectedMode.setTextColor(Color.rgb(17, 24, 39));
+        selectedMode.setPadding(0, 0, 0, dp(4));
+        setupPanel.addView(selectedMode, matchWrap());
+
+        LinearLayout modeButtonRow = new LinearLayout(this);
+        modeButtonRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button hashtagModeButton = makeButton("#検索");
+        Button recommendModeButton = makeButton("おすすめ検索");
+        modeButtonRow.addView(hashtagModeButton, weighted());
+        modeButtonRow.addView(recommendModeButton, weighted());
+        setupPanel.addView(modeButtonRow, matchWrap());
 
         tagInput = new EditText(this);
-        tagInput.setHint("#おにぎり #弁当 #料理");
+        tagInput.setHint("例：#簡単ご飯   または   #おにぎり #弁当");
         tagInput.setSingleLine(true);
         tagInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        tagInput.setVisibility(View.GONE);
+        tagInput.setVisibility(View.VISIBLE);
         setupPanel.addView(tagInput, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
-        modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                tagInput.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
-            }
+        hashtagModeButton.setOnClickListener(v -> {
+            modeSpinner.setSelection(1);
+            tagInput.setVisibility(View.VISIBLE);
+            selectedMode.setText("選択中：#検索");
+            status("#検索モードです。タグを入力して検索スタートを押してください。");
+        });
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+        recommendModeButton.setOnClickListener(v -> {
+            modeSpinner.setSelection(0);
+            tagInput.setVisibility(View.GONE);
+            selectedMode.setText("選択中：おすすめ検索");
+            status("おすすめ検索モードです。#タグは使いません。");
         });
 
         LinearLayout limitRow = new LinearLayout(this);
@@ -443,7 +461,7 @@ public class MainActivity extends Activity {
         root.addView(buttonRow, matchWrap());
 
         statusView = new TextView(this);
-        statusView.setText("検索方法を選んでスタートしてください。最初は10件推奨です。");
+        statusView.setText("初期状態は #検索です。例：#簡単ご飯 を入力して検索スタート。");
         statusView.setTextSize(12);
         statusView.setTextColor(Color.rgb(55, 65, 81));
         statusView.setPadding(dp(7), dp(6), dp(7), dp(6));
@@ -595,7 +613,7 @@ public class MainActivity extends Activity {
         reelIndex = 0;
         scrollRound = 0;
         feedMode = 0;
-        status(currentSource + " から候補を収集中…（" + (tagIndex + 1) + "/" + searchTags.size() + "）");
+        status("検索中：" + currentSource + "  /  段階1/3 候補を収集中（" + (tagIndex + 1) + "/" + searchTags.size() + "）");
         String encoded = URLEncoder.encode(tag, StandardCharsets.UTF_8).replace("+", "%20");
         load(Stage.FEED, "https://www.instagram.com/explore/tags/" + encoded + "/");
     }

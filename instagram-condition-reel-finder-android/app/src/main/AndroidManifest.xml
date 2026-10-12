@@ -5,7 +5,7 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
-        android:label="条件一致リール発掘 v1.6"
+        android:label="条件一致リール発掘 v1.6.2"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 

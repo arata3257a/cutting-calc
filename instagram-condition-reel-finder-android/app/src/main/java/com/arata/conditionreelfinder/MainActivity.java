@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +16,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -499,6 +501,18 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request != null && request.getUrl() != null ? request.getUrl().toString() : "";
+                return handleInstagramDeepLink(view, url);
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleInstagramDeepLink(view, url);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (url != null && url.contains("/accounts/login")) {
@@ -528,6 +542,38 @@ public class MainActivity extends Activity {
         setSearchUi(false);
         updateResultButton();
         webView.loadUrl("https://www.instagram.com/explore/");
+    }
+
+    private boolean handleInstagramDeepLink(WebView view, String url) {
+        if (url == null || !url.startsWith("instagram://")) return false;
+
+        String webUrl = normalizeReelUrl(url);
+        if (!webUrl.isEmpty()) {
+            if (running && stage == Stage.REEL) currentReelUrl = webUrl;
+            status("Instagram専用リンクをWeb用に変換して解析を続行中…");
+            view.loadUrl(webUrl);
+            return true;
+        }
+
+        if (running && stage == Stage.REEL) {
+            stageHandled = true;
+            status("このInstagramリンクは解析できないため次の候補へ進みます。");
+            handler.postDelayed(this::processNextReel, 350);
+        }
+        return true;
+    }
+
+    private String normalizeReelUrl(String url) {
+        if (url == null || url.isEmpty()) return "";
+        if (!url.startsWith("instagram://")) return url;
+        try {
+            Uri uri = Uri.parse(url);
+            String shortcode = uri.getQueryParameter("shortcode");
+            if (shortcode != null && shortcode.matches("[A-Za-z0-9_-]+")) {
+                return "https://www.instagram.com/reel/" + shortcode + "/";
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     private Button makeButton(String text) {
@@ -682,7 +728,12 @@ public class MainActivity extends Activity {
             return;
         }
 
-        currentReelUrl = currentReels.get(reelIndex++);
+        currentReelUrl = normalizeReelUrl(currentReels.get(reelIndex++));
+        if (currentReelUrl.isEmpty()) {
+            status(currentSource + "：解析できないリンクを除外 → 次へ");
+            handler.postDelayed(this::processNextReel, 250);
+            return;
+        }
         if (!processedReels.add(currentReelUrl)) {
             processNextReel();
             return;

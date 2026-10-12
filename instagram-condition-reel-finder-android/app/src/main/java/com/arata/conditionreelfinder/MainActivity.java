@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,8 +18,10 @@ import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -29,6 +32,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -36,6 +41,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -44,17 +50,19 @@ public class MainActivity extends Activity {
 
     private static final int MIN_FOLLOWERS = 10_000;
     private static final int MAX_POSTS_EXCLUSIVE = 180;
-    private static final int MIN_DAYS = 0;
-    private static final int MAX_DAYS = 7;
+    private static final int MIN_DAYS = 7;
+    private static final int MAX_DAYS = 14;
     private static final double MIN_RATIO = 3.0;
 
-    private static final String PREFS = "condition_reel_finder_japan_v3";
+    private static final String PREFS = "condition_reel_finder_japan_v4";
     private static final String PREF_RESULTS = "results";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private WebView webView;
+    private Spinner modeSpinner;
     private Spinner limitSpinner;
+    private EditText tagInput;
     private TextView statusView;
     private LinearLayout setupPanel;
     private Button startButton;
@@ -63,19 +71,23 @@ public class MainActivity extends Activity {
 
     private boolean running = false;
     private boolean stageHandled = false;
+    private boolean hashtagMode = false;
     private Stage stage = Stage.HOME;
 
     private final List<String> currentReels = new ArrayList<>();
     private final Set<String> processedReels = new HashSet<>();
     private final List<ResultItem> results = new ArrayList<>();
+    private final List<String> searchTags = new ArrayList<>();
 
     private int reelIndex = 0;
     private int scrollRound = 0;
     private int candidateLimit = 20;
     private int feedMode = 0;
     private int checkedCount = 0;
+    private int tagIndex = -1;
 
     private String currentReelUrl = "";
+    private String currentSource = "おすすめ";
     private ReelMeta currentReel;
 
     private enum Stage { HOME, FEED, REEL, PROFILE }
@@ -90,6 +102,7 @@ public class MainActivity extends Activity {
     }
 
     private static class ResultItem {
+        String source = "";
         String username = "";
         String url = "";
         long followers = 0;
@@ -100,6 +113,7 @@ public class MainActivity extends Activity {
 
         JSONObject toJson() throws JSONException {
             JSONObject o = new JSONObject();
+            o.put("source", source);
             o.put("username", username);
             o.put("url", url);
             o.put("followers", followers);
@@ -112,6 +126,7 @@ public class MainActivity extends Activity {
 
         static ResultItem fromJson(JSONObject o) {
             ResultItem r = new ResultItem();
+            r.source = o.optString("source", "");
             r.username = o.optString("username", "");
             r.url = o.optString("url", "");
             r.followers = o.optLong("followers", 0);
@@ -342,25 +357,59 @@ public class MainActivity extends Activity {
         setupPanel.addView(title, matchWrap());
 
         TextView rules = new TextView(this);
-        rules.setText("日本候補 / 1万人以上 / 180投稿未満 / 今日〜7日前 / 再生3倍以上");
+        rules.setText("日本候補 / 1万人以上 / 180投稿未満 / 7〜14日前 / 再生3倍以上");
         rules.setTextSize(11);
         rules.setTextColor(Color.rgb(75, 85, 99));
         rules.setPadding(0, dp(2), 0, dp(3));
         setupPanel.addView(rules, matchWrap());
 
         TextView source = new TextView(this);
-        source.setText("キーワードなし。発見・おすすめから日本候補を厳しめに選別します。");
+        source.setText("おすすめ検索 / #検索。#検索は複数タグをまとめて指定できます。");
         source.setTextSize(11);
         source.setTextColor(Color.rgb(75, 85, 99));
         source.setPadding(0, 0, 0, dp(4));
         setupPanel.addView(source, matchWrap());
+
+        LinearLayout modeRow = new LinearLayout(this);
+        modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        modeRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView modeLabel = new TextView(this);
+        modeLabel.setText("検索方法");
+        modeLabel.setTextSize(12);
+        modeLabel.setTextColor(Color.rgb(55, 65, 81));
+        modeRow.addView(modeLabel, new LinearLayout.LayoutParams(0, dp(42), 1f));
+
+        modeSpinner = new Spinner(this);
+        String[] modes = {"おすすめから探す", "#から探す"};
+        ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes);
+        modeSpinner.setAdapter(modeAdapter);
+        modeRow.addView(modeSpinner, new LinearLayout.LayoutParams(dp(170), dp(42)));
+        setupPanel.addView(modeRow, matchWrap());
+
+        tagInput = new EditText(this);
+        tagInput.setHint("#おにぎり #弁当 #料理");
+        tagInput.setSingleLine(true);
+        tagInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        tagInput.setVisibility(View.GONE);
+        setupPanel.addView(tagInput, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                tagInput.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         LinearLayout limitRow = new LinearLayout(this);
         limitRow.setOrientation(LinearLayout.HORIZONTAL);
         limitRow.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView limitLabel = new TextView(this);
-        limitLabel.setText("確認する候補数");
+        limitLabel.setText("確認する候補数（#は各タグ）");
         limitLabel.setTextSize(12);
         limitLabel.setTextColor(Color.rgb(55, 65, 81));
         limitRow.addView(limitLabel, new LinearLayout.LayoutParams(0, dp(42), 1f));
@@ -375,7 +424,7 @@ public class MainActivity extends Activity {
 
         LinearLayout buttonRow = new LinearLayout(this);
         buttonRow.setOrientation(LinearLayout.HORIZONTAL);
-        startButton = makeButton("自動発掘スタート");
+        startButton = makeButton("検索スタート");
         stopButton = makeButton("停止");
         resultsButton = makeButton("結果 0件");
         buttonRow.addView(startButton, weighted());
@@ -384,7 +433,7 @@ public class MainActivity extends Activity {
         root.addView(buttonRow, matchWrap());
 
         statusView = new TextView(this);
-        statusView.setText("Instagramが表示されたらスタートしてください。最初は10件推奨です。");
+        statusView.setText("検索方法を選んでスタートしてください。最初は10件推奨です。");
         statusView.setTextSize(12);
         statusView.setTextColor(Color.rgb(55, 65, 81));
         statusView.setPadding(dp(7), dp(6), dp(7), dp(6));
@@ -474,6 +523,23 @@ public class MainActivity extends Activity {
     private void startSearch() {
         String limitText = String.valueOf(limitSpinner.getSelectedItem());
         candidateLimit = limitText.startsWith("10") ? 10 : limitText.startsWith("30") ? 30 : 20;
+        hashtagMode = modeSpinner.getSelectedItemPosition() == 1;
+
+        searchTags.clear();
+        if (hashtagMode) {
+            String raw = tagInput.getText().toString().trim();
+            Set<String> unique = new LinkedHashSet<>();
+            for (String part : raw.split("[\\s,、]+")) {
+                String tag = part.trim().replaceFirst("^#+", "");
+                if (!tag.isEmpty()) unique.add(tag);
+            }
+            searchTags.addAll(unique);
+            if (searchTags.isEmpty()) {
+                Toast.makeText(this, "#検索するタグを入力してください。", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         running = true;
         stageHandled = false;
         processedReels.clear();
@@ -482,9 +548,35 @@ public class MainActivity extends Activity {
         scrollRound = 0;
         feedMode = 0;
         checkedCount = 0;
+        tagIndex = -1;
         setSearchUi(true);
-        status("日本候補を発見・おすすめから収集中…");
-        load(Stage.FEED, "https://www.instagram.com/explore/");
+
+        if (hashtagMode) {
+            startNextTag();
+        } else {
+            currentSource = "おすすめ";
+            status("おすすめから日本候補を収集中…");
+            load(Stage.FEED, "https://www.instagram.com/explore/");
+        }
+    }
+
+    private void startNextTag() {
+        if (!running) return;
+        tagIndex++;
+        if (tagIndex >= searchTags.size()) {
+            finishSearch();
+            return;
+        }
+
+        String tag = searchTags.get(tagIndex);
+        currentSource = "#" + tag;
+        currentReels.clear();
+        reelIndex = 0;
+        scrollRound = 0;
+        feedMode = 0;
+        status(currentSource + " から候補を収集中…（" + (tagIndex + 1) + "/" + searchTags.size() + "）");
+        String encoded = URLEncoder.encode(tag, StandardCharsets.UTF_8).replace("+", "%20");
+        load(Stage.FEED, "https://www.instagram.com/explore/tags/" + encoded + "/");
     }
 
     private void stopSearch(String message) {
@@ -511,23 +603,30 @@ public class MainActivity extends Activity {
                 }
             } catch (JSONException ignored) {}
 
-            status("候補 " + currentReels.size() + "/" + candidateLimit + "件を収集中…");
+            status(currentSource + "：候補 " + currentReels.size() + "/" + candidateLimit + "件を収集中…");
             if (currentReels.size() >= candidateLimit || scrollRound >= 7) {
-                if (currentReels.size() < candidateLimit && feedMode == 0) {
+                if (!hashtagMode && currentReels.size() < candidateLimit && feedMode == 0) {
                     feedMode = 1;
                     scrollRound = 0;
                     status("発見で足りないためリール画面から追加収集中…");
                     load(Stage.FEED, "https://www.instagram.com/reels/");
                     return;
                 }
+
                 if (currentReels.isEmpty()) {
-                    finishWithMessage("候補リールを取得できませんでした。Instagram画面を確認してください。");
+                    if (hashtagMode) {
+                        status(currentSource + "：候補リールを取得できませんでした。次の#へ進みます。");
+                        handler.postDelayed(this::startNextTag, 800);
+                    } else {
+                        finishWithMessage("候補リールを取得できませんでした。Instagram画面を確認してください。");
+                    }
                 } else {
                     reelIndex = 0;
                     processNextReel();
                 }
                 return;
             }
+
             scrollRound++;
             webView.evaluateJavascript(JS_SCROLL, null);
             handler.postDelayed(this::collectFeedReels, 1600);
@@ -537,16 +636,19 @@ public class MainActivity extends Activity {
     private void processNextReel() {
         if (!running) return;
         if (reelIndex >= currentReels.size()) {
-            finishSearch();
+            if (hashtagMode) startNextTag();
+            else finishSearch();
             return;
         }
+
         currentReelUrl = currentReels.get(reelIndex++);
         if (!processedReels.add(currentReelUrl)) {
             processNextReel();
             return;
         }
+
         checkedCount++;
-        status("候補 " + checkedCount + "/" + currentReels.size() + "件目を確認中…  合格 " + results.size() + "件");
+        status(currentSource + "：候補確認中 " + reelIndex + "/" + currentReels.size() + "  合格 " + results.size() + "件");
         load(Stage.REEL, currentReelUrl);
     }
 
@@ -572,7 +674,7 @@ public class MainActivity extends Activity {
                     return;
                 }
                 if (meta.days < MIN_DAYS || meta.days > MAX_DAYS) {
-                    status("投稿日が今日〜7日前ではないため除外（" + meta.days + "日前）→ 次へ");
+                    status("投稿日が7〜14日前ではないため除外（" + meta.days + "日前）→ 次へ");
                     handler.postDelayed(this::processNextReel, 450);
                     return;
                 }
@@ -621,6 +723,7 @@ public class MainActivity extends Activity {
 
                 if (pass) {
                     ResultItem item = new ResultItem();
+                    item.source = currentSource;
                     item.username = currentReel.username;
                     item.url = currentReelUrl;
                     item.followers = followers;
@@ -629,7 +732,7 @@ public class MainActivity extends Activity {
                     item.days = currentReel.days;
                     item.ratio = ratio;
                     addResult(item);
-                    status("🇯🇵候補 条件一致 " + String.format(Locale.US, "%.2f", ratio) + "倍 / " + currentReel.days + "日前 → 保存");
+                    status("🇯🇵条件一致 " + currentSource + " / " + String.format(Locale.US, "%.2f", ratio) + "倍 → 保存");
                 } else {
                     status("日本候補だが条件外 → 次へ（" + formatNumber(followers) + "人 / " + posts + "投稿 / " + currentReel.days + "日前 / " + String.format(Locale.US, "%.2f", ratio) + "倍）");
                 }
@@ -649,7 +752,8 @@ public class MainActivity extends Activity {
     }
 
     private void finishSearch() {
-        finishWithMessage("完了：" + checkedCount + "件確認 / 日本候補＋条件一致 " + results.size() + "件。");
+        String modeText = hashtagMode ? "#検索" : "おすすめ検索";
+        finishWithMessage("完了：" + modeText + " / " + checkedCount + "件確認 / 日本候補＋条件一致 " + results.size() + "件。");
     }
 
     private void finishWithMessage(String message) {
@@ -758,6 +862,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < results.size(); i++) {
             ResultItem r = results.get(i);
             sb.append(i + 1).append(". 🇯🇵候補 @").append(r.username).append("\n")
+                .append("検索元：").append(r.source.isEmpty() ? "不明" : r.source).append("\n")
                 .append(formatNumber(r.followers)).append("人 / ")
                 .append(r.posts).append("投稿 / ")
                 .append(r.days).append("日前 / ")

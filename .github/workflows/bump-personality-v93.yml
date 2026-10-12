@@ -1,0 +1,36 @@
+name: Bump personality cache v93
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bump-personality-v93.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Refresh app and image cache keys
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('personality-app/v91-engine1.js')
+          s=p.read_text(encoding='utf-8').replace('?v=92','?v=93')
+          p.write_text(s,encoding='utf-8')
+          p=Path('personality-app/index.html')
+          s=p.read_text(encoding='utf-8').replace('v=92','v=93')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit cache refresh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add personality-app/v91-engine1.js personality-app/index.html
+          git commit -m 'Refresh personality app image cache v93' || exit 0
+          git push

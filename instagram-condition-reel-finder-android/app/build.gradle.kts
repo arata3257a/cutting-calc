@@ -10,8 +10,8 @@ android {
         applicationId = "com.arata.conditionreelfinder.hashtag15clear"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.6-deeplink-fix"
+        versionCode = 10
+        versionName = "1.6.1-deeplink-fix"
     }
 
     compileOptions {

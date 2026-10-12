@@ -76,7 +76,6 @@ s = s.replace(
     1
 )
 
-# #検索の開始時に、現在のタグが一目で分かるようにする。
 s = s.replace(
     '        status(currentSource + " から候補を収集中…（" + (tagIndex + 1) + "/" + searchTags.size() + "）");',
     '        status("検索中：" + currentSource + "  /  段階1/3 候補を収集中（" + (tagIndex + 1) + "/" + searchTags.size() + "）");',
@@ -84,4 +83,18 @@ s = s.replace(
 )
 
 p.write_text(s, encoding='utf-8')
-print('Patched MainActivity.java for v1.5 clear mode UI')
+
+# v1.5 は旧版と完全に別アプリIDにして、インストール競合を避ける。
+gradle = Path('instagram-condition-reel-finder-android/app/build.gradle.kts')
+g = gradle.read_text(encoding='utf-8')
+g = g.replace('applicationId = "com.arata.conditionreelfinder.hashtag14fixed"', 'applicationId = "com.arata.conditionreelfinder.hashtag15clear"')
+g = g.replace('versionCode = 7', 'versionCode = 8')
+g = g.replace('versionName = "1.4.1-installfix"', 'versionName = "1.5-clear-search"')
+gradle.write_text(g, encoding='utf-8')
+
+manifest = Path('instagram-condition-reel-finder-android/app/src/main/AndroidManifest.xml')
+m = manifest.read_text(encoding='utf-8')
+m = m.replace('android:label="条件一致リール発掘 v1.4"', 'android:label="条件一致リール発掘 v1.5"')
+manifest.write_text(m, encoding='utf-8')
+
+print('Patched v1.5 clear search UI, version and app ID')

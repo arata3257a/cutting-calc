@@ -1,10 +1,10 @@
-name: Apply Condition Reel Finder v1.5 Patch
+name: Apply Condition Reel Finder v1.6 Patch
 
 on:
   push:
     branches: [main]
     paths:
-      - "scripts/patch_condition_reel_v15_ui.py"
+      - "scripts/patch_condition_reel_v16_deeplink.py"
       - ".github/workflows/apply-condition-reel-v14.yml"
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply patch
-        run: python scripts/patch_condition_reel_v15_ui.py
+        run: python scripts/patch_condition_reel_v16_deeplink.py
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
@@ -26,6 +26,6 @@ jobs:
           git add instagram-condition-reel-finder-android/app/src/main/java/com/arata/conditionreelfinder/MainActivity.java
           git add instagram-condition-reel-finder-android/app/build.gradle.kts
           git add instagram-condition-reel-finder-android/app/src/main/AndroidManifest.xml
-          git commit -m "Make hashtag search mode explicit in v1.5" || exit 0
+          git commit -m "Handle Instagram reel deep links in v1.6" || exit 0
           git pull --rebase origin main
           git push

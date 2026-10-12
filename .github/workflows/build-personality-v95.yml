@@ -1,0 +1,44 @@
+name: Build personality V95 image assets
+
+on:
+  push:
+    paths:
+      - 'personality-app/.v95/READY'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild crisp WebP sprite sheets
+        run: |
+          cat personality-app/.v95/A1.b64 personality-app/.v95/A2.b64 personality-app/.v95/A3.b64 | tr -d '\n\r' | base64 -d > personality-app/assets/A-v95.webp
+          cat personality-app/.v95/B.b64 | tr -d '\n\r' | base64 -d > personality-app/assets/B-v95.webp
+          cat personality-app/.v95/C.b64 | tr -d '\n\r' | base64 -d > personality-app/assets/C-v95.webp
+          cat personality-app/.v95/D.b64 | tr -d '\n\r' | base64 -d > personality-app/assets/D-v95.webp
+
+          file personality-app/assets/*-v95.webp
+          test $(stat -c%s personality-app/assets/A-v95.webp) -eq 21366
+          test $(stat -c%s personality-app/assets/B-v95.webp) -eq 22986
+          test $(stat -c%s personality-app/assets/C-v95.webp) -eq 24886
+          test $(stat -c%s personality-app/assets/D-v95.webp) -eq 24724
+
+      - name: Switch app to V95 assets
+        run: |
+          sed -i 's#assets/A-v92.jpg?v=94#assets/A-v95.webp?v=95#; s#assets/B-v92.jpg?v=94#assets/B-v95.webp?v=95#; s#assets/C-v92.jpg?v=94#assets/C-v95.webp?v=95#; s#assets/D-v92.jpg?v=94#assets/D-v95.webp?v=95#' personality-app/v91-engine1.js
+          sed -i 's/?v=94/?v=95/g' personality-app/index.html
+          grep -q 'image-rendering:auto' personality-app/v91-style.css || sed -i 's/background-color:#fff1;/background-color:#fff1;image-rendering:auto;/' personality-app/v91-style.css
+
+      - name: Commit V95
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add personality-app/assets/*-v95.webp personality-app/v91-engine1.js personality-app/index.html personality-app/v91-style.css
+          git commit -m "Use crisp V95 personality character sprites" || exit 0
+          git push

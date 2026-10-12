@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private Spinner limitSpinner;
     private EditText tagInput;
     private TextView statusView;
+    private TextView currentInfoView;
     private LinearLayout setupPanel;
     private Button startButton;
     private Button stopButton;
@@ -441,6 +442,16 @@ public class MainActivity extends Activity {
         statusView.setBackgroundColor(Color.WHITE);
         root.addView(statusView, matchWrap());
 
+        currentInfoView = new TextView(this);
+        currentInfoView.setText("再生数：—  /  フォロワー：—  /  投稿：—  /  倍率：—  /  投稿日：—");
+        currentInfoView.setTextSize(13);
+        currentInfoView.setTextColor(Color.rgb(17, 24, 39));
+        currentInfoView.setTypeface(null, 1);
+        currentInfoView.setPadding(dp(7), dp(7), dp(7), dp(7));
+        currentInfoView.setBackgroundColor(Color.rgb(229, 231, 235));
+        currentInfoView.setMaxLines(2);
+        root.addView(currentInfoView, matchWrap());
+
         webView = new WebView(this);
         LinearLayout.LayoutParams webLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         webLp.topMargin = dp(4);
@@ -549,6 +560,7 @@ public class MainActivity extends Activity {
         feedMode = 0;
         checkedCount = 0;
         tagIndex = -1;
+        setCurrentInfo("再生数：—  /  フォロワー：—  /  投稿：—  /  倍率：—  /  投稿日：—");
         setSearchUi(true);
 
         if (hashtagMode) {
@@ -648,6 +660,7 @@ public class MainActivity extends Activity {
         }
 
         checkedCount++;
+        setCurrentInfo("解析中…  再生数：—  /  フォロワー：—  /  投稿：—  /  倍率：—");
         status(currentSource + "：候補確認中 " + reelIndex + "/" + currentReels.size() + "  合格 " + results.size() + "件");
         load(Stage.REEL, currentReelUrl);
     }
@@ -667,6 +680,13 @@ public class MainActivity extends Activity {
                 meta.japanese = o.optBoolean("japanese", false);
                 meta.japanStrong = o.optBoolean("japanStrong", false);
                 currentReel = meta;
+
+                if (meta.views > 0) {
+                    String dayText = meta.days == Long.MAX_VALUE ? "不明" : meta.days + "日前";
+                    setCurrentInfo("再生数：" + formatNumber(meta.views) + "  /  フォロワー：取得中  /  投稿：取得中  /  倍率：計算中  /  投稿日：" + dayText);
+                } else {
+                    setCurrentInfo("再生数：取得できず  /  フォロワー：—  /  投稿：—  /  倍率：—  /  投稿日：—");
+                }
 
                 if (meta.username.isEmpty() || meta.views <= 0 || meta.datetime.isEmpty()) {
                     status("必要情報を取得できないため除外 → 次へ");
@@ -699,10 +719,18 @@ public class MainActivity extends Activity {
                 boolean profileJapanStrong = o.optBoolean("japanStrong", false);
 
                 if (followers <= 0 || posts <= 0) {
+                    setCurrentInfo("再生数：" + formatNumber(currentReel.views) + "  /  フォロワー：取得できず  /  投稿：取得できず  /  倍率：—  /  投稿日：" + currentReel.days + "日前");
                     status("プロフィール情報を取得できないため除外 → 次へ");
                     handler.postDelayed(this::processNextReel, 550);
                     return;
                 }
+
+                double ratio = (double) currentReel.views / (double) followers;
+                setCurrentInfo("再生数：" + formatNumber(currentReel.views)
+                    + "  /  フォロワー：" + formatNumber(followers)
+                    + "  /  投稿：" + posts
+                    + "  /  倍率：" + String.format(Locale.US, "%.2f", ratio) + "倍"
+                    + "  /  投稿日：" + currentReel.days + "日前");
 
                 boolean japanPass = currentReel.japanStrong
                     || profileJapanStrong
@@ -714,7 +742,6 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                double ratio = (double) currentReel.views / (double) followers;
                 boolean pass = followers >= MIN_FOLLOWERS
                     && posts < MAX_POSTS_EXCLUSIVE
                     && currentReel.days >= MIN_DAYS
@@ -796,6 +823,12 @@ public class MainActivity extends Activity {
         runOnUiThread(() -> statusView.setText(text));
     }
 
+    private void setCurrentInfo(String text) {
+        runOnUiThread(() -> {
+            if (currentInfoView != null) currentInfoView.setText(text);
+        });
+    }
+
     private String formatNumber(long n) {
         return String.format(Locale.JAPAN, "%,d", n);
     }
@@ -863,11 +896,11 @@ public class MainActivity extends Activity {
             ResultItem r = results.get(i);
             sb.append(i + 1).append(". 🇯🇵候補 @").append(r.username).append("\n")
                 .append("検索元：").append(r.source.isEmpty() ? "不明" : r.source).append("\n")
-                .append(formatNumber(r.followers)).append("人 / ")
-                .append(r.posts).append("投稿 / ")
-                .append(r.days).append("日前 / ")
-                .append(formatNumber(r.views)).append("再生 / ")
-                .append(String.format(Locale.US, "%.2f", r.ratio)).append("倍\n")
+                .append("再生数：").append(formatNumber(r.views)).append("\n")
+                .append("フォロワー：").append(formatNumber(r.followers)).append("人\n")
+                .append("総投稿数：").append(r.posts).append("投稿\n")
+                .append("投稿日：").append(r.days).append("日前\n")
+                .append("倍率：").append(String.format(Locale.US, "%.2f", r.ratio)).append("倍\n")
                 .append(r.url).append("\n\n");
         }
         return sb.toString();

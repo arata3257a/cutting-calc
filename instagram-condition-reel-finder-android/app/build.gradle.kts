@@ -7,11 +7,11 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.arata.conditionreelfinder"
+        applicationId = "com.arata.conditionreelfinder.metrics"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2-search"
+        versionCode = 5
+        versionName = "1.3-metrics"
     }
 
     compileOptions {

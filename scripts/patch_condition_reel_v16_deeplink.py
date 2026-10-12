@@ -27,4 +27,17 @@ if needle3 not in s:
 s = s.replace(needle3, replacement3, 1)
 
 p.write_text(s, encoding='utf-8')
-print('Patched MainActivity.java for v1.6 deep-link conversion')
+
+# Version bump: keep the same v1.5 applicationId so this installs as an update.
+g = Path('instagram-condition-reel-finder-android/app/build.gradle.kts')
+gs = g.read_text(encoding='utf-8')
+gs = gs.replace('versionCode = 8', 'versionCode = 9', 1)
+gs = gs.replace('versionName = "1.5-clear-search"', 'versionName = "1.6-deeplink-fix"', 1)
+g.write_text(gs, encoding='utf-8')
+
+m = Path('instagram-condition-reel-finder-android/app/src/main/AndroidManifest.xml')
+ms = m.read_text(encoding='utf-8')
+ms = ms.replace('android:label="条件一致リール発掘 v1.5"', 'android:label="条件一致リール発掘 v1.6"', 1)
+m.write_text(ms, encoding='utf-8')
+
+print('Patched v1.6 deep-link conversion + version bump')

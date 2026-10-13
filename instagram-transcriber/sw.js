@@ -1,5 +1,5 @@
-const CACHE_NAME = 'video-transcriber-v8';
-const APP_SHELL = ['./','./index.html?v=8','./app.js?v=8','./manifest.webmanifest','./icon.svg'];
+const CACHE_NAME = 'video-transcriber-v9';
+const APP_SHELL = ['./','./index.html?v=9','./app.js?v=9','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',(event)=>{
   event.waitUntil(caches.open(CACHE_NAME).then((cache)=>cache.addAll(APP_SHELL)));

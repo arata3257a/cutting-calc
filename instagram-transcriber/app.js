@@ -3,6 +3,8 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
+const urlInput = document.getElementById('urlInput');
+const urlBtn = document.getElementById('urlBtn');
 const fileInput = document.getElementById('fileInput');
 const screenInput = document.getElementById('screenInput');
 const mediaBtn = document.getElementById('mediaBtn');
@@ -18,10 +20,15 @@ const clearBtn = document.getElementById('clearBtn');
 
 let selectedFile = null;
 let selectedBuffer = null;
+let selectedSource = '';
 let transcriber = null;
 
 screenBtn.addEventListener('click', () => screenInput.click());
 mediaBtn.addEventListener('click', () => fileInput.click());
+urlBtn.addEventListener('click', importFromUrl);
+urlInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') importFromUrl();
+});
 
 screenInput.addEventListener('change', async () => {
   await selectFile(screenInput.files?.[0] ?? null, '画面録画');
@@ -30,14 +37,153 @@ fileInput.addEventListener('change', async () => {
   await selectFile(fileInput.files?.[0] ?? null, '動画・音声');
 });
 
+async function importFromUrl() {
+  const rawValue = urlInput.value.trim();
+  const url = extractUrl(rawValue);
+
+  if (!url) {
+    setStatus('Instagramの投稿URLを貼り付けてください。', 'err');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    setStatus('URLの形式を確認してください。', 'err');
+    return;
+  }
+
+  if (!/^https?:$/.test(parsed.protocol)) {
+    setStatus('http または https のURLを使ってください。', 'err');
+    return;
+  }
+
+  resetSelection();
+  lockUi(true);
+  progressBar.value = 5;
+  setStatus('投稿URLから動画を取得できるか確認しています…');
+
+  try {
+    const media = await resolveMediaFromUrl(parsed.href);
+    progressBar.value = 35;
+
+    if (!media?.blob || !isPlayableMedia(media.blob.type, media.url)) {
+      throw new Error('動画データを取得できませんでした');
+    }
+
+    const fileName = buildRemoteFileName(media.blob.type, media.url);
+    const file = new File([media.blob], fileName, { type: media.blob.type || 'video/mp4' });
+    selectedFile = file;
+    selectedBuffer = await readFileImmediately(file);
+    selectedSource = parsed.href;
+
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    fileMeta.textContent = `URL取得: ${fileName} / ${mb} MB`;
+    progressBar.value = 45;
+    setStatus('URLから動画を読み込めました。文字起こしできます', 'ok');
+  } catch (error) {
+    console.warn('URL import failed:', error);
+    resetSelection();
+    fileMeta.textContent = 'URLからの自動取得はできませんでした';
+    setStatus('Instagram側の制限で動画を直接取得できませんでした。下の「画面録画を選ぶ」を使ってください。', 'err');
+  } finally {
+    lockUi(false);
+  }
+}
+
+function extractUrl(value) {
+  const match = value.match(/https?:\/\/[^\s]+/i);
+  if (!match) return '';
+  return match[0].replace(/[)\]}>、。]+$/g, '');
+}
+
+async function resolveMediaFromUrl(url) {
+  const direct = await fetchWithTimeout(url, 15000);
+  const directType = direct.headers.get('content-type') || '';
+
+  if (direct.ok && (/^(video|audio)\//i.test(directType) || looksLikeMediaUrl(direct.url))) {
+    return { blob: await direct.blob(), url: direct.url };
+  }
+
+  if (direct.ok && /text\/html/i.test(directType)) {
+    const html = await direct.text();
+    const candidate = findMediaUrlInHtml(html);
+    if (candidate) {
+      const mediaResponse = await fetchWithTimeout(candidate, 20000);
+      if (mediaResponse.ok) {
+        return { blob: await mediaResponse.blob(), url: mediaResponse.url || candidate };
+      }
+    }
+  }
+
+  throw new Error(`URL取得に失敗しました (${direct.status || 'network'})`);
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+      redirect: 'follow',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { Accept: 'video/*,audio/*,text/html;q=0.9,*/*;q=0.8' },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function findMediaUrlInHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const meta = doc.querySelector('meta[property="og:video:secure_url"],meta[property="og:video"],meta[name="twitter:player:stream"]');
+  if (meta?.content) return decodeEscapedUrl(meta.content);
+
+  const patterns = [
+    /"video_url"\s*:\s*"([^"]+)"/,
+    /"contentUrl"\s*:\s*"([^"]+)"/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return decodeEscapedUrl(match[1]);
+  }
+
+  return '';
+}
+
+function decodeEscapedUrl(value) {
+  return value
+    .replace(/\\u0026/g, '&')
+    .replace(/\\\//g, '/')
+    .replace(/&amp;/g, '&');
+}
+
+function looksLikeMediaUrl(url) {
+  return /\.(mp4|m4a|mp3|wav|webm|ogg)(?:$|[?#])/i.test(url || '');
+}
+
+function isPlayableMedia(type, url) {
+  return /^(video|audio)\//i.test(type || '') || looksLikeMediaUrl(url);
+}
+
+function buildRemoteFileName(type, url) {
+  const extFromUrl = (url.match(/\.(mp4|m4a|mp3|wav|webm|ogg)(?:$|[?#])/i)?.[1] || '').toLowerCase();
+  if (extFromUrl) return `instagram-url.${extFromUrl}`;
+  if (/audio\/mpeg/i.test(type)) return 'instagram-url.mp3';
+  if (/audio\/mp4/i.test(type)) return 'instagram-url.m4a';
+  if (/audio\/wav/i.test(type)) return 'instagram-url.wav';
+  if (/video\/webm/i.test(type)) return 'instagram-url.webm';
+  return 'instagram-url.mp4';
+}
+
 async function selectFile(file, kind) {
+  resetSelection();
   selectedFile = file;
-  selectedBuffer = null;
-  startBtn.disabled = true;
-  resultText.value = '';
-  rawText.value = '';
-  copyBtn.disabled = true;
-  progressBar.value = 0;
 
   if (!selectedFile) {
     fileMeta.textContent = 'まだファイルが選ばれていません';
@@ -51,15 +197,26 @@ async function selectFile(file, kind) {
 
   try {
     selectedBuffer = await readFileImmediately(selectedFile);
+    selectedSource = kind;
     startBtn.disabled = false;
     setStatus('読み込み完了。文字起こしできます', 'ok');
   } catch (error) {
     console.error(error);
-    selectedFile = null;
-    selectedBuffer = null;
+    resetSelection();
     startBtn.disabled = true;
     setStatus('動画を読み込めませんでした。もう一度ファイルを選んでください。', 'err');
   }
+}
+
+function resetSelection() {
+  selectedFile = null;
+  selectedBuffer = null;
+  selectedSource = '';
+  resultText.value = '';
+  rawText.value = '';
+  copyBtn.disabled = true;
+  startBtn.disabled = true;
+  progressBar.value = 0;
 }
 
 function readFileImmediately(file) {
@@ -74,6 +231,7 @@ function readFileImmediately(file) {
 
 clearBtn.addEventListener('click', () => {
   resultText.value = '';
+  rawText.value = '';
   copyBtn.disabled = true;
   setStatus(selectedBuffer ? '文字起こしできます' : '準備待ち');
   progressBar.value = 0;
@@ -128,8 +286,6 @@ startBtn.addEventListener('click', async () => {
       return_timestamps:true,
     };
 
-    // 30秒未満は分割せず、文脈を保ったまま認識する。
-    // 長い動画だけ重なりを持たせて分割する。
     if (seconds > 28) {
       options.chunk_length_s = 25;
       options.stride_length_s = 5;
@@ -157,11 +313,13 @@ startBtn.addEventListener('click', async () => {
 
 function lockUi(busy) {
   startBtn.disabled = busy || !selectedBuffer;
+  urlInput.disabled = busy;
+  urlBtn.disabled = busy;
   fileInput.disabled = busy;
   screenInput.disabled = busy;
   mediaBtn.disabled = busy;
   screenBtn.disabled = busy;
-  startBtn.textContent = busy ? '処理中…' : '② 文字起こし開始';
+  startBtn.textContent = busy ? '処理中…' : '③ 文字起こし開始';
 }
 
 function setStatus(message, className='') {
@@ -220,7 +378,6 @@ function formatTranscript(output, fallbackText) {
 
   formatted = correctCommonMisrecognitions(formatted);
 
-  // タイムスタンプで区切れなかった場合だけ、強い文末表現を補助的に整える。
   if (!/[。！？]/.test(formatted)) {
     formatted = formatted
       .replace(/(と思ってない)(?=\S)/g, '$1？\n')
@@ -319,5 +476,5 @@ function normalizeAudio(input) {
 }
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=8'));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=9'));
 }

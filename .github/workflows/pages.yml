@@ -12,6 +12,10 @@ on:
       - "card-3d-generator-mobile/**"
       - "instagram-reel-search/**"
       - "personality-app/**"
+      - "extra/**"
+      - "pro/**"
+      - "pro-full/**"
+      - "pro-original/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

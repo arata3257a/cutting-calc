@@ -1,4 +1,4 @@
-const CACHE_NAME = 'machining-calc-v9';
+const CACHE_NAME = 'machining-calc-v10';
 
 const CRITICAL_ASSETS = [
   './',

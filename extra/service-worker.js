@@ -1,1 +1,11 @@
-const C='cutting-extra-v30-open-loop-fix';const A=['./','./index.html','./install.html','./manifest.json','./manifest-install.json','./conditions.js','./hgs-conditions.js','./ball-conditions.js','./install-password.js?v=2','./access-gate.js?v=3','./history.js?v=24','./selected-history-name.js?v=1','./share-history.js?v=1','./download-password.js?v=4','../icon-192.png','../icon-512.png'];self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>Promise.all(A.map(x=>c.add(x).catch(()=>null)))))});self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x))))])));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))))});
+// Old public EXTRA/PRO app is retired. Redirect to server-side authentication.
+const NEW_URL='https://extra.hikaru.info/';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+ const names=await caches.keys();
+ await Promise.all(names.filter(name=>/^(cutting-extra-|cutting-pro-|machining-pro-)/.test(name)).map(name=>caches.delete(name)));
+ await self.clients.claim();
+})()));
+self.addEventListener('fetch',event=>{
+ if(event.request.mode==='navigate')event.respondWith(Response.redirect(NEW_URL,302));
+});

@@ -189,6 +189,22 @@
 
             <p id="result-sub" class="text-xs text-slate-300 mt-2 border-t border-slate-500/50 pt-2"></p>
         </div>
+
+        <!-- EXTRA note purchase link: placed below the calculation result; free calculations remain available. -->
+        <section id="extra-cta" class="mt-5 mb-6 bg-slate-900 text-white rounded-xl border border-amber-400/70 shadow-lg p-5" aria-labelledby="extra-cta-title">
+            <p class="text-xs font-bold tracking-wide text-amber-300 mb-1">もっと便利に使いたい方へ</p>
+            <h2 id="extra-cta-title" class="text-lg font-bold mb-2">切削条件計算アプリ EXTRA</h2>
+            <p class="text-sm text-slate-200 leading-relaxed mb-3">計算した条件を保存・呼び出し。Excel出力にも対応した有料版です。</p>
+            <a id="extra-note-link"
+               href="https://note.com/kako_zukan/n/ne2c8ba9c9646"
+               target="_blank"
+               rel="noopener noreferrer"
+               onclick="if (typeof gtag === 'function') gtag('event', 'extra_cta_click', {app_type:'beginner', cta_location:'below_result', destination:'note_extra'});"
+               class="block w-full bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-900 text-center font-bold py-3 px-3 rounded-lg shadow transition-colors">
+                EXTRA版の詳細・購入はこちら ↗
+            </a>
+            <p class="text-xs text-slate-300 mt-3">無料版はこれまでどおり利用できます。価格・利用方法は販売ページをご確認ください。</p>
+        </section>
     </main>
 
     <footer class="bg-slate-200 border-t border-slate-300 text-slate-600 p-4 text-xs leading-relaxed max-w-md mx-auto w-full">

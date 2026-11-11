@@ -47,3 +47,48 @@ canvas{width:100%;max-width:100%;border-radius:10px;background:#0f172a;border:1p
 #downloadPassword{width:100%;background:#0f172a;color:white;border:1px solid #334155;border-radius:10px;padding:13px;text-align:center;font-size:22px;letter-spacing:8px;margin-bottom:10px}
 #passwordSubmit{width:100%;background:#2563eb;padding:12px}
 #passwordError{min-height:20px;color:#f87171;font-size:12px;margin-top:8px}
+
+
+/* Industrial thermal dashboard visual refresh */
+:root{--bg:#070c16;--panel:#111c2c;--panel2:#162439;--line:#2b4058;--text:#edf6ff;--muted:#9aafc4;--accent:#22d3ee}
+body{background:radial-gradient(ellipse 90% 420px at 50% -100px,rgba(20,120,170,.22),transparent),linear-gradient(180deg,#091322,#070c16 65%);min-height:100vh;letter-spacing:.015em}
+.wrap{max-width:1240px;padding:clamp(12px,2vw,24px)}
+h1{font-size:clamp(21px,3.8vw,31px);font-weight:850;letter-spacing:.035em;margin:10px 0 7px;line-height:1.3}
+h1:before{content:"◈";display:inline-block;margin-right:10px;color:#22d3ee;text-shadow:0 0 18px rgba(34,211,238,.55)}
+.wrap>.sub{max-width:950px;font-size:12px;line-height:1.8;margin-bottom:22px}
+.panel{position:relative;background:linear-gradient(155deg,rgba(22,37,56,.98),rgba(13,23,38,.98));border:1px solid #2b4058;border-radius:18px;padding:clamp(14px,2vw,22px);margin:14px 0;box-shadow:0 12px 36px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.025)}
+.wrap>.panel:nth-of-type(1){border-top:2px solid rgba(34,211,238,.7)}
+.wrap>.panel:nth-of-type(2){border-top:2px solid rgba(251,146,60,.65)}
+.controls{gap:12px}
+label{font-size:12px;font-weight:650;color:#b3c7da;line-height:1.5}
+input[type=number],select{background:#0a1525;border:1px solid #344a63;border-radius:10px;padding:11px;color:#f1f9ff;min-height:44px;transition:border-color .18s,box-shadow .18s}
+input[type=number]:focus,select:focus,#downloadPassword:focus{outline:none;border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.14)}
+button{background:linear-gradient(180deg,#2b405b,#1b2c43);border:1px solid #3a516d;border-radius:11px;padding:11px 13px;min-height:44px;cursor:pointer;transition:transform .15s,border-color .15s,filter .15s}
+button:active{transform:scale(.98)}button:hover{border-color:#5b809f;filter:brightness(1.09)}
+button.primary,#passwordSubmit{background:linear-gradient(135deg,#0891b2,#2563eb);border:1px solid #39b8e5;color:white;box-shadow:0 5px 20px rgba(8,145,178,.18)}
+button.active{outline:2px solid #22d3ee;outline-offset:0}
+.tabs{background:#0a1525;border:1px solid #2a3f57;border-radius:13px;padding:5px;gap:5px;margin-bottom:18px}
+.tab{background:transparent;border:1px solid transparent;border-radius:9px;box-shadow:none}
+.tab.active{background:linear-gradient(135deg,#134e65,#16417b);border-color:#22d3ee;outline:none;color:#e5faff}
+.grid-wrap{background:#091424;border:1px solid #263b52;border-radius:13px;padding:10px;scrollbar-color:#496581 #0b1525}
+.heater-grid{gap:5px}
+.cell{border-radius:8px;min-height:59px;border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.28);text-shadow:none}
+.cell.selected{outline:3px solid #eafcff;outline-offset:-3px;box-shadow:0 0 0 2px rgba(34,211,238,.65),0 0 16px rgba(34,211,238,.25)}
+.cell-input{width:44px;min-height:30px;border-radius:7px;background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.15);font-size:15px}
+.cell-input:focus{outline:2px solid #082f49}
+.legend{margin-top:14px}.bar{height:12px;box-shadow:0 0 15px rgba(251,146,60,.12)}
+.editor{background:#0c192b;border:1px solid #2c4058;border-radius:13px;padding:12px;margin-top:16px;align-items:end}
+canvas{background:#081323;border:1px solid #30465f;border-radius:13px;box-shadow:inset 0 0 22px rgba(0,0,0,.2)}
+.stat{background:linear-gradient(160deg,#0c1c2f,#0a1524);border:1px solid #2b435d;border-radius:12px;padding:13px;min-width:0}
+.stat b{font-size:clamp(17px,2.5vw,23px);font-variant-numeric:tabular-nums;letter-spacing:.01em;color:#e8f9ff;overflow-wrap:anywhere}
+.stats:nth-of-type(2) .stat b{color:#8deaff}
+.temp-gauge{height:20px;box-shadow:0 0 14px rgba(25,170,200,.14)}
+.note{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.22);border-radius:12px;padding:12px;line-height:1.75}
+.range{accent-color:#22d3ee;min-height:28px}
+#passwordGate{background:radial-gradient(circle at 50% 35%,#173752,#070c16 70%)}
+.password-card{background:linear-gradient(160deg,#172b43,#0b1727);border:1px solid #38617c;border-radius:22px;box-shadow:0 25px 80px rgba(0,0,0,.5);padding:30px 24px}
+.password-card h2{font-size:22px;line-height:1.4}.password-card h2:before{content:"◈";display:block;font-size:38px;color:#22d3ee;margin-bottom:14px}
+#downloadPassword{background:#081523;border-color:#42617d}
+@media(max-width:760px){.wrap{padding:12px}.panel{border-radius:15px;padding:13px}.controls{gap:9px}.controls label{min-width:0}.stats{gap:8px}.stat{padding:11px}.editor{gap:8px}.tabs{position:sticky;top:0;z-index:10;box-shadow:0 8px 18px rgba(0,0,0,.3)}}
+@media(max-width:390px){.controls{grid-template-columns:1fr 1fr}.stat b{font-size:16px}.tab{font-size:12px;padding:10px 5px}.editor{grid-template-columns:1fr 1fr}.editor button{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){button,input,select{transition:none}}

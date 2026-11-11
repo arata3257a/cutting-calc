@@ -1,4 +1,4 @@
-const CACHE='vacuum-heater-v21';
+const CACHE='vacuum-heater-v22';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.json','./icon-192.svg','./icon-512.svg','./trial.js','./password.js'];
 
 self.addEventListener('install',event=>{

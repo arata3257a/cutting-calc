@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111827" />
+<title>真空成形 ヒーター熱分布</title>
+<link rel="manifest" href="vacuum-heater-app/manifest.json">
+<link rel="stylesheet" href="vacuum-heater-app/style.css?v=24">
+</head>
+<body>
+<div class="wrap">
+  <h1>真空成形 ヒーター熱分布 v1.5［図解付き］</h1>
+  <div class="sub">150×150 mmクイックレスポンスヒーター × 12列×6段（片面72個）、上・下ヒーター対応。材質・板厚・加熱時間を加味した暫定温度予測と時間再生、上下ヒーター距離の個別設定、温度ゲージ、各ヒーター％の直接編集に対応。シートは常にヒーター中央へ自動配置。</div>
+
+<section class="diagram-panel" aria-label="入力項目の図解">
+<div class="diagram-heading"><span class="diagram-kicker">INPUT GUIDE</span><h2>数値入力ガイド</h2><p>図のアルファベットと入力欄の記号を照らし合わせて設定してください。</p></div>
+<div class="diagram-views">
+<div class="diagram-view"><h3>側面図｜ヒーターとシートの位置</h3>
+<svg viewBox="0 0 580 300" role="img" aria-label="上ヒーターからシートまでの距離B、下ヒーターからシートまでの距離C、板厚Gを示す側面図">
+<defs><marker id="guideArrow" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6Z" fill="#67e8f9"/></marker></defs>
+<rect x="96" y="40" width="365" height="29" rx="6" fill="#d97706"/><g stroke="#ffdf93" stroke-width="2"><path d="M115 45v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20"/></g>
+<rect x="96" y="230" width="365" height="29" rx="6" fill="#d97706"/><g stroke="#ffdf93" stroke-width="2"><path d="M115 235v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20"/></g>
+<rect x="96" y="148" width="365" height="7" rx="2" fill="#67e8f9"/><path d="M120 74v63m45-63v63m45-63v63m45-63v63m45-63v63m45-63v63m45-63v63" stroke="#fb923c" stroke-width="2" stroke-dasharray="6 6" opacity=".65"/>
+<path d="M120 222v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60" stroke="#fb923c" stroke-width="2" stroke-dasharray="6 6" opacity=".65"/>
+<g stroke="#67e8f9" stroke-width="2" marker-start="url(#guideArrow)" marker-end="url(#guideArrow)"><path d="M480 69V148"/><path d="M480 155V230"/></g>
+<g font-size="16" font-weight="700" fill="#e5f6ff"><text x="18" y="60">上ヒーター</text><text x="18" y="155">シート</text><text x="18" y="252">下ヒーター</text></g>
+<g font-size="17" font-weight="800" fill="#67e8f9"><text x="493" y="114">B</text><text x="493" y="198">C</text><text x="300" y="142">G：板厚</text></g>
+<g font-size="13" fill="#b4c8db"><text x="100" y="24">A：基準温度</text><text x="98" y="284">N / O：上下ヒーターの寄与率</text></g>
+</svg></div>
+<div class="diagram-view"><h3>平面図｜シートの大きさ</h3>
+<svg viewBox="0 0 580 300" role="img" aria-label="シートの横幅Dと縦方向の高さEを示す平面図">
+<defs><marker id="planArrow" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6Z" fill="#67e8f9"/></marker></defs>
+<rect x="90" y="32" width="408" height="220" rx="6" fill="#14283b" stroke="#506b86" stroke-width="2"/>
+<g stroke="#34506a" stroke-width="1"><path d="M124 32v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220"/><path d="M90 69h408M90 105h408M90 142h408M90 178h408M90 215h408"/></g>
+<rect x="151" y="74" width="286" height="139" rx="3" fill="#22d3ee" fill-opacity=".13" stroke="#67e8f9" stroke-width="3"/>
+<g stroke="#67e8f9" stroke-width="2" marker-start="url(#planArrow)" marker-end="url(#planArrow)"><path d="M151 234h286"/><path d="M458 74v139"/></g>
+<g font-size="17" font-weight="800" fill="#67e8f9"><text x="290" y="260" text-anchor="middle">D：シート幅</text><text x="467" y="150">E</text></g>
+<g font-size="14" fill="#d9e9f8"><text x="294" y="141" text-anchor="middle">シート（中央配置）</text><text x="294" y="20" text-anchor="middle">ヒーター配列 12列 × 6段</text></g>
+<text x="294" y="287" text-anchor="middle" font-size="12" fill="#9ab2c9">F：材質 / H：加熱時間 / I〜M：温度条件 / P〜R：表示・計算条件</text>
+</svg></div></div>
+<div class="guide-keys"><div class="guide-key"><span class="field-letter">A</span><div><strong>基準温度</strong><small>ヒーターの基準温度</small></div></div>
+<div class="guide-key"><span class="field-letter">B</span><div><strong>上側距離</strong><small>上ヒーターからシートまで</small></div></div>
+<div class="guide-key"><span class="field-letter">C</span><div><strong>下側距離</strong><small>下ヒーターからシートまで</small></div></div>
+<div class="guide-key"><span class="field-letter">D</span><div><strong>シート幅</strong><small>シートの横寸法</small></div></div>
+<div class="guide-key"><span class="field-letter">E</span><div><strong>シート高さ</strong><small>シートの縦寸法</small></div></div>
+<div class="guide-key"><span class="field-letter">F</span><div><strong>材質</strong><small>加熱するシートの種類</small></div></div>
+<div class="guide-key"><span class="field-letter">G</span><div><strong>板厚</strong><small>シートの厚み</small></div></div>
+<div class="guide-key"><span class="field-letter">H</span><div><strong>加熱時間</strong><small>加熱する秒数</small></div></div>
+<div class="guide-key"><span class="field-letter">I</span><div><strong>シート初期温度</strong><small>加熱開始前のシート温度</small></div></div>
+<div class="guide-key"><span class="field-letter">J</span><div><strong>雰囲気初期温度</strong><small>加熱開始前の炉内空気温度</small></div></div>
+<div class="guide-key"><span class="field-letter">K</span><div><strong>雰囲気温度上限</strong><small>炉内空気温度の想定上限</small></div></div>
+<div class="guide-key"><span class="field-letter">L</span><div><strong>上昇時定数</strong><small>雰囲気温度の上がり方を決める時間</small></div></div>
+<div class="guide-key"><span class="field-letter">M</span><div><strong>目標温度</strong><small>到達させたいシート温度</small></div></div>
+<div class="guide-key"><span class="field-letter">N</span><div><strong>上ヒーター寄与</strong><small>上側加熱の計算上の重み</small></div></div>
+<div class="guide-key"><span class="field-letter">O</span><div><strong>下ヒーター寄与</strong><small>下側加熱の計算上の重み</small></div></div>
+<div class="guide-key"><span class="field-letter">P</span><div><strong>熱の広がり</strong><small>熱が横方向に広がる度合い</small></div></div>
+<div class="guide-key"><span class="field-letter">Q</span><div><strong>放射率</strong><small>シートの放射熱の吸収に関係する係数</small></div></div>
+<div class="guide-key"><span class="field-letter">R</span><div><strong>表示方法</strong><small>熱分布か予測温度を選択</small></div></div></div>
+<p class="diagram-note">※ 図は位置関係を説明する模式図です。実寸比率や熱分布を表すものではありません。B・Cはそれぞれヒーター面からシート面までの距離です。</p>
+</section>
+
+  <div class="panel">
+    <div class="controls">
+      <label><span class="field-letter">A</span> 基準温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="35" y="15" fill="#fb923c" font-size="9" font-weight="700">400℃</text></svg><span class="inline-guide-description">ヒーターの設定基準温度。各ヒーターの出力％を温度に換算する基準です。</span></span>
+        <input id="baseTemp" type="number" min="0" max="800" value="400"></label>
+      <label><span class="field-letter">B</span> 上ヒーター～シート距離 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 24 L93 33" stroke="#67e8f9" stroke-width="2" /><text x="95" y="30" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">上ヒーターの加熱面からシート上面までの距離です。</span></span>
+        <input id="topDistance" type="number" min="20" max="1000" value="250"></label>
+      <label><span class="field-letter">C</span> 下ヒーター～シート距離 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 36 L93 44" stroke="#67e8f9" stroke-width="2" /><text x="95" y="43" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">シート下面から下ヒーターの加熱面までの距離です。</span></span>
+        <input id="bottomDistance" type="number" min="20" max="1000" value="250"></label>
+      <label title="成形するシートの横幅"><span class="field-letter">D</span> シート幅 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><path d="M28 56 L86 56" stroke="#67e8f9" stroke-width="2" /><text x="50" y="54" fill="#e2e8f0" font-size="9" font-weight="700">↔</text></svg><span class="inline-guide-description">シートを上から見たときの左右方向の長さです。</span></span>
+        <input id="sheetW" type="number" min="100" max="1800" value="1200"></label>
+      <label title="成形するシートの縦幅"><span class="field-letter">E</span> シート高さ mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><path d="M94 18 L94 52" stroke="#67e8f9" stroke-width="2" /><text x="96" y="40" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">シートを上から見たときの上下方向の長さです。</span></span>
+        <input id="sheetH" type="number" min="100" max="900" value="750"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label><span class="field-letter">F</span> 材質
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><text x="39" y="40" fill="#e2e8f0" font-size="9" font-weight="700">樹脂</text></svg><span class="inline-guide-description">加熱するシートの樹脂材質を選びます。</span></span>
+        <select id="material">
+          <option value="ABS">ABS</option>
+          <option value="PC">PC</option>
+          <option value="APET">A-PET</option>
+          <option value="PMMAPC">PMMA+PC</option>
+        </select>
+      </label>
+      <label><span class="field-letter">G</span> 板厚 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="18" y="27" width="76" height="13" rx="2" fill="#67e8f9"/><path d="M99 27 L99 40" stroke="#67e8f9" stroke-width="2" /><text x="75" y="22" fill="#e2e8f0" font-size="9" font-weight="700">厚さ</text></svg><span class="inline-guide-description">シートの表面から裏面までの厚さです。</span></span>
+        <input id="thickness" type="number" min="0.1" max="10" step="0.1" value="0.5"></label>
+      <label><span class="field-letter">H</span> 加熱時間 sec<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><circle cx="56" cy="34" r="18" fill="none" stroke="#67e8f9" stroke-width="3"/><path d="M56 34 L56 21" stroke="#67e8f9" stroke-width="2" /><path d="M56 34 L68 39" stroke="#67e8f9" stroke-width="2" /><text x="78" y="22" fill="#e2e8f0" font-size="9" font-weight="700">秒</text></svg><span class="inline-guide-description">ヒーターでシートを加熱する時間です。</span></span>
+        <input id="heatTime" type="number" min="0" max="90" value="60"></label>
+      <label><span class="field-letter">I</span> 初期シート温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="40" y="31" fill="#e2e8f0" font-size="9" font-weight="700">初期℃</text></svg><span class="inline-guide-description">加熱を始める前のシート自体の温度です。</span></span>
+        <input id="ambientTemp" type="number" min="0" max="80" value="25"></label>
+      <label><span class="field-letter">J</span> 初期雰囲気温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="36" y="30" fill="#e2e8f0" font-size="9" font-weight="700">空気℃</text></svg><span class="inline-guide-description">加熱を始める前のヒーター周辺の空気温度です。</span></span>
+        <input id="airStartTemp" type="number" min="0" max="150" value="25"></label>
+      <label><span class="field-letter">K</span> 雰囲気温度 上限 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="36" y="30" fill="#e2e8f0" font-size="9" font-weight="700">上限℃</text></svg><span class="inline-guide-description">加熱中の雰囲気温度が近づく想定上限値です。</span></span>
+        <input id="airMaxTemp" type="number" min="20" max="250" value="90"></label>
+      <label><span class="field-letter">L</span> 雰囲気上昇 時定数 sec<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><path d="M20 51 L92 51" stroke="#e2e8f0" stroke-width="2" /><path d="M20 51 L20 18" stroke="#e2e8f0" stroke-width="2" /><path d="M20 50 Q34 20 90 20" fill="none" stroke="#67e8f9" stroke-width="3"/></svg><span class="inline-guide-description">雰囲気温度が上昇する速さを決める時定数です。値が大きいほどゆっくり上がります。</span></span>
+        <input id="airTau" type="number" min="5" max="300" value="60"></label>
+      <label><span class="field-letter">M</span> 目標シート温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="40" y="31" fill="#e2e8f0" font-size="9" font-weight="700">目標℃</text></svg><span class="inline-guide-description">シートが到達してほしい目標温度です。</span></span>
+        <input id="targetTemp" type="number" min="50" max="300" value="160"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label><span class="field-letter">N</span> 上ヒーター寄与 %<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 24 L93 33" stroke="#67e8f9" stroke-width="2" /><text x="95" y="30" fill="#e2e8f0" font-size="9" font-weight="700">↕</text><text x="35" y="29" fill="#fb923c" font-size="9" font-weight="700">↓ ↓</text></svg><span class="inline-guide-description">上ヒーターからの加熱寄与の重みです。</span></span>
+        <input id="topWeight" type="number" min="0" max="100" value="50"></label>
+      <label><span class="field-letter">O</span> 下ヒーター寄与 %<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 36 L93 44" stroke="#67e8f9" stroke-width="2" /><text x="95" y="43" fill="#e2e8f0" font-size="9" font-weight="700">↕</text><text x="35" y="44" fill="#fb923c" font-size="9" font-weight="700">↑ ↑</text></svg><span class="inline-guide-description">下ヒーターからの加熱寄与の重みです。</span></span>
+        <input id="bottomWeight" type="number" min="0" max="100" value="50"></label>
+      <label><span class="field-letter">P</span> 熱の広がり係数
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><circle cx="56" cy="34" r="7" fill="#fb923c"/><circle cx="56" cy="34" r="16" stroke="#67e8f9" fill="none"/><circle cx="56" cy="34" r="25" stroke="#67e8f9" stroke-dasharray="3 4" fill="none"/></svg><span class="inline-guide-description">シート面内で熱が周囲へ広がる度合いを調整します。</span></span>
+        <input id="spread" class="range" type="range" min="0.4" max="2.2" value="1.0" step="0.05">
+      </label>
+      <label><span class="field-letter">Q</span> シート放射率 ε<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="24" y="43" width="66" height="6" rx="2" fill="#67e8f9"/><path d="M30 40q-8-10 0-19m16 19q-8-10 0-19m16 19q-8-10 0-19m16 19q-8-10 0-19" stroke="#fb923c" stroke-width="2" fill="none"/></svg><span class="inline-guide-description">シート表面の放射率です。材質・表面状態で変わります。</span></span>
+        <input id="emissivity" type="number" min="0.1" max="1.0" step="0.05" value="0.90"></label>
+      <label><span class="field-letter">R</span> 表示
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="20" y="20" width="33" height="27" rx="2" fill="#164e63"/><rect x="59" y="20" width="33" height="27" rx="2" fill="#164e63"/><circle cx="36" cy="33" r="9" fill="#fb923c"/><path d="M62 42l8-12 8 5 11-14" stroke="#67e8f9" stroke-width="3" fill="none"/></svg><span class="inline-guide-description">相対的な熱分布、または予測温度表示を切り替えます。</span></span>
+        <select id="displayMode">
+          <option value="relative">相対熱分布</option>
+          <option value="equiv">シート温度予測（放射＋雰囲気）</option>
+        </select>
+      </label>
+    </div>
+    <div id="matInfo" class="sub" style="margin:10px 0 0"></div>
+    <div class="panel" style="margin:12px 0 0;background:#0f172a">
+      <div class="row">
+        <button id="playBtn" class="primary">▶ 加熱シミュレーション</button>
+        <button id="pauseBtn">一時停止</button>
+        <button id="resetBtn">0秒に戻す</button>
+        <label style="min-width:180px;flex:1">再生速度
+          <select id="playSpeed">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <input id="timeSlider" class="range" type="range" min="0" max="90" value="60" step="1">
+        <div class="row" style="justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>0秒</span><b id="currentTimeLabel">60秒</b><span id="maxTimeLabel">90秒</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button id="tabTop" class="tab active">上ヒーター</button>
+      <button id="tabBottom" class="tab">下ヒーター</button>
+      <button id="tabMap" class="tab primary">熱分布</button>
+    </div>
+
+    <div id="heaterView">
+      <div class="row" style="margin-bottom:10px">
+        <button id="presetImage">画像風プリセット</button>
+        <button id="preset100">全て99%</button>
+        <button id="copyToOther">反対面へコピー</button>
+      </div>
+      <div class="grid-wrap"><div id="heaterGrid" class="heater-grid"></div></div>
+      <div class="legend"><span>低</span><div class="bar"></div><span>高</span></div><div class="sub" style="margin-top:8px">各マスをタップすると現在値を自動選択します。そのまま2桁を入力できます（00〜99％）。上・下ヒーターはタブで切替。</div>
+
+      <div class="editor">
+        <label>選択セル %<input id="selectedPct" type="number" min="0" max="100" value="80"></label>
+        <label>設定温度換算 ℃<input id="selectedTemp" type="number" readonly></label>
+        <button id="applyPct" class="primary" style="align-self:end">選択セルに反映</button>
+      </div>
+    </div>
+
+    <div id="mapView" class="hidden">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">ヒーター配列とシート位置（白枠＝シート／常に中央配置）</div>
+      <canvas id="layoutPreview" width="960" height="480"></canvas>
+      <div style="height:10px"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">シート範囲の簡易熱分布</div>
+      <canvas id="heatmap" width="960" height="520"></canvas>
+      <div class="temp-gauge-wrap">
+        <div id="gaugeMin" style="text-align:right;font-size:12px;font-weight:700">25℃</div>
+        <div>
+          <div id="tempGauge" class="temp-gauge" aria-label="温度ゲージ">
+            <div id="targetMarker" class="temp-gauge-marker" title="目標温度"></div>
+          </div>
+          <div class="temp-gauge-labels">
+            <span>低温</span><span id="gaugeTarget">目標 160℃</span><span>高温</span>
+          </div>
+        </div>
+        <div id="gaugeMax" style="font-size:12px;font-weight:700">200℃</div>
+      </div>
+      <div class="stats">
+        <div class="stat">最小温度<b id="minStat">-</b></div>
+        <div class="stat">最大温度<b id="maxStat">-</b></div>
+        <div class="stat">温度差<b id="rangeStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">現在時間<b id="timeStat">-</b></div>
+        <div class="stat">平均温度<b id="avgTempStat">-</b></div>
+        <div class="stat">雰囲気温度<b id="airTempStat">-</b></div>
+        <div class="stat">放射寄与<b id="radStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">目標到達率<b id="targetStat">-</b></div>
+        <div class="stat">過熱域<b id="overheatStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat2">-</b></div>
+        <div class="stat">モデル<b>暫定</b></div>
+      </div>
+      <div class="note">
+        ※ v1.2では、各ヒーター設定・上下距離・材質・板厚に加え、ステファン＝ボルツマン則による放射熱と、時間変化する雰囲気温度からの対流加熱を合成しています。
+        実温度の精度を上げるには、実機のサーモカメラまたは表面温度・炉内温度データで校正してください。放射率、反射板、視野係数、対流係数は機械ごとに変わります。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="vacuum-heater-app/password.js?v=24"></script>
+<script src="vacuum-heater-app/app.js?v=24"></script>
+<script src="vacuum-heater-app/trial.js?v=24"></script>
+</body>
+</html>

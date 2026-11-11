@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111827" />
+<title>真空成形 ヒーター熱分布</title>
+
+<style>:root{
+  --bg:#0b1220; --panel:#111827; --panel2:#172033; --line:#2a364d; --text:#f8fafc;
+  --muted:#94a3b8; --accent:#60a5fa;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:1180px;margin:auto;padding:12px}
+h1{font-size:20px;margin:6px 0 4px}
+.sub{color:var(--muted);font-size:12px;line-height:1.5;margin-bottom:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{font-size:12px;color:var(--muted);display:block}
+input,select,button{font:inherit}
+input[type=number],select{width:100%;margin-top:4px;background:#0f172a;color:white;border:1px solid #334155;border-radius:9px;padding:9px}
+button{border:0;border-radius:10px;padding:9px 11px;background:#243047;color:white;font-weight:700}
+button.primary{background:#2563eb}
+button.active{outline:2px solid #93c5fd}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.tab{flex:1}
+.grid-wrap{overflow:auto;padding-bottom:4px}
+.heater-grid{display:grid;grid-template-columns:repeat(12,minmax(54px,1fr));gap:3px;min-width:720px}
+.cell{min-height:56px;border-radius:7px;border:1px solid rgba(255,255,255,.23);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#111827;font-weight:900;cursor:pointer;user-select:none;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+.cell small{font-weight:700;font-size:10px;opacity:.8}
+.legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:8px}
+.bar{height:10px;flex:1;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#34d399,#fde047,#fb923c,#ef4444)}
+.hidden{display:none}
+canvas{width:100%;max-width:100%;border-radius:10px;background:#0f172a;border:1px solid #334155}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stat{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px}
+.stat b{display:block;font-size:18px;margin-top:3px}
+.note{font-size:11px;color:#fbbf24;line-height:1.55;margin-top:10px}
+.selected{outline:3px solid white;outline-offset:-3px}
+.editor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.range{width:100%}
+@media (max-width:760px){.controls{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.editor{grid-template-columns:1fr 1fr}}
+.temp-gauge-wrap{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center;margin-top:10px}
+.temp-gauge{height:18px;border-radius:999px;background:linear-gradient(90deg,#163a8a,#16a6d9,#35c978,#f0d34a,#ef8a2f,#d93232);border:1px solid rgba(255,255,255,.25);position:relative}
+.temp-gauge-marker{position:absolute;top:-5px;width:2px;height:28px;background:white;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.temp-gauge-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
+.cell-input{width:42px;padding:3px 2px;border-radius:6px;border:1px solid rgba(15,23,42,.35);background:rgba(255,255,255,.88);color:#111827;font-weight:900;font-size:14px;text-align:center}
+.cell-input:focus{outline:2px solid #fff;outline-offset:1px}
+.cell-unit{font-size:11px;font-weight:800;margin-left:2px}
+#passwordGate{position:fixed;inset:0;z-index:99999;background:#0b1220;display:flex;align-items:center;justify-content:center;padding:24px}
+.password-card{width:min(360px,100%);background:#111827;border:1px solid #2a364d;border-radius:16px;padding:24px;text-align:center}
+.password-card h2{font-size:19px;margin:0 0 8px}.password-card p{font-size:13px;color:#94a3b8;margin:0 0 16px}
+#downloadPassword{width:100%;background:#0f172a;color:white;border:1px solid #334155;border-radius:10px;padding:13px;text-align:center;font-size:22px;letter-spacing:8px;margin-bottom:10px}
+#passwordSubmit{width:100%;background:#2563eb;padding:12px}
+#passwordError{min-height:20px;color:#f87171;font-size:12px;margin-top:8px}
+
+
+/* Industrial thermal dashboard visual refresh */
+:root{--bg:#070c16;--panel:#111c2c;--panel2:#162439;--line:#2b4058;--text:#edf6ff;--muted:#9aafc4;--accent:#22d3ee}
+body{background:radial-gradient(ellipse 90% 420px at 50% -100px,rgba(20,120,170,.22),transparent),linear-gradient(180deg,#091322,#070c16 65%);min-height:100vh;letter-spacing:.015em}
+.wrap{max-width:1240px;padding:clamp(12px,2vw,24px)}
+h1{font-size:clamp(21px,3.8vw,31px);font-weight:850;letter-spacing:.035em;margin:10px 0 7px;line-height:1.3}
+h1:before{content:"◈";display:inline-block;margin-right:10px;color:#22d3ee;text-shadow:0 0 18px rgba(34,211,238,.55)}
+.wrap>.sub{max-width:950px;font-size:12px;line-height:1.8;margin-bottom:22px}
+.panel{position:relative;background:linear-gradient(155deg,rgba(22,37,56,.98),rgba(13,23,38,.98));border:1px solid #2b4058;border-radius:18px;padding:clamp(14px,2vw,22px);margin:14px 0;box-shadow:0 12px 36px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.025)}
+.wrap>.panel:nth-of-type(1){border-top:2px solid rgba(34,211,238,.7)}
+.wrap>.panel:nth-of-type(2){border-top:2px solid rgba(251,146,60,.65)}
+.controls{gap:12px}
+label{font-size:12px;font-weight:650;color:#b3c7da;line-height:1.5}
+input[type=number],select{background:#0a1525;border:1px solid #344a63;border-radius:10px;padding:11px;color:#f1f9ff;min-height:44px;transition:border-color .18s,box-shadow .18s}
+input[type=number]:focus,select:focus,#downloadPassword:focus{outline:none;border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.14)}
+button{background:linear-gradient(180deg,#2b405b,#1b2c43);border:1px solid #3a516d;border-radius:11px;padding:11px 13px;min-height:44px;cursor:pointer;transition:transform .15s,border-color .15s,filter .15s}
+button:active{transform:scale(.98)}button:hover{border-color:#5b809f;filter:brightness(1.09)}
+button.primary,#passwordSubmit{background:linear-gradient(135deg,#0891b2,#2563eb);border:1px solid #39b8e5;color:white;box-shadow:0 5px 20px rgba(8,145,178,.18)}
+button.active{outline:2px solid #22d3ee;outline-offset:0}
+.tabs{background:#0a1525;border:1px solid #2a3f57;border-radius:13px;padding:5px;gap:5px;margin-bottom:18px}
+.tab{background:transparent;border:1px solid transparent;border-radius:9px;box-shadow:none}
+.tab.active{background:linear-gradient(135deg,#134e65,#16417b);border-color:#22d3ee;outline:none;color:#e5faff}
+.grid-wrap{background:#091424;border:1px solid #263b52;border-radius:13px;padding:10px;scrollbar-color:#496581 #0b1525}
+.heater-grid{gap:5px}
+.cell{border-radius:8px;min-height:59px;border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.28);text-shadow:none}
+.cell.selected{outline:3px solid #eafcff;outline-offset:-3px;box-shadow:0 0 0 2px rgba(34,211,238,.65),0 0 16px rgba(34,211,238,.25)}
+.cell-input{width:44px;min-height:30px;border-radius:7px;background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.15);font-size:15px}
+.cell-input:focus{outline:2px solid #082f49}
+.legend{margin-top:14px}.bar{height:12px;box-shadow:0 0 15px rgba(251,146,60,.12)}
+.editor{background:#0c192b;border:1px solid #2c4058;border-radius:13px;padding:12px;margin-top:16px;align-items:end}
+canvas{background:#081323;border:1px solid #30465f;border-radius:13px;box-shadow:inset 0 0 22px rgba(0,0,0,.2)}
+.stat{background:linear-gradient(160deg,#0c1c2f,#0a1524);border:1px solid #2b435d;border-radius:12px;padding:13px;min-width:0}
+.stat b{font-size:clamp(17px,2.5vw,23px);font-variant-numeric:tabular-nums;letter-spacing:.01em;color:#e8f9ff;overflow-wrap:anywhere}
+.stats:nth-of-type(2) .stat b{color:#8deaff}
+.temp-gauge{height:20px;box-shadow:0 0 14px rgba(25,170,200,.14)}
+.note{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.22);border-radius:12px;padding:12px;line-height:1.75}
+.range{accent-color:#22d3ee;min-height:28px}
+#passwordGate{background:radial-gradient(circle at 50% 35%,#173752,#070c16 70%)}
+.password-card{background:linear-gradient(160deg,#172b43,#0b1727);border:1px solid #38617c;border-radius:22px;box-shadow:0 25px 80px rgba(0,0,0,.5);padding:30px 24px}
+.password-card h2{font-size:22px;line-height:1.4}.password-card h2:before{content:"◈";display:block;font-size:38px;color:#22d3ee;margin-bottom:14px}
+#downloadPassword{background:#081523;border-color:#42617d}
+@media(max-width:760px){.wrap{padding:12px}.panel{border-radius:15px;padding:13px}.controls{gap:9px}.controls label{min-width:0}.stats{gap:8px}.stat{padding:11px}.editor{gap:8px}.tabs{position:sticky;top:0;z-index:10;box-shadow:0 8px 18px rgba(0,0,0,.3)}}
+@media(max-width:390px){.controls{grid-template-columns:1fr 1fr}.stat b{font-size:16px}.tab{font-size:12px;padding:10px 5px}.editor{grid-template-columns:1fr 1fr}.editor button{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){button,input,select{transition:none}}
+
+
+/* Lettered parameter guide */
+.diagram-panel{margin:16px 0 20px;padding:clamp(14px,2.5vw,22px);background:linear-gradient(145deg,#12263b,#0b1728);border:1px solid #31536c;border-radius:18px;box-shadow:0 15px 32px rgba(0,0,0,.16)}
+.diagram-heading h2{margin:4px 0 4px;font-size:21px;color:#f1f9ff}
+.diagram-heading p{margin:0 0 15px;font-size:13px;color:#afc4d7;line-height:1.6}
+.diagram-kicker{color:#67e8f9;letter-spacing:.17em;font-size:10px;font-weight:800}
+.diagram-views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.diagram-view{background:#091625;border:1px solid #29445d;border-radius:13px;padding:12px;min-width:0}
+.diagram-view h3{font-size:13px;margin:0 0 10px;color:#d9f6ff}
+.diagram-view svg{width:100%;height:auto;display:block}
+.guide-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:15px}
+.guide-key{display:flex;align-items:flex-start;gap:9px;border:1px solid #29445d;background:#0b1b2d;padding:9px;border-radius:10px;min-width:0}
+.guide-key strong{display:block;font-size:12px;color:#e5f4ff}
+.guide-key small{display:block;font-size:11px;color:#a5bad0;line-height:1.55;margin-top:3px}
+.field-letter{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:23px;height:23px;padding:0 5px;border-radius:6px;background:#0e5369;border:1px solid #22d3ee;color:#d7fbff;font-size:12px;font-weight:850;vertical-align:middle}
+label>.field-letter{margin-right:3px;margin-bottom:5px}
+.diagram-note{font-size:11px;color:#9fb7cc;line-height:1.6;margin:12px 0 0}
+@media(max-width:760px){.diagram-views{grid-template-columns:1fr}.guide-keys{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.guide-keys{grid-template-columns:1fr}}
+
+
+/* Individual parameter sketches next to each field */
+.inline-input-guide{display:flex;align-items:center;gap:9px;margin:7px 0 8px;padding:7px;background:#0a1a2b;border:1px solid #2a455e;border-radius:10px;min-height:84px}
+.input-figure{width:96px;min-width:96px;height:59px;display:block;flex:none}
+.inline-guide-description{font-size:11px;line-height:1.55;color:#c0d3e5;font-weight:450;overflow-wrap:anywhere}
+.controls label{min-width:0}
+.controls label:has(.inline-input-guide){display:flex;flex-direction:column;align-items:stretch}
+.controls label:has(.inline-input-guide) input,.controls label:has(.inline-input-guide) select{margin-top:auto}
+@media(max-width:760px){.inline-input-guide{flex-direction:column;align-items:flex-start;gap:2px;min-height:125px}.input-figure{width:100%;max-width:125px;height:65px}.inline-guide-description{font-size:10px}}
+@media(min-width:761px) and (max-width:1100px){.inline-input-guide{flex-direction:column;align-items:flex-start;min-height:130px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>真空成形 ヒーター熱分布 v1.6</h1>
+  <div class="sub">150×150 mmクイックレスポンスヒーター × 12列×6段（片面72個）、上・下ヒーター対応。材質・板厚・加熱時間を加味した暫定温度予測と時間再生、上下ヒーター距離の個別設定、温度ゲージ、各ヒーター％の直接編集に対応。シートは常にヒーター中央へ自動配置。</div>
+
+<section class="diagram-panel" aria-label="入力項目の図解">
+<div class="diagram-heading"><span class="diagram-kicker">INPUT GUIDE</span><h2>数値入力ガイド</h2><p>図のアルファベットと入力欄の記号を照らし合わせて設定してください。</p></div>
+<div class="diagram-views">
+<div class="diagram-view"><h3>側面図｜ヒーターとシートの位置</h3>
+<svg viewBox="0 0 580 300" role="img" aria-label="上ヒーターからシートまでの距離B、下ヒーターからシートまでの距離C、板厚Gを示す側面図">
+<defs><marker id="guideArrow" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6Z" fill="#67e8f9"/></marker></defs>
+<rect x="96" y="40" width="365" height="29" rx="6" fill="#d97706"/><g stroke="#ffdf93" stroke-width="2"><path d="M115 45v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20"/></g>
+<rect x="96" y="230" width="365" height="29" rx="6" fill="#d97706"/><g stroke="#ffdf93" stroke-width="2"><path d="M115 235v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20m35-20v20"/></g>
+<rect x="96" y="148" width="365" height="7" rx="2" fill="#67e8f9"/><path d="M120 74v63m45-63v63m45-63v63m45-63v63m45-63v63m45-63v63m45-63v63" stroke="#fb923c" stroke-width="2" stroke-dasharray="6 6" opacity=".65"/>
+<path d="M120 222v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60m45 60v-60" stroke="#fb923c" stroke-width="2" stroke-dasharray="6 6" opacity=".65"/>
+<g stroke="#67e8f9" stroke-width="2" marker-start="url(#guideArrow)" marker-end="url(#guideArrow)"><path d="M480 69V148"/><path d="M480 155V230"/></g>
+<g font-size="16" font-weight="700" fill="#e5f6ff"><text x="18" y="60">上ヒーター</text><text x="18" y="155">シート</text><text x="18" y="252">下ヒーター</text></g>
+<g font-size="17" font-weight="800" fill="#67e8f9"><text x="493" y="114">B</text><text x="493" y="198">C</text><text x="300" y="142">G：板厚</text></g>
+<g font-size="13" fill="#b4c8db"><text x="100" y="24">A：基準温度</text><text x="98" y="284">N / O：上下ヒーターの寄与率</text></g>
+</svg></div>
+<div class="diagram-view"><h3>平面図｜シートの大きさ</h3>
+<svg viewBox="0 0 580 300" role="img" aria-label="シートの横幅Dと縦方向の高さEを示す平面図">
+<defs><marker id="planArrow" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6Z" fill="#67e8f9"/></marker></defs>
+<rect x="90" y="32" width="408" height="220" rx="6" fill="#14283b" stroke="#506b86" stroke-width="2"/>
+<g stroke="#34506a" stroke-width="1"><path d="M124 32v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220m34-220v220"/><path d="M90 69h408M90 105h408M90 142h408M90 178h408M90 215h408"/></g>
+<rect x="151" y="74" width="286" height="139" rx="3" fill="#22d3ee" fill-opacity=".13" stroke="#67e8f9" stroke-width="3"/>
+<g stroke="#67e8f9" stroke-width="2" marker-start="url(#planArrow)" marker-end="url(#planArrow)"><path d="M151 234h286"/><path d="M458 74v139"/></g>
+<g font-size="17" font-weight="800" fill="#67e8f9"><text x="290" y="260" text-anchor="middle">D：シート幅</text><text x="467" y="150">E</text></g>
+<g font-size="14" fill="#d9e9f8"><text x="294" y="141" text-anchor="middle">シート（中央配置）</text><text x="294" y="20" text-anchor="middle">ヒーター配列 12列 × 6段</text></g>
+<text x="294" y="287" text-anchor="middle" font-size="12" fill="#9ab2c9">F：材質 / H：加熱時間 / I〜M：温度条件 / P〜R：表示・計算条件</text>
+</svg></div></div>
+<div class="guide-keys"><div class="guide-key"><span class="field-letter">A</span><div><strong>基準温度</strong><small>ヒーターの基準温度</small></div></div>
+<div class="guide-key"><span class="field-letter">B</span><div><strong>上側距離</strong><small>上ヒーターからシートまで</small></div></div>
+<div class="guide-key"><span class="field-letter">C</span><div><strong>下側距離</strong><small>下ヒーターからシートまで</small></div></div>
+<div class="guide-key"><span class="field-letter">D</span><div><strong>シート幅</strong><small>シートの横寸法</small></div></div>
+<div class="guide-key"><span class="field-letter">E</span><div><strong>シート高さ</strong><small>シートの縦寸法</small></div></div>
+<div class="guide-key"><span class="field-letter">F</span><div><strong>材質</strong><small>加熱するシートの種類</small></div></div>
+<div class="guide-key"><span class="field-letter">G</span><div><strong>板厚</strong><small>シートの厚み</small></div></div>
+<div class="guide-key"><span class="field-letter">H</span><div><strong>加熱時間</strong><small>加熱する秒数</small></div></div>
+<div class="guide-key"><span class="field-letter">I</span><div><strong>シート初期温度</strong><small>加熱開始前のシート温度</small></div></div>
+<div class="guide-key"><span class="field-letter">J</span><div><strong>雰囲気初期温度</strong><small>加熱開始前の炉内空気温度</small></div></div>
+<div class="guide-key"><span class="field-letter">K</span><div><strong>雰囲気温度上限</strong><small>炉内空気温度の想定上限</small></div></div>
+<div class="guide-key"><span class="field-letter">L</span><div><strong>上昇時定数</strong><small>雰囲気温度の上がり方を決める時間</small></div></div>
+<div class="guide-key"><span class="field-letter">M</span><div><strong>目標温度</strong><small>到達させたいシート温度</small></div></div>
+<div class="guide-key"><span class="field-letter">N</span><div><strong>上ヒーター寄与</strong><small>上側加熱の計算上の重み</small></div></div>
+<div class="guide-key"><span class="field-letter">O</span><div><strong>下ヒーター寄与</strong><small>下側加熱の計算上の重み</small></div></div>
+<div class="guide-key"><span class="field-letter">P</span><div><strong>熱の広がり</strong><small>熱が横方向に広がる度合い</small></div></div>
+<div class="guide-key"><span class="field-letter">Q</span><div><strong>放射率</strong><small>シートの放射熱の吸収に関係する係数</small></div></div>
+<div class="guide-key"><span class="field-letter">R</span><div><strong>表示方法</strong><small>熱分布か予測温度を選択</small></div></div></div>
+<p class="diagram-note">※ 図は位置関係を説明する模式図です。実寸比率や熱分布を表すものではありません。B・Cはそれぞれヒーター面からシート面までの距離です。</p>
+</section>
+
+  <div class="panel">
+    <div class="controls">
+      <label><span class="field-letter">A</span> 基準温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="35" y="15" fill="#fb923c" font-size="9" font-weight="700">400℃</text></svg><span class="inline-guide-description">ヒーターの設定基準温度。各ヒーターの出力％を温度に換算する基準です。</span></span>
+        <input id="baseTemp" type="number" min="0" max="800" value="400"></label>
+      <label><span class="field-letter">B</span> 上ヒーター～シート距離 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 24 L93 33" stroke="#67e8f9" stroke-width="2" /><text x="95" y="30" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">上ヒーターの加熱面からシート上面までの距離です。</span></span>
+        <input id="topDistance" type="number" min="20" max="1000" value="250"></label>
+      <label><span class="field-letter">C</span> 下ヒーター～シート距離 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 36 L93 44" stroke="#67e8f9" stroke-width="2" /><text x="95" y="43" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">シート下面から下ヒーターの加熱面までの距離です。</span></span>
+        <input id="bottomDistance" type="number" min="20" max="1000" value="250"></label>
+      <label title="成形するシートの横幅"><span class="field-letter">D</span> シート幅 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><path d="M28 56 L86 56" stroke="#67e8f9" stroke-width="2" /><text x="50" y="54" fill="#e2e8f0" font-size="9" font-weight="700">↔</text></svg><span class="inline-guide-description">シートを上から見たときの左右方向の長さです。</span></span>
+        <input id="sheetW" type="number" min="100" max="1800" value="1200"></label>
+      <label title="成形するシートの縦幅"><span class="field-letter">E</span> シート高さ mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><path d="M94 18 L94 52" stroke="#67e8f9" stroke-width="2" /><text x="96" y="40" fill="#e2e8f0" font-size="9" font-weight="700">↕</text></svg><span class="inline-guide-description">シートを上から見たときの上下方向の長さです。</span></span>
+        <input id="sheetH" type="number" min="100" max="900" value="750"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label><span class="field-letter">F</span> 材質
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="28" y="18" width="58" height="34" rx="2" fill="#67e8f9"/><rect x="32" y="22" width="50" height="26" rx="2" fill="#1b4255"/><text x="39" y="40" fill="#e2e8f0" font-size="9" font-weight="700">樹脂</text></svg><span class="inline-guide-description">加熱するシートの樹脂材質を選びます。</span></span>
+        <select id="material">
+          <option value="ABS">ABS</option>
+          <option value="PC">PC</option>
+          <option value="APET">A-PET</option>
+          <option value="PMMAPC">PMMA+PC</option>
+        </select>
+      </label>
+      <label><span class="field-letter">G</span> 板厚 mm<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="18" y="27" width="76" height="13" rx="2" fill="#67e8f9"/><path d="M99 27 L99 40" stroke="#67e8f9" stroke-width="2" /><text x="75" y="22" fill="#e2e8f0" font-size="9" font-weight="700">厚さ</text></svg><span class="inline-guide-description">シートの表面から裏面までの厚さです。</span></span>
+        <input id="thickness" type="number" min="0.1" max="10" step="0.1" value="0.5"></label>
+      <label><span class="field-letter">H</span> 加熱時間 sec<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><circle cx="56" cy="34" r="18" fill="none" stroke="#67e8f9" stroke-width="3"/><path d="M56 34 L56 21" stroke="#67e8f9" stroke-width="2" /><path d="M56 34 L68 39" stroke="#67e8f9" stroke-width="2" /><text x="78" y="22" fill="#e2e8f0" font-size="9" font-weight="700">秒</text></svg><span class="inline-guide-description">ヒーターでシートを加熱する時間です。</span></span>
+        <input id="heatTime" type="number" min="0" max="90" value="60"></label>
+      <label><span class="field-letter">I</span> 初期シート温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="40" y="31" fill="#e2e8f0" font-size="9" font-weight="700">初期℃</text></svg><span class="inline-guide-description">加熱を始める前のシート自体の温度です。</span></span>
+        <input id="ambientTemp" type="number" min="0" max="80" value="25"></label>
+      <label><span class="field-letter">J</span> 初期雰囲気温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="36" y="30" fill="#e2e8f0" font-size="9" font-weight="700">空気℃</text></svg><span class="inline-guide-description">加熱を始める前のヒーター周辺の空気温度です。</span></span>
+        <input id="airStartTemp" type="number" min="0" max="150" value="25"></label>
+      <label><span class="field-letter">K</span> 雰囲気温度 上限 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="36" y="30" fill="#e2e8f0" font-size="9" font-weight="700">上限℃</text></svg><span class="inline-guide-description">加熱中の雰囲気温度が近づく想定上限値です。</span></span>
+        <input id="airMaxTemp" type="number" min="20" max="250" value="90"></label>
+      <label><span class="field-letter">L</span> 雰囲気上昇 時定数 sec<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><path d="M20 51 L92 51" stroke="#e2e8f0" stroke-width="2" /><path d="M20 51 L20 18" stroke="#e2e8f0" stroke-width="2" /><path d="M20 50 Q34 20 90 20" fill="none" stroke="#67e8f9" stroke-width="3"/></svg><span class="inline-guide-description">雰囲気温度が上昇する速さを決める時定数です。値が大きいほどゆっくり上がります。</span></span>
+        <input id="airTau" type="number" min="5" max="300" value="60"></label>
+      <label><span class="field-letter">M</span> 目標シート温度 ℃<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><text x="40" y="31" fill="#e2e8f0" font-size="9" font-weight="700">目標℃</text></svg><span class="inline-guide-description">シートが到達してほしい目標温度です。</span></span>
+        <input id="targetTemp" type="number" min="50" max="300" value="160"></label>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <label><span class="field-letter">N</span> 上ヒーター寄与 %<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 24 L93 33" stroke="#67e8f9" stroke-width="2" /><text x="95" y="30" fill="#e2e8f0" font-size="9" font-weight="700">↕</text><text x="35" y="29" fill="#fb923c" font-size="9" font-weight="700">↓ ↓</text></svg><span class="inline-guide-description">上ヒーターからの加熱寄与の重みです。</span></span>
+        <input id="topWeight" type="number" min="0" max="100" value="50"></label>
+      <label><span class="field-letter">O</span> 下ヒーター寄与 %<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="23" y="17" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="44" width="66" height="7" rx="2" fill="#fb923c"/><rect x="23" y="33" width="66" height="3" rx="2" fill="#67e8f9"/><path d="M93 36 L93 44" stroke="#67e8f9" stroke-width="2" /><text x="95" y="43" fill="#e2e8f0" font-size="9" font-weight="700">↕</text><text x="35" y="44" fill="#fb923c" font-size="9" font-weight="700">↑ ↑</text></svg><span class="inline-guide-description">下ヒーターからの加熱寄与の重みです。</span></span>
+        <input id="bottomWeight" type="number" min="0" max="100" value="50"></label>
+      <label><span class="field-letter">P</span> 熱の広がり係数
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><circle cx="56" cy="34" r="7" fill="#fb923c"/><circle cx="56" cy="34" r="16" stroke="#67e8f9" fill="none"/><circle cx="56" cy="34" r="25" stroke="#67e8f9" stroke-dasharray="3 4" fill="none"/></svg><span class="inline-guide-description">シート面内で熱が周囲へ広がる度合いを調整します。</span></span>
+        <input id="spread" class="range" type="range" min="0.4" max="2.2" value="1.0" step="0.05">
+      </label>
+      <label><span class="field-letter">Q</span> シート放射率 ε<span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="24" y="43" width="66" height="6" rx="2" fill="#67e8f9"/><path d="M30 40q-8-10 0-19m16 19q-8-10 0-19m16 19q-8-10 0-19m16 19q-8-10 0-19" stroke="#fb923c" stroke-width="2" fill="none"/></svg><span class="inline-guide-description">シート表面の放射率です。材質・表面状態で変わります。</span></span>
+        <input id="emissivity" type="number" min="0.1" max="1.0" step="0.05" value="0.90"></label>
+      <label><span class="field-letter">R</span> 表示
+        <span class="inline-input-guide"><svg class="input-figure" viewBox="0 0 112 68" role="img" aria-label="入力位置の模式図"><rect x="10" y="10" width="92" height="48" rx="7" fill="#0b1d30" stroke="#35526a"/><rect x="20" y="20" width="33" height="27" rx="2" fill="#164e63"/><rect x="59" y="20" width="33" height="27" rx="2" fill="#164e63"/><circle cx="36" cy="33" r="9" fill="#fb923c"/><path d="M62 42l8-12 8 5 11-14" stroke="#67e8f9" stroke-width="3" fill="none"/></svg><span class="inline-guide-description">相対的な熱分布、または予測温度表示を切り替えます。</span></span>
+        <select id="displayMode">
+          <option value="relative">相対熱分布</option>
+          <option value="equiv">シート温度予測（放射＋雰囲気）</option>
+        </select>
+      </label>
+    </div>
+    <div id="matInfo" class="sub" style="margin:10px 0 0"></div>
+    <div class="panel" style="margin:12px 0 0;background:#0f172a">
+      <div class="row">
+        <button id="playBtn" class="primary">▶ 加熱シミュレーション</button>
+        <button id="pauseBtn">一時停止</button>
+        <button id="resetBtn">0秒に戻す</button>
+        <label style="min-width:180px;flex:1">再生速度
+          <select id="playSpeed">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <input id="timeSlider" class="range" type="range" min="0" max="90" value="60" step="1">
+        <div class="row" style="justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>0秒</span><b id="currentTimeLabel">60秒</b><span id="maxTimeLabel">90秒</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button id="tabTop" class="tab active">上ヒーター</button>
+      <button id="tabBottom" class="tab">下ヒーター</button>
+      <button id="tabMap" class="tab primary">熱分布</button>
+    </div>
+
+    <div id="heaterView">
+      <div class="row" style="margin-bottom:10px">
+        <button id="presetImage">画像風プリセット</button>
+        <button id="preset100">全て99%</button>
+        <button id="copyToOther">反対面へコピー</button>
+      </div>
+      <div class="grid-wrap"><div id="heaterGrid" class="heater-grid"></div></div>
+      <div class="legend"><span>低</span><div class="bar"></div><span>高</span></div><div class="sub" style="margin-top:8px">各マスをタップすると現在値を自動選択します。そのまま2桁を入力できます（00〜99％）。上・下ヒーターはタブで切替。</div>
+
+      <div class="editor">
+        <label>選択セル %<input id="selectedPct" type="number" min="0" max="100" value="80"></label>
+        <label>設定温度換算 ℃<input id="selectedTemp" type="number" readonly></label>
+        <button id="applyPct" class="primary" style="align-self:end">選択セルに反映</button>
+      </div>
+    </div>
+
+    <div id="mapView" class="hidden">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">ヒーター配列とシート位置（白枠＝シート／常に中央配置）</div>
+      <canvas id="layoutPreview" width="960" height="480"></canvas>
+      <div style="height:10px"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">シート範囲の簡易熱分布</div>
+      <canvas id="heatmap" width="960" height="520"></canvas>
+      <div class="temp-gauge-wrap">
+        <div id="gaugeMin" style="text-align:right;font-size:12px;font-weight:700">25℃</div>
+        <div>
+          <div id="tempGauge" class="temp-gauge" aria-label="温度ゲージ">
+            <div id="targetMarker" class="temp-gauge-marker" title="目標温度"></div>
+          </div>
+          <div class="temp-gauge-labels">
+            <span>低温</span><span id="gaugeTarget">目標 160℃</span><span>高温</span>
+          </div>
+        </div>
+        <div id="gaugeMax" style="font-size:12px;font-weight:700">200℃</div>
+      </div>
+      <div class="stats">
+        <div class="stat">最小温度<b id="minStat">-</b></div>
+        <div class="stat">最大温度<b id="maxStat">-</b></div>
+        <div class="stat">温度差<b id="rangeStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">現在時間<b id="timeStat">-</b></div>
+        <div class="stat">平均温度<b id="avgTempStat">-</b></div>
+        <div class="stat">雰囲気温度<b id="airTempStat">-</b></div>
+        <div class="stat">放射寄与<b id="radStat">-</b></div>
+      </div>
+      <div class="stats">
+        <div class="stat">目標到達率<b id="targetStat">-</b></div>
+        <div class="stat">過熱域<b id="overheatStat">-</b></div>
+        <div class="stat">均一度<b id="uniformStat2">-</b></div>
+        <div class="stat">モデル<b>暫定</b></div>
+      </div>
+      <div class="note">
+        ※ v1.2では、各ヒーター設定・上下距離・材質・板厚に加え、ステファン＝ボルツマン則による放射熱と、時間変化する雰囲気温度からの対流加熱を合成しています。
+        実温度の精度を上げるには、実機のサーモカメラまたは表面温度・炉内温度データで校正してください。放射率、反射板、視野係数、対流係数は機械ごとに変わります。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>(()=>{
+  const PASSWORD='1121';
+  const KEY='vacuum_heater_unlocked';
+
+  function unlock(){
+    sessionStorage.setItem(KEY,'1');
+    const gate=document.getElementById('passwordGate');
+    if(gate) gate.remove();
+    document.documentElement.classList.remove('app-locked');
+  }
+
+  function showGate(){
+    if(sessionStorage.getItem(KEY)==='1') return;
+    document.documentElement.classList.add('app-locked');
+    const gate=document.createElement('div');
+    gate.id='passwordGate';
+    gate.innerHTML=`<div class="password-card"><h2>真空成形 ヒーター熱分布</h2><p>パスワードを入力してください</p><input id="downloadPassword" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4桁"><button id="passwordSubmit">開く</button><div id="passwordError"></div></div>`;
+    document.body.appendChild(gate);
+    const input=document.getElementById('downloadPassword');
+    const submit=()=>{
+      if(input.value===PASSWORD){ unlock(); }
+      else { document.getElementById('passwordError').textContent='パスワードが違います'; input.value=''; input.focus(); }
+    };
+    document.getElementById('passwordSubmit').onclick=submit;
+    input.addEventListener('keydown',e=>{if(e.key==='Enter') submit();});
+    input.focus();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',showGate);
+  else showGate();
+})();
+</script>
+<script>const COLS=12, ROWS=6, PITCH=150;
+let topVals=[], bottomVals=[], side='top', selected=0;
+
+function imagePreset(){
+  let a=[];
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const edge=Math.min(r,ROWS-1-r,c,COLS-1-c);
+      let v=80;
+      if(edge>=1) v=70;
+      if(edge>=2) v=60;
+      // 中央域を少し弱める、提供画像に近い見た目
+      if((c===5||c===6)&&(r===1||r===2)) v=50;
+      a.push(v);
+    }
+  }
+  return a;
+}
+topVals=imagePreset();
+bottomVals=imagePreset();
+
+const el=id=>document.getElementById(id);
+
+function pctColor(p){
+  // 0..100: cyan -> green -> yellow -> orange -> red
+  const t=Math.max(0,Math.min(100,p))/100;
+  let h=190-(190-5)*t;
+  return `hsl(${h} 85% 58%)`;
+}
+function renderGrid(){
+  const g=el('heaterGrid'); g.innerHTML='';
+  const vals=side==='top'?topVals:bottomVals;
+  vals.forEach((p,i)=>{
+    let d=document.createElement('div');
+    d.className='cell'+(i===selected?' selected':'');
+    d.style.background=pctColor(p);
+
+    const r=Math.floor(i/COLS), c=i%COLS;
+    const input=document.createElement('input');
+    input.type='text';
+    input.inputMode='numeric';
+    input.maxLength=2;
+    input.value=String(Math.min(99,p)).padStart(2,'0');
+    input.className='cell-input';
+    input.setAttribute('aria-label', `${side==='top'?'上':'下'}ヒーター X${COLS-c} Y${ROWS-r} 出力`);
+
+    const line=document.createElement('div');
+    line.style.display='flex';
+    line.style.alignItems='center';
+    line.style.justifyContent='center';
+
+    const unit=document.createElement('span');
+    unit.className='cell-unit';
+    unit.textContent='%';
+
+    const meta=document.createElement('small');
+    meta.textContent=`${Math.round((+el('baseTemp').value||0)*p/100)}℃ · X${COLS-c} Y${ROWS-r}`;
+
+    line.appendChild(input);
+    line.appendChild(unit);
+    d.appendChild(line);
+    d.appendChild(meta);
+
+    input.addEventListener('focus',()=>{
+      selected=i;
+      el('selectedPct').value=vals[i];
+      updateSelectedTemp();
+      [...g.children].forEach((x,j)=>x.classList.toggle('selected',j===i));
+      requestAnimationFrame(()=>input.select());
+    });
+    input.addEventListener('input',()=>{
+      input.value=input.value.replace(/[^0-9]/g,'').slice(0,2);
+      if(input.value.length){
+        let v=Math.max(0,Math.min(99,Number(input.value)));
+        vals[i]=v;
+        d.style.background=pctColor(v);
+        meta.textContent=`${Math.round((+el('baseTemp').value||0)*v/100)}℃ · X${COLS-c} Y${ROWS-r}`;
+        selected=i;
+        el('selectedPct').value=v;
+        updateSelectedTemp();
+      }
+    });
+    input.addEventListener('blur',()=>{
+      let v=input.value==='' ? vals[i] : Math.max(0,Math.min(99,Number(input.value)));
+      vals[i]=v;
+      input.value=String(v).padStart(2,'0');
+      d.style.background=pctColor(v);
+      meta.textContent=`${Math.round((+el('baseTemp').value||0)*v/100)}℃ · X${COLS-c} Y${ROWS-r}`;
+    });
+
+    d.addEventListener('click',(e)=>{
+      if(e.target!==input){
+        selected=i;
+        input.focus();
+      }
+    });
+
+    g.appendChild(d);
+  });
+  el('selectedPct').value=vals[selected];
+  updateSelectedTemp();
+}
+function updateSelectedTemp(){
+  el('selectedTemp').value=Math.round((+el('baseTemp').value||0)*(+el('selectedPct').value||0)/100);
+}
+function setTab(t){
+  side=t;
+  el('tabTop').classList.toggle('active',t==='top');
+  el('tabBottom').classList.toggle('active',t==='bottom');
+  el('heaterView').classList.remove('hidden');
+  el('mapView').classList.add('hidden');
+  renderGrid();
+}
+el('tabTop').onclick=()=>setTab('top');
+el('tabBottom').onclick=()=>setTab('bottom');
+el('tabMap').onclick=()=>{el('heaterView').classList.add('hidden');el('mapView').classList.remove('hidden');drawHeatmap();};
+el('presetImage').onclick=()=>{ if(side==='top') topVals=imagePreset(); else bottomVals=imagePreset(); renderGrid(); };
+el('preset100').onclick=()=>{ if(side==='top') topVals=Array(72).fill(99); else bottomVals=Array(72).fill(99); renderGrid(); };
+el('copyToOther').onclick=()=>{ if(side==='top') bottomVals=[...topVals]; else topVals=[...bottomVals]; };
+el('selectedPct').oninput=updateSelectedTemp;
+el('applyPct').onclick=()=>{
+  let v=Math.max(0,Math.min(100,+el('selectedPct').value||0));
+  (side==='top'?topVals:bottomVals)[selected]=v; renderGrid();
+};
+el('baseTemp').oninput=()=>{updateSelectedTemp();renderGrid();};
+
+const MATERIALS={
+  ABS:{rho:1050, cp:1470, label:'ABS', src:'代表値: 密度1.03–1.07 g/cm³、比熱1.26–1.68 J/(g·K)'},
+  PC:{rho:1200, cp:1100, label:'PC', src:'代表値: 密度約1.20 g/cm³、比熱1.0–1.2 J/(g·K)'},
+  APET:{rho:1340, cp:1088, label:'A-PET', src:'代表値: 密度約1.34 g/cm³、比熱0.26 cal/(g·℃)'},
+  PMMAPC:{rho:1200, cp:1150, label:'PMMA+PC', src:'密度約1.20 g/cm³。比熱は製品構成で変わるため暫定値'}
+};
+function updateMatInfo(){
+  const m=MATERIALS[el('material').value];
+  el('matInfo').textContent=`${m.label} / 板厚 ${(+el('thickness').value||0.5).toFixed(1)} mm　${m.src}`;
+}
+function thermalResponseFactor(){
+  const m=MATERIALS[el('material').value];
+  const th=Math.max(0.1,+el('thickness').value||0.5)/1000;
+  const arealHeatCapacity=m.rho*m.cp*th;
+  const ref=1050*1470*0.0005;
+  const tau=55*(arealHeatCapacity/ref);
+  const t=Math.max(0,+el('heatTime').value||0);
+  return 1-Math.exp(-t/Math.max(1,tau));
+}
+
+let simTimer=null;
+function getCurrentSimTime(){
+  return Math.max(0,+el('timeSlider').value||0);
+}
+function setSimTime(t){
+  const maxT=Math.max(1,+el('timeSlider').max||180);
+  const clamped=Math.max(0,Math.min(maxT,t));
+  el('timeSlider').value=clamped;
+  el('heatTime').value=Math.round(clamped);
+  el('currentTimeLabel').textContent=Math.round(clamped)+'秒';
+  if(!el('mapView').classList.contains('hidden')) drawHeatmap();
+}
+function syncSliderMax(){
+  const maxT=90;
+  el('timeSlider').max=maxT;
+  el('maxTimeLabel').textContent='90秒';
+  let ht=Math.max(0,Math.min(maxT,+el('heatTime').value||0));
+  el('heatTime').value=Math.round(ht);
+  if(+el('timeSlider').value>maxT) el('timeSlider').value=maxT;
+}
+function startSimulation(){
+  if(simTimer) return;
+  el('displayMode').value='equiv';
+  simTimer=setInterval(()=>{
+    const speed=+el('playSpeed').value||1;
+    let t=getCurrentSimTime()+speed;
+    if(t>=+el('timeSlider').max){
+      t=+el('timeSlider').max;
+      stopSimulation();
+    }
+    setSimTime(t);
+  },250);
+}
+function stopSimulation(){
+  if(simTimer){clearInterval(simTimer);simTimer=null;}
+}
+
+function heatAt(x,y,vals,dist,spread){
+  let s=0;
+  const sigma=Math.max(80,dist*0.65*spread + PITCH*0.35);
+  const twoSigma2=2*sigma*sigma;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const hx=(c+0.5)*PITCH, hy=(r+0.5)*PITCH;
+      const dx=x-hx, dy=y-hy;
+      const d2=dx*dx+dy*dy;
+      const lateral=Math.exp(-d2/twoSigma2);
+      const atten=1/(1 + d2/(dist*dist+1));
+      s += (vals[r*COLS+c]/100)*lateral*atten;
+    }
+  }
+  return s;
+}
+function viridisLike(t){
+  t=Math.max(0,Math.min(1,t));
+  const stops=[
+    [0,[20,35,90]],[.25,[0,170,220]],[.5,[40,200,110]],[.75,[250,220,50]],[1,[230,55,35]]
+  ];
+  for(let i=0;i<stops.length-1;i++){
+    if(t>=stops[i][0] && t<=stops[i+1][0]){
+      const a=stops[i],b=stops[i+1],q=(t-a[0])/(b[0]-a[0]);
+      return a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q));
+    }
+  }
+  return stops[stops.length-1][1];
+}
+
+function drawLayoutPreview(offsetX,offsetY,sheetW,sheetH){
+  const cvs=el('layoutPreview'), ctx=cvs.getContext('2d');
+  const W=cvs.width,H=cvs.height;
+  const totalW=COLS*PITCH,totalH=ROWS*PITCH;
+  const sx=W/totalW, sy=H/totalH;
+  ctx.clearRect(0,0,W,H);
+
+  const vals=topVals;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=vals[r*COLS+c];
+      ctx.fillStyle=pctColor(p);
+      ctx.fillRect(c*PITCH*sx,r*PITCH*sy,PITCH*sx,PITCH*sy);
+      ctx.strokeStyle='rgba(255,255,255,.35)';
+      ctx.strokeRect(c*PITCH*sx,r*PITCH*sy,PITCH*sx,PITCH*sy);
+      ctx.fillStyle='rgba(15,23,42,.85)';
+      ctx.font='bold 16px system-ui';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(p+'%',(c+.5)*PITCH*sx,(r+.5)*PITCH*sy);
+    }
+  }
+
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  ctx.fillRect(offsetX*sx,offsetY*sy,sheetW*sx,sheetH*sy);
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=4;
+  ctx.strokeRect(offsetX*sx+2,offsetY*sy+2,sheetW*sx-4,sheetH*sy-4);
+  ctx.fillStyle='#ffffff';
+  ctx.font='bold 18px system-ui';
+  ctx.textAlign='left';
+  ctx.textBaseline='top';
+  ctx.fillText(`シート ${Math.round(sheetW)}×${Math.round(sheetH)} mm`,offsetX*sx+10,offsetY*sy+10);
+
+  ctx.font='bold 14px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.95)';
+  ctx.textAlign='left';
+  ctx.fillText('← 左端',8,H-24);
+  ctx.textAlign='right';
+  ctx.fillText('右端 →',W-8,H-24);
+  ctx.textAlign='left';
+  ctx.fillText('上から ↓',8,8);
+}
+
+const SIGMA = 5.670374419e-8;
+
+function atmosphereTempAt(t){
+  const start=Math.max(-20,+el('airStartTemp').value||25);
+  const maxT=Math.max(start,+el('airMaxTemp').value||90);
+  const tau=Math.max(5,+el('airTau').value||60);
+  return start + (maxT-start)*(1-Math.exp(-Math.max(0,t)/tau));
+}
+
+function radiationDrive(heaterC, sheetC, emissivity){
+  const Th=Math.max(1,heaterC+273.15);
+  const Ts=Math.max(1,sheetC+273.15);
+  return Math.max(0,emissivity*SIGMA*(Math.pow(Th,4)-Math.pow(Ts,4)));
+}
+
+function convectiveDrive(airC, sheetC){
+  const h=8;
+  return Math.max(0,h*(airC-sheetC));
+}
+
+function materialArealHeatCapacity(){
+  const m=MATERIALS[el('material').value];
+  const th=Math.max(0.1,+el('thickness').value||0.5)/1000;
+  return m.rho*m.cp*th;
+}
+
+function drawHeatmap(){
+  const cvs=el('heatmap'), ctx=cvs.getContext('2d');
+  const W=cvs.width,H=cvs.height;
+  const topDist=Math.max(20,+el('topDistance').value||250);
+  const bottomDist=Math.max(20,+el('bottomDistance').value||250);
+  const spread=+el('spread').value||1;
+  const tw=(+el('topWeight').value||0)/100, bw=(+el('bottomWeight').value||0)/100;
+  const totalW=COLS*PITCH, totalH=ROWS*PITCH;
+  const sheetW=Math.min(totalW,Math.max(100,+el('sheetW').value||1200));
+  const sheetH=Math.min(totalH,Math.max(100,+el('sheetH').value||750));
+  const offsetX=(totalW-sheetW)/2;
+  const offsetY=(totalH-sheetH)/2;
+  drawLayoutPreview(offsetX,offsetY,sheetW,sheetH);
+
+  const nx=120, ny=65, arr=[];
+  let mn=Infinity,mx=-Infinity;
+  for(let iy=0;iy<ny;iy++){
+    let row=[];
+    for(let ix=0;ix<nx;ix++){
+      const x=offsetX+(ix+.5)/nx*sheetW, y=offsetY+(iy+.5)/ny*sheetH;
+      const v=tw*heatAt(x,y,topVals,topDist,spread)+bw*heatAt(x,y,bottomVals,bottomDist,spread);
+      row.push(v); mn=Math.min(mn,v); mx=Math.max(mx,v);
+    } arr.push(row);
+  }
+  ctx.clearRect(0,0,W,H);
+  const cw=W/nx,ch=H/ny;
+  const mode=el('displayMode').value;
+  const base=+el('baseTemp').value||400;
+  const sheetStart=+el('ambientTemp').value||25;
+  const target=+el('targetTemp').value||160;
+  const emiss=Math.max(0.1,Math.min(1,+el('emissivity').value||0.9));
+  const simTime=getCurrentSimTime();
+  const airT=atmosphereTempAt(simTime);
+  const arealCap=Math.max(1,materialArealHeatCapacity());
+
+  let tempVals=[], tmin=Infinity,tmax=-Infinity, tsum=0, overCount=0, targetCount=0;
+  let radSum=0, totalHeatSum=0;
+
+  if(mode==='equiv'){
+    const dt=1;
+    const steps=Math.max(1,Math.round(simTime/dt));
+    const localTemps=Array.from({length:ny},()=>Array(nx).fill(sheetStart));
+
+    for(let step=0; step<steps; step++){
+      const t=(step+1)*dt;
+      const airNow=atmosphereTempAt(t);
+      for(let iy=0; iy<ny; iy++){
+        for(let ix=0; ix<nx; ix++){
+          const rel=arr[iy][ix]/(mx||1);
+          const localHeaterC=sheetStart + (base-sheetStart)*Math.max(0,Math.min(1,rel));
+          const Ts=localTemps[iy][ix];
+          const qRad=radiationDrive(localHeaterC,Ts,emiss);
+          const qConv=convectiveDrive(airNow,Ts);
+          const viewFactor=0.18;
+          const qNet=qRad*viewFactor + qConv;
+          const dT=(qNet/arealCap)*dt;
+          localTemps[iy][ix]=Math.min(base,Ts+dT);
+          if(step===steps-1){
+            radSum += qRad*viewFactor;
+            totalHeatSum += qNet;
+          }
+        }
+      }
+    }
+
+    tempVals=localTemps;
+
+    for(let iy=0; iy<ny; iy++){
+      for(let ix=0; ix<nx; ix++){
+        const val=tempVals[iy][ix];
+        tmin=Math.min(tmin,val); tmax=Math.max(tmax,val); tsum+=val;
+        if(val>=target) targetCount++;
+        if(val>=target+20) overCount++;
+        const norm=Math.max(0,Math.min(1,(val-sheetStart)/Math.max(1,target+40-sheetStart)));
+        const rgb=viridisLike(norm);
+        ctx.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+        ctx.fillRect(ix*cw,iy*ch,Math.ceil(cw)+1,Math.ceil(ch)+1);
+      }
+    }
+  }else{
+    for(let iy=0;iy<ny;iy++){
+      for(let ix=0;ix<nx;ix++){
+        const rel=(arr[iy][ix]-mn)/(mx-mn||1);
+        const rgb=viridisLike(rel);
+        ctx.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+        ctx.fillRect(ix*cw,iy*ch,Math.ceil(cw)+1,Math.ceil(ch)+1);
+      }
+    }
+  }
+
+  ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=3;ctx.strokeRect(1.5,1.5,W-3,H-3);
+
+  if(mode==='equiv'){
+    const avg=tsum/(nx*ny);
+    el('minStat').textContent=`約${tmin.toFixed(0)}℃`;
+    el('maxStat').textContent=`約${tmax.toFixed(0)}℃`;
+    el('rangeStat').textContent=`約${(tmax-tmin).toFixed(0)}℃`;
+    el('avgTempStat').textContent=`約${avg.toFixed(0)}℃`;
+    el('airTempStat').textContent=`約${airT.toFixed(0)}℃`;
+    el('targetStat').textContent=(targetCount/(nx*ny)*100).toFixed(0)+'%';
+    el('overheatStat').textContent=(overCount/(nx*ny)*100).toFixed(0)+'%';
+    const radPct=totalHeatSum>0 ? (radSum/totalHeatSum*100) : 0;
+    el('radStat').textContent=radPct.toFixed(0)+'%';
+
+    const flat=tempVals.flat(), mean=avg;
+    const sd=Math.sqrt(flat.reduce((a,b)=>a+(b-mean)*(b-mean),0)/flat.length);
+    const uniform=Math.max(0,100-(sd/Math.max(1,mean-sheetStart)*100));
+    el('uniformStat').textContent=uniform.toFixed(1)+'%';
+    el('uniformStat2').textContent=uniform.toFixed(1)+'%';
+
+    const gaugeLow=Math.floor(Math.min(sheetStart,tmin)/10)*10;
+    const gaugeHigh=Math.ceil(Math.max(target+40,tmax)/10)*10;
+    el('gaugeMin').textContent=gaugeLow+'℃';
+    el('gaugeMax').textContent=gaugeHigh+'℃';
+    el('gaugeTarget').textContent='目標 '+target.toFixed(0)+'℃';
+    const markerPct=Math.max(0,Math.min(100,(target-gaugeLow)/Math.max(1,gaugeHigh-gaugeLow)*100));
+    el('targetMarker').style.left=`calc(${markerPct}% - 1px)`;
+  }else{
+    el('minStat').textContent=(mn/mx*100).toFixed(1)+'%';
+    el('maxStat').textContent='100%';
+    el('rangeStat').textContent=(100-mn/mx*100).toFixed(1)+'pt';
+    const valsFlat=arr.flat(), mean=valsFlat.reduce((a,b)=>a+b,0)/valsFlat.length;
+    const sd=Math.sqrt(valsFlat.reduce((a,b)=>a+(b-mean)*(b-mean),0)/valsFlat.length);
+    const uniform=Math.max(0,100-(sd/mean*100));
+    el('uniformStat').textContent=uniform.toFixed(1)+'%';
+    el('uniformStat2').textContent=uniform.toFixed(1)+'%';
+    el('avgTempStat').textContent='-';
+    el('airTempStat').textContent='-';
+    el('radStat').textContent='-';
+    el('targetStat').textContent='-';
+    el('overheatStat').textContent='-';
+    el('gaugeMin').textContent='低';
+    el('gaugeMax').textContent='高';
+    el('gaugeTarget').textContent='温度予測表示で℃ゲージ';
+    el('targetMarker').style.left='50%';
+  }
+  el('timeStat').textContent=Math.round(getCurrentSimTime())+'秒';
+}
+
+['topDistance','bottomDistance','sheetW','sheetH','material','thickness','heatTime','ambientTemp','airStartTemp','airMaxTemp','airTau','targetTemp','emissivity','topWeight','bottomWeight','spread','displayMode'].forEach(id=>{
+  el(id).addEventListener('input',()=>{ if(!el('mapView').classList.contains('hidden')) drawHeatmap();});
+});
+
+el('playBtn').onclick=()=>startSimulation();
+el('pauseBtn').onclick=()=>stopSimulation();
+el('resetBtn').onclick=()=>{stopSimulation();setSimTime(0);};
+el('timeSlider').oninput=()=>{
+  stopSimulation();
+  el('heatTime').value=Math.round(+el('timeSlider').value);
+  el('currentTimeLabel').textContent=Math.round(+el('timeSlider').value)+'秒';
+  if(!el('mapView').classList.contains('hidden')) drawHeatmap();
+};
+el('heatTime').addEventListener('input',()=>{
+  let v=Math.max(0,Math.min(90,+el('heatTime').value||0));
+  el('heatTime').value=Math.round(v);
+  syncSliderMax();
+  el('timeSlider').value=v;
+  el('currentTimeLabel').textContent=Math.round(v)+'秒';
+  if(!el('mapView').classList.contains('hidden')) drawHeatmap();
+});
+syncSliderMax();
+el('timeSlider').value=Math.min(+el('timeSlider').max,+el('heatTime').value||60);
+el('currentTimeLabel').textContent=Math.round(+el('timeSlider').value)+'秒';
+
+renderGrid();
+updateMatInfo();
+el('material').addEventListener('change',updateMatInfo);
+el('thickness').addEventListener('input',updateMatInfo);
+
+
+</script>
+<script>const TRIAL_DAYS=14;
+const TRIAL_KEY='vacuum_heater_trial_start_v2';
+(function(){
+  const DAY=24*60*60*1000;
+  const now=Date.now();
+  let start=Number(localStorage.getItem(TRIAL_KEY));
+  if(!Number.isFinite(start)||start<=0||start>now){
+    start=now;
+    localStorage.setItem(TRIAL_KEY,String(start));
+  }
+  const end=start+TRIAL_DAYS*DAY;
+  const remainingMs=end-now;
+  const remainingDays=Math.max(0,Math.ceil(remainingMs/DAY));
+
+  const badge=document.createElement('div');
+  badge.style.cssText='margin:8px 0 12px;padding:9px 12px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#e2e8f0;font-size:12px;font-weight:700;text-align:center';
+  badge.textContent=remainingMs>0?`試用期間：残り ${remainingDays} 日`:'試用期間は終了しました';
+  const wrap=document.querySelector('.wrap');
+  if(wrap) wrap.insertBefore(badge,wrap.children[2]||null);
+
+  if(remainingMs<=0){
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(11,18,32,.97);display:flex;align-items:center;justify-content:center;padding:24px';
+    overlay.innerHTML='<div style="max-width:420px;text-align:center;color:#f8fafc"><div style="font-size:26px;font-weight:900;margin-bottom:12px">14日間の使用期限が終了しました</div><div style="font-size:14px;color:#cbd5e1;line-height:1.7">この試用版は、初回起動から14日間ご利用いただけます。</div></div>';
+    document.body.appendChild(overlay);
+  }
+})();
+</script>
+</body>
+</html>

@@ -92,3 +92,23 @@ canvas{background:#081323;border:1px solid #30465f;border-radius:13px;box-shadow
 @media(max-width:760px){.wrap{padding:12px}.panel{border-radius:15px;padding:13px}.controls{gap:9px}.controls label{min-width:0}.stats{gap:8px}.stat{padding:11px}.editor{gap:8px}.tabs{position:sticky;top:0;z-index:10;box-shadow:0 8px 18px rgba(0,0,0,.3)}}
 @media(max-width:390px){.controls{grid-template-columns:1fr 1fr}.stat b{font-size:16px}.tab{font-size:12px;padding:10px 5px}.editor{grid-template-columns:1fr 1fr}.editor button{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){button,input,select{transition:none}}
+
+
+/* Lettered parameter guide */
+.diagram-panel{margin:16px 0 20px;padding:clamp(14px,2.5vw,22px);background:linear-gradient(145deg,#12263b,#0b1728);border:1px solid #31536c;border-radius:18px;box-shadow:0 15px 32px rgba(0,0,0,.16)}
+.diagram-heading h2{margin:4px 0 4px;font-size:21px;color:#f1f9ff}
+.diagram-heading p{margin:0 0 15px;font-size:13px;color:#afc4d7;line-height:1.6}
+.diagram-kicker{color:#67e8f9;letter-spacing:.17em;font-size:10px;font-weight:800}
+.diagram-views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.diagram-view{background:#091625;border:1px solid #29445d;border-radius:13px;padding:12px;min-width:0}
+.diagram-view h3{font-size:13px;margin:0 0 10px;color:#d9f6ff}
+.diagram-view svg{width:100%;height:auto;display:block}
+.guide-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:15px}
+.guide-key{display:flex;align-items:flex-start;gap:9px;border:1px solid #29445d;background:#0b1b2d;padding:9px;border-radius:10px;min-width:0}
+.guide-key strong{display:block;font-size:12px;color:#e5f4ff}
+.guide-key small{display:block;font-size:11px;color:#a5bad0;line-height:1.55;margin-top:3px}
+.field-letter{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:23px;height:23px;padding:0 5px;border-radius:6px;background:#0e5369;border:1px solid #22d3ee;color:#d7fbff;font-size:12px;font-weight:850;vertical-align:middle}
+label>.field-letter{margin-right:3px;margin-bottom:5px}
+.diagram-note{font-size:11px;color:#9fb7cc;line-height:1.6;margin:12px 0 0}
+@media(max-width:760px){.diagram-views{grid-template-columns:1fr}.guide-keys{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.guide-keys{grid-template-columns:1fr}}

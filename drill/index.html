@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1826" />
+<title>ドリル加工条件 かんたん計算</title>
+<style>
+:root {color-scheme: dark; --bg:#0b1826; --panel:#13283a; --panel2:#173448; --line:#2c4b5e; --ink:#edf6fb; --muted:#a9c1d1; --accent:#44d8d0; --gold:#ffd58b; --warn:#f8c182}
+* {box-sizing:border-box} html,body {margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family: system-ui,-apple-system,"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif} body {padding:16px 13px 40px} button, input, select{font:inherit} button{cursor:pointer}
+.wrap{max-width:680px;margin:auto}.eyebrow{color:var(--accent);font-size:.78rem;letter-spacing:.11em;font-weight:800}.header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.title{font-size:clamp(1.33rem,5.1vw,1.8rem);font-weight:850;line-height:1.3;margin:.35rem 0}.desc{font-size:.86rem;color:var(--muted);line-height:1.6;margin:0}.chip{border:1px solid #317572;border-radius:99px;padding:5px 10px;color:#a0efec;font-weight:bold;font-size:.72rem;white-space:nowrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px;margin-bottom:13px;box-shadow:0 5px 20px #0002}.section-title{font-size:1rem;font-weight:850;display:flex;align-items:center;gap:8px;margin:0 0 14px}.step{background:var(--accent);color:#07222b;border-radius:99px;display:inline-grid;place-items:center;width:25px;height:25px;font-size:.8rem;font-weight:900}
+.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{min-width:0}.field.wide{grid-column:1/-1} label{display:block;margin:0 0 6px;font-size:.83rem;color:#cfe2ed;font-weight:750} .hint{font-size:.73rem;color:var(--muted);margin-top:5px;line-height:1.45}input,select{border:1px solid #4a6778;border-radius:10px;background:#0b1d2c;color:#fff;min-height:48px;width:100%;padding:10px 11px;outline:none} input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px #44d8d033} input:disabled{opacity:.5}input[type=number]{font-variant-numeric:tabular-nums}.inline{display:flex;gap:8px;align-items:center}.inline>*{flex:1}.mini{flex:none;background:#204356;color:#fff;border:1px solid #477284;border-radius:10px;padding:9px 11px;min-height:46px;font-size:.77rem;font-weight:800}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.result{background:#0e2935;border:1px solid #317568;border-radius:13px;padding:14px 10px}.result .name{font-size:.76rem;color:#b5dfdd;font-weight:800;line-height:1.5}.result .val{color:var(--accent);font-size:clamp(1.55rem,7vw,2.35rem);font-weight:900;line-height:1.25;white-space:nowrap;letter-spacing:-.05em}.result .unit{font-size:.76rem;color:#e1f3f1;font-weight:700}.result.alt{background:#263424;border-color:#737453}.result.alt .val{color:var(--gold)}.statrow{margin-top:11px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat{padding:11px;background:#0e2131;border:1px solid #36576a;border-radius:11px}.stat .k{color:var(--muted);font-size:.78rem}.stat .v{margin-top:4px;font-weight:850;font-size:1.14rem}.stat small{font-size:.74rem;color:#bdd1dd}
+.toggleline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}input[type=checkbox]{width:20px;height:20px;min-height:20px;accent-color:#44d8d0}
+.message{font-size:.81rem;color:#dcf0f2;background:#19354a;border-left:3px solid #3cbdb9;padding:11px 13px;border-radius:7px;line-height:1.7;margin-top:11px}.message.warning{border-left-color:var(--warn);background:#3a2d2a;color:#ffe3c6}.message.error{border-left-color:#fb7f80;background:#422a31;color:#ffe4e5} .buttons{display:flex;gap:8px;margin-top:13px}.primary,.secondary{flex:1;border:0;border-radius:11px;padding:13px 9px;font-weight:850}.primary{background:var(--accent);color:#093037}.secondary{background:#24465b;color:#ebf8ff;border:1px solid #426276}.muted{color:var(--muted);font-size:.77rem;line-height:1.75}.formula{font-size:.83rem;color:#d2e8ef;background:#0a1d2b;padding:12px;border-radius:10px;line-height:1.9}.foot{font-size:.75rem;line-height:1.8;color:var(--muted)}.foot a{color:#82dad9}.helpbadge{display:inline-block;background:#263f51;border-radius:5px;padding:1px 6px;font-size:.7rem;color:#c4e0ef}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#073034;background:#9df4dd;border-radius:10px;padding:12px 16px;font-size:.85rem;font-weight:850;z-index:5;display:none;box-shadow:0 5px 24px #0007}.toast.show{display:block}
+@media(min-width:610px){body{padding:24px}.card{padding:22px}.result{padding:17px}.results{gap:14px}}
+@media(max-width:370px){.formgrid{gap:8px}.card{padding:12px}.result .val{font-size:1.48rem}.stat .v{font-size:1.02rem}}
+@media print{body{background:#fff;color:#111}.card{box-shadow:none;break-inside:avoid}.buttons,.chip{display:none}}
+</style>
+</head>
+<body><main class="wrap">
+<header class="header"><div><div class="eyebrow">DRILLING CONDITIONS</div><h1 class="title">ドリル加工条件<br>かんたん計算</h1><p class="desc">材質とドリル径から S・F・加工時間を計算</p></div><span class="chip">オフライン対応</span></header>
+<section class="card" aria-label="加工条件入力">
+<h2 class="section-title"><span class="step">1</span> 加工条件を入力</h2>
+<div class="formgrid">
+<div class="field"><label for="material">被削材</label><select id="material"><option value="SS400">SS400（一般構造用鋼）</option><option value="S45C" selected>S45C（炭素鋼）</option><option value="SUS304">SUS304（ステンレス）</option><option value="A5052">A5052（アルミ）</option><option value="A2017">A2017（ジュラルミン）</option><option value="C3604">C3604（真鍮）</option><option value="POM">POM（樹脂）</option><option value="CUSTOM">その他（条件を入力）</option></select></div>
+<div class="field"><label for="tool">工具材質</label><select id="tool"><option value="HSS">ハイス（HSS）</option><option value="CARBIDE">超硬</option></select></div>
+<div class="field"><label for="diameter">ドリル径 D（mm）</label><input id="diameter" type="number" min="0.1" max="200" step="0.1" inputmode="decimal" value="6" /></div>
+<div class="field"><label for="depth">穴深さ（mm）</label><input id="depth" type="number" min="0.1" max="1000" step="0.5" inputmode="decimal" value="20" /></div>
+<div class="field wide"><label for="kind">穴の種類</label><select id="kind"><option value="BLIND">止まり穴：ドリル先端の到達深さ</option><option value="THROUGH" selected>貫通穴：材料の厚さ</option></select><div class="hint" id="depthHint">貫通穴では、先端の突出分と余裕量を移動距離に加算します。</div></div>
+<div class="field"><label for="speed">切削速度 Vc（m/min）</label><div class="inline"><input id="speed" type="number" min="0.1" max="1000" step="1" inputmode="decimal" value="25" /><button type="button" class="mini" id="speedReset" aria-label="切削速度を参考値に戻す">参考値</button></div></div>
+<div class="field"><label for="feed">送り量 f（mm/rev）</label><div class="inline"><input id="feed" type="number" min="0.001" max="5" step="0.005" inputmode="decimal" value="0.12" /><button type="button" class="mini" id="feedReset" aria-label="送り量を参考値に戻す">参考値</button></div></div>
+<div class="field"><label for="angle">ドリル先端角（°）</label><select id="angle"><option value="118">118°</option><option value="135" selected>135°</option><option value="140">140°</option></select></div>
+<div class="field"><label for="extra">貫通余裕量（mm）</label><input id="extra" type="number" min="0" max="20" step="0.1" inputmode="decimal" value="0.5" /></div>
+</div>
+<div id="referenceText" class="message">参考条件は工具型番を指定しない仮の初期値です。必ず使用ドリルのメーカー推奨条件に合わせてください。</div>
+</section>
+<section class="card"><h2 class="section-title"><span class="step">2</span> 計算結果</h2>
+<div class="results"><div class="result"><div class="name">回転数 S</div><div class="val" id="rpm">—</div><div class="unit">min⁻¹（rpm）</div></div><div class="result alt"><div class="name">送り速度 F</div><div class="val" id="feedrate">—</div><div class="unit">mm/min</div></div></div>
+<div class="statrow"><div class="stat"><div class="k">切削速度 Vc</div><div class="v"><span id="outVc">—</span> <small>m/min</small></div></div><div class="stat"><div class="k">1回転当たり送り f</div><div class="v"><span id="outF">—</span> <small>mm/rev</small></div></div><div class="stat"><div class="k">ドリル先端の長さ</div><div class="v"><span id="tip">—</span> <small>mm</small></div></div><div class="stat"><div class="k">理論送り移動距離</div><div class="v"><span id="travel">—</span> <small>mm</small></div></div></div>
+<div class="message" id="time">理論切削時間：—</div><div id="alertArea"></div>
+<div class="buttons"><button type="button" id="copy" class="primary">S・Fをコピー</button><button type="button" id="resetAll" class="secondary">初期値に戻す</button></div>
+</section>
+<section class="card"><h2 class="section-title"><span class="step">3</span> 計算のしくみ</h2><div class="formula">回転数 S ＝ Vc × 1000 ÷ (π × D)<br>送り速度 F ＝ S × f<br>ドリル先端長 ＝ (D ÷ 2) ÷ tan(先端角 ÷ 2)<br>理論加工時間（秒）＝ 送り移動距離 ÷ F × 60</div><p class="muted">先端角から求める長さは、円すい状の先端の幾何学的な理論値。シンニング・特殊刃形状などは考慮しません。止まり穴の入力深さは「先端到達深さ」です。平底部に必要な円筒穴深さとは異なる点に注意してください。</p></section>
+<section class="card"><h2 class="section-title">使う前に確認</h2><p class="foot">本アプリは条件設定を支援する計算機です。材質・工具の組合せから表示する切削速度と送り量は<strong>メーカー指定値ではない仮の入力初期値</strong>です。工具型番、コーティング、加工機の剛性、クーラント、穴の深さ、下穴、機械回転数の上限などを考慮した最適加工条件や安全性は保証しません。特に3D超の深穴では切りくず排出・ペック加工・内部給油の要否を工具仕様で確認してください。表示する時間は純粋な送り時間で、早送り・ペック・停止・工具交換を含みません。</p><p class="foot">計算式の参考：<a target="_blank" rel="noopener" href="https://faq.osg.co.jp/faq/show/369">OSG ドリルとタップの条件</a><br>一般的な切削速度の参考：<a target="_blank" rel="noopener" href="https://jp.misumi-ec.com/tech-info/categories/machine_processing/mp01/j0179.html">ミスミ ドリルの選定・切削条件</a><br>送り量の考え方：<a target="_blank" rel="noopener" href="https://faq.osg.co.jp/faq/show/737">OSG ドリルの送り量</a></p><p class="foot">入力した値は、この端末のブラウザ内にのみ保存します。ネット接続・会員登録は不要です。</p></section>
+</main><div id="toast" class="toast" role="status">コピーしました</div>
+<script>
+(() => { 'use strict';
+const $=id=>document.getElementById(id);
+const keys=['material','tool','diameter','depth','kind','speed','feed','angle','extra'];
+// Not tool-specific catalogue settings. Provisional common examples only.
+const presets={
+ SS400:{HSS:25,CARBIDE:65}, S45C:{HSS:25,CARBIDE:60}, SUS304:{HSS:10,CARBIDE:30},
+ A5052:{HSS:40,CARBIDE:80}, A2017:{HSS:40,CARBIDE:80}, C3604:{HSS:null,CARBIDE:null}, POM:{HSS:null,CARBIDE:null}, CUSTOM:{HSS:null,CARBIDE:null}
+};
+const safeRead=()=>{try{return JSON.parse(localStorage.getItem('drill_calc_v1')||'null')}catch(e){return null}};
+let guard=false;
+function number(id){const raw=$(id).value.trim(); if(raw==='') return NaN; return Number(raw)}
+function feedRef(){const d=number('diameter');if(!Number.isFinite(d)||d<=0)return .12;const mat=$('material').value;const tool=$('tool').value;
+ // Conservative provisional values, not manufacturer's recommendations.
+ const p=(mat==='SUS304' ? .018 : (mat==='A5052'||mat==='A2017') ? .025 : .02);
+ return Math.min(.45,Math.max(.01,d*p));}
+function speedRef(){return presets[$('material').value]?.[$('tool').value]??null}
+function setReference(type){if(type==='speed'){const v=speedRef();if(v!==null)$('speed').value=v;else $('speed').value='';}else {$('feed').value=Number(feedRef().toFixed(3));} compute()}
+function restore(){const stored=safeRead();if(!stored)return;for(const key of keys){if(Object.prototype.hasOwnProperty.call(stored,key)&&$(''+key))$(''+key).value=stored[key]}}
+function save(){const values={};for(const key of keys)values[key]=$(key).value;try{localStorage.setItem('drill_calc_v1',JSON.stringify(values))}catch(e){}}
+const format=(v,d=1)=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:d}).format(v);
+function output(ids,value){$(ids).textContent=value}
+function setNotice(text,cls='warning'){const div=document.createElement('div');div.className='message '+cls;div.textContent=text;$('alertArea').appendChild(div)}
+function compute(){
+ if(guard)return;
+ const d=number('diameter'), depth=number('depth'), vc=number('speed'), f=number('feed'),angle=number('angle'),extra=number('extra');
+ const through=$('kind').value==='THROUGH'; $('extra').disabled=!through;
+ $('depthHint').textContent=through ? '貫通穴：穴深さには材料厚さを入力。先端突出分と貫通余裕量を加えます。' : '止まり穴：穴深さはドリル先端が届くZ方向の深さです。';
+ const ref=speedRef();
+ $('referenceText').textContent=ref===null?'この被削材の切削速度は自動設定しません。工具メーカーの推奨Vcを入力してください。送り量も工具メーカー値を優先してください。':'仮の初期切削速度 '+format(ref,0)+' m/min を表示できます。工具型番別の推奨条件ではありません。「参考値」で仮値に戻せます。';
+ $('referenceText').className='message'+(ref===null?' warning':'');
+ const valid=[d,depth,vc,f,angle].every(v=>Number.isFinite(v)&&v>0)&&(!through||(Number.isFinite(extra)&&extra>=0));
+ $('alertArea').replaceChildren();
+ if(!valid){for(const id of ['rpm','feedrate','outVc','outF','tip','travel'])output(id,'—');output('time','入力値を確認してください。直径・穴深さ・Vc・fは0より大きく入力してください。');$('time').className='message error';save();return;}
+ if(d>200||depth>1000||vc>1000||f>5||angle>=180||angle<=0){for(const id of ['rpm','feedrate','outVc','outF','tip','travel'])output(id,'—');output('time','入力範囲を確認してください。');$('time').className='message error';save();return;}
+ const n=vc*1000/(Math.PI*d); const vf=n*f;
+ const tip=d/(2*Math.tan(angle*Math.PI/360));
+ const travel=depth+(through?tip+extra:0); const seconds=travel/vf*60;
+ output('rpm',format(Math.round(n),0));output('feedrate',format(Math.round(vf),0));output('outVc',format(vc,2));output('outF',format(f,3));output('tip',format(tip,2));output('travel',format(travel,2));
+ const timeText=seconds<60?`${format(seconds,1)} 秒`:`${format(seconds/60,2)} 分（約${format(seconds,0)}秒）`;
+ output('time',`理論切削時間（送りのみ）：${timeText}`);$('time').className='message';
+ if(depth/d>3)setNotice('穴深さが3Dを超えています。深穴条件、切りくず排出、クーラント、ペック加工の要否を工具メーカーの条件で確認してください。');
+ if(n>10000)setNotice('回転数が10,000 rpmを超えています。機械の最高回転数とドリルの使用条件を確認してください。');
+ if(f/d>.05)setNotice('1回転当たりの送り量が直径の5%を超えます。工具メーカーの推奨送りを再確認してください。');
+ if(['C3604','POM','CUSTOM'].includes($('material').value))setNotice('この被削材の切削条件はメーカー推奨値を自動設定していません。Vcとfを手動で確認してください。');
+ save();
+}
+['material','tool'].forEach(id=>$(id).addEventListener('change',()=>{guard=true;const preset=speedRef();$('speed').value=preset??'';$('feed').value=Number(feedRef().toFixed(3));guard=false;compute()}));
+$('diameter').addEventListener('input',()=>{ // user stays in charge of feed; don't silently overwrite
+ compute();
+});
+for(const id of keys.filter(x=>!['material','tool','diameter'].includes(x))){$(id).addEventListener('input',compute);$(id).addEventListener('change',compute)}
+$('speedReset').addEventListener('click',()=>setReference('speed'));
+$('feedReset').addEventListener('click',()=>setReference('feed'));
+$('resetAll').addEventListener('click',()=>{try{localStorage.removeItem('drill_calc_v1')}catch(e){};$('material').value='S45C';$('tool').value='HSS';$('diameter').value='6';$('depth').value='20';$('kind').value='THROUGH';$('angle').value='135';$('extra').value='.5';$('speed').value='25';$('feed').value='.12';compute();});
+$('copy').addEventListener('click',async()=>{
+ const rpm=$('rpm').textContent,feed=$('feedrate').textContent;if(rpm==='—')return;
+ const text=`【ドリル加工条件】\n被削材：${$('material').selectedOptions[0].text}\n工具：${$('tool').selectedOptions[0].text}\nドリル径：φ${$('diameter').value} mm\n切削速度：${$('speed').value} m/min\n送り：${$('feed').value} mm/rev\n回転数 S${rpm} min-1\n送り速度 F${feed} mm/min\n穴：${$('kind').selectedOptions[0].text} ${$('depth').value} mm\n${$('time').textContent}\n※仮条件。メーカー推奨値と設備条件を確認。`;
+ try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text)}else{const temp=document.createElement('textarea');temp.value=text;temp.style.position='fixed';temp.style.opacity='0';document.body.appendChild(temp);temp.select();if(!document.execCommand('copy'))throw new Error('copy');temp.remove();} $('toast').textContent='計算結果をコピーしました';}catch(e){$('toast').textContent='コピーできませんでした（ブラウザの制限）';}
+ $('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2300);
+});
+restore();compute();
+})();
+</script>
+</body></html>

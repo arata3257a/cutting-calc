@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>熱線膨張計算（実務強化版）</title>
+<style>
+body { font-family: sans-serif; padding: 16px; background: #f2f2f2; }
+.container { max-width: 420px; margin: auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 6px 14px rgba(0,0,0,0.1); }
+h1 { font-size: 20px; text-align: center; }
+label { display: block; margin-top: 10px; font-size: 14px; }
+input, select, button { width: 100%; padding: 10px; margin-top: 5px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; }
+button { margin-top: 10px; }
+.result { margin-top: 15px; font-weight: bold; font-size: 16px; }
+.history { margin-top: 15px; font-size: 12px; max-height: 150px; overflow-y: auto; background: #fafafa; padding: 10px; border-radius: 10px; }
+.small { font-size: 12px; color: #666; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>熱線膨張計算（実務強化版）</h1><label>素材</label> <select id="material"></select>
+
+<label>カスタム素材追加（係数 1/℃）</label> <input type="text" id="customName" placeholder="例: SUS316"> <input type="number" id="customAlpha" placeholder="例: 16.0e-6"> <button onclick="addMaterial()">素材追加</button>
+
+<label>初期長さ</label> <input type="number" id="length" placeholder="例: 1000">
+
+<label>単位</label> <select id="unit">
+
+  <option value="mm">mm</option>
+  <option value="cm">cm</option>
+  <option value="m">m</option>
+</select><label>開始温度 (℃)</label> <input type="number" id="temp1" placeholder="例: 20">
+
+<label>終了温度 (℃)</label> <input type="number" id="temp2" placeholder="例: 80">
+
+<button onclick="calc()">計算する</button> <button onclick="copyResult()">結果コピー</button>
+
+<div class="result" id="result"></div>
+<div class="small" id="finalLength"></div>
+<div class="history" id="history"></div>
+</div><script>
+const defaultMaterials = {
+  "鉄": 11.8e-6,
+  "アルミ": 23.1e-6,
+  "銅": 16.5e-6,
+  "ガラス": 9.0e-6,
+  "SUS304": 17.3e-6,
+  "SUS316": 16.0e-6,
+  // 樹脂（代表的な目安値）
+  "PP": 120e-6,
+  "PC": 65e-6,
+  "ABS": 80e-6,
+  "PMMA": 70e-6,
+  "PET": 60e-6,
+  "PS": 70e-6,
+  "PE": 120e-6
+};
+
+let materials = JSON.parse(localStorage.getItem('materials')) || {};
+
+// 既存データにデフォルトをマージ（不足分のみ追加）
+for (const k in defaultMaterials) {
+  if (!(k in materials)) {
+    materials[k] = defaultMaterials[k];
+  }
+}
+
+saveMaterials();
+
+function saveMaterials() {
+  localStorage.setItem('materials', JSON.stringify(materials));
+}
+
+function updateMaterialList() {
+  const select = document.getElementById("material");
+  select.innerHTML = "";
+  for (let key in materials) {
+    const opt = document.createElement("option");
+    opt.value = materials[key];
+    opt.text = key;
+    select.appendChild(opt);
+  }
+}
+
+function addMaterial() {
+  const name = document.getElementById("customName").value.trim();
+  const alpha = parseFloat(document.getElementById("customAlpha").value);
+  if (!name || isNaN(alpha)) return alert("入力不正");
+  materials[name] = alpha;
+  saveMaterials();
+  updateMaterialList();
+}
+
+function convertToMeter(value, unit) {
+  if (unit === "mm") return value / 1000;
+  if (unit === "cm") return value / 100;
+  return value;
+}
+
+function convertFromMeter(value, unit) {
+  if (unit === "mm") return value * 1000;
+  if (unit === "cm") return value * 100;
+  return value;
+}
+
+function calc() {
+  const alpha = parseFloat(document.getElementById('material').value);
+  const length = parseFloat(document.getElementById('length').value);
+  const unit = document.getElementById('unit').value;
+  const t1 = parseFloat(document.getElementById('temp1').value);
+  const t2 = parseFloat(document.getElementById('temp2').value);
+
+  if ([length, t1, t2].some(v => isNaN(v))) {
+    document.getElementById('result').innerText = "入力エラー";
+    return;
+  }
+
+  const L0 = convertToMeter(length, unit);
+  const dT = t2 - t1;
+  const dL = L0 * alpha * dT;
+
+  const delta = convertFromMeter(dL, unit);
+  const finalL = convertFromMeter(L0 + dL, unit);
+
+  const materialName = document.getElementById('material').selectedOptions[0].text;
+
+  const text = `伸び: ${delta.toFixed(3)} ${unit}（ΔT=${dT}℃）`;
+  document.getElementById('result').innerText = text;
+  document.getElementById('finalLength').innerText = `最終長さ: ${finalL.toFixed(3)} ${unit}`;
+
+  const history = document.getElementById('history');
+  history.innerHTML = `${materialName}｜${text} / 最終:${finalL.toFixed(3)}${unit}<br>` + history.innerHTML;
+}
+
+function copyResult() {
+  const text = document.getElementById('result').innerText + " " + document.getElementById('finalLength').innerText;
+  navigator.clipboard.writeText(text);
+  alert("コピーしました");
+}
+
+updateMaterialList();
+</script></body>
+</html>

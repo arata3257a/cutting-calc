@@ -12,6 +12,7 @@ on:
       - "card-3d-generator-mobile/**"
       - "instagram-reel-search/**"
       - "personality-app/**"
+      - "machining-quiz/**"
       - "extra/**"
       - "pro/**"
       - "pro-full/**"

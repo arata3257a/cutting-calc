@@ -17,6 +17,7 @@ on:
       - "pro/**"
       - "pro-full/**"
       - "pro-original/**"
+      - "kaginote/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

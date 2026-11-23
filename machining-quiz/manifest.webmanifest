@@ -1,0 +1,19 @@
+{
+  "name": "切削条件 4択トレーニング",
+  "short_name": "切削条件クイズ",
+  "description": "切削速度・回転数・送り速度・加工時間を50問の4択で学ぶ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F2336",
+  "theme_color": "#0F2336",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

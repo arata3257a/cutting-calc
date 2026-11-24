@@ -39,7 +39,8 @@ button:active{transform:scale(.99)}
 <button id="open-chrome" type="button">🌐 Chromeで開く（Android）</button>
 <button id="install-btn" type="button" class="secondary">📲 アプリをインストール</button>
 <button id="copy-url" type="button" class="secondary">🔗 URLをコピーしてChromeで開く</button>
-<p id="install-status" class="note">ChatGPT内のブラウザーではインストールできない場合があります。先にChromeで開いてください。</p>
+<button id="already-installed" type="button" class="secondary">✅ ホーム画面に追加できたので先へ進む</button>
+<p id="install-status" class="note">追加した後はホーム画面の鍵ノートを起動してください。ショートカットがこの画面に戻る場合は「追加できたので先へ進む」を押してください。</p>
 <div class="url-box" id="install-url">https://arata3257a.github.io/cutting-calc/kaginote/install.html</div>
 <div class="help"><h2>追加できない場合</h2><p id="instructions">AndroidはChromeで開き、右上「︙」から「アプリをインストール」を選択してください。</p></div>
 <div class="alert">※ 現在は試作版です。セキュリティ監査が完了するまで、重要なログイン情報は登録しないでください。</div>
@@ -47,7 +48,7 @@ button:active{transform:scale(.99)}
 </main><script>
 (()=>{'use strict';
 let promptEvent=null;
-const btn=document.getElementById('install-btn'),openChrome=document.getElementById('open-chrome'),copyBtn=document.getElementById('copy-url'),status=document.getElementById('install-status'),instructions=document.getElementById('instructions');
+const btn=document.getElementById('install-btn'),openChrome=document.getElementById('open-chrome'),copyBtn=document.getElementById('copy-url'),continueBtn=document.getElementById('already-installed'),status=document.getElementById('install-status'),instructions=document.getElementById('instructions');
 const installUrl='https://arata3257a.github.io/cutting-calc/kaginote/install.html';
 const ua=navigator.userAgent||'';
 const android=/Android/i.test(ua);
@@ -59,6 +60,8 @@ if(android){
 }else{
  instructions.textContent='① ChromeまたはEdgeで開く\n② アドレスバーのインストールアイコンかメニューの「アプリをインストール」を選択\n③ インストールした鍵ノートをアプリ一覧から起動';
 }
+continueBtn.addEventListener('click',()=>{try{localStorage.setItem('kaginote.install-confirmed.v1','yes');location.assign('./index.html?from=home-screen')}catch{status.textContent='保存設定が利用できません。Chromeの通常モードで開いてください。'}});
+if(window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true){location.replace('./index.html?from=installed-app')}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;btn.textContent='📲 アプリをインストール';status.textContent='このブラウザーから直接インストールできます。';});
 window.addEventListener('appinstalled',()=>{promptEvent=null;status.textContent='追加完了。ホーム画面の「鍵ノート」アイコンから起動してください。';});
 btn.addEventListener('click',async()=>{

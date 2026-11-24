@@ -149,7 +149,8 @@
     const views=['unsupported','install-required','setup','unlock','bio-enroll','bio-verify','dashboard'];
     let vault=null,key=null,root=null,pendingAuth=null,editingId=null,lastActivity=Date.now(),busy=false,toastTimeout=null,installPrompt=null;
 
-    function showView(name){if(name!=='unsupported'&&name!=='install-required'&&!installedMode())name='install-required';views.forEach(id=>$(id).classList.toggle('hidden',id!==name));}
+    function installGateSatisfied(){if(installedMode())return true;try{return localStorage.getItem('kaginote.install-confirmed.v1')==='yes'}catch{return false}}
+    function showView(name){if(name!=='unsupported'&&name!=='install-required'&&!installGateSatisfied())name='install-required';views.forEach(id=>$(id).classList.toggle('hidden',id!==name));}
     function toast(message){const el=$('toast');el.textContent=message;el.classList.remove('hidden');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.add('hidden'),4000);}
     function bytesToB64(bytes){let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(s);}
     function b64ToBytes(s){if(typeof s!=='string'||!s||s.length>8_000_000)throw new Error('無効なデータです');let decoded=atob(s);return Uint8Array.from(decoded,c=>c.charCodeAt(0));}
@@ -168,7 +169,7 @@
     function lock(){clearPending();vault=null;key=null;editingId=null;$('unlock-pw').value='';$('search').value='';$('entries').replaceChildren();$('entry-form').reset();$('master-form').reset();$('entry-dialog').close?.();$('master-dialog').close?.();updateBiometricUI();showView(root?'unlock':'setup');}
     function activity(){if(vault||pendingAuth)lastActivity=Date.now();}
     function checkIdle(){if((vault||pendingAuth)&&Date.now()-lastActivity>LOCK_MS){lock();toast('一定時間操作がなかったためロックしました');}}
-    function start(){if(!installedMode()){location.replace('./install.html?revision=20261124b');return;}if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
+    function start(){if(!installGateSatisfied()){location.replace('./install.html?revision=20261124d');return;}if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
     function biometricApiAvailable(){return !!(window.isSecureContext&&window.PublicKeyCredential&&navigator.credentials?.create&&navigator.credentials?.get);}
     function updateBiometricUI(){$('bio-state').textContent=root?.biometric?'端末認証登録済み：このブラウザー・公開先に対応':'端末認証は未登録';}
     function beginSecondFactor(rawMaster,derivedKey,openedVault,stagedRoot=null){clearPending();pendingAuth={rawMaster,key:derivedKey,data:openedVault,stagedRoot};lastActivity=Date.now();showView(root?.biometric?'bio-verify':'bio-enroll');}
@@ -187,7 +188,7 @@
     }
     function constantTimeEqual(a,b){if(a.length!==b.length)return false;let mismatch=0;for(let i=0;i<a.length;i++)mismatch|=a[i]^b[i];return mismatch===0;}
     $('bio-enroll-action').addEventListener('click',async()=>{
-      if(busy||!installedMode()||!pendingAuth||root?.biometric)return;
+      if(busy||!installGateSatisfied()||!pendingAuth||root?.biometric)return;
       if(!biometricApiAvailable()){toast('この端末では認証の登録に対応していません。対応端末で開いてください');return;}
       setBusy(true,['bio-enroll-action']);
       try{
@@ -206,7 +207,7 @@
       finally{setBusy(false,['bio-enroll-action']);}
     });
     $('bio-verify-action').addEventListener('click',async()=>{
-      if(busy||!installedMode()||!pendingAuth||!root?.biometric)return;
+      if(busy||!installGateSatisfied()||!pendingAuth||!root?.biometric)return;
       if(!biometricApiAvailable()){toast('この端末では本人確認ができません');return;}
       setBusy(true,['bio-verify-action']);let unwrapped=null;
       try{
@@ -225,7 +226,7 @@
     // Chromium can display a native prompt; Safari and other browsers get device-specific instructions.
     function installedMode(){return !!(window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true);}
     function updateInstallUI(){
-      const installed=installedMode();$('install-banner').classList.toggle('hidden',!!installed);
+      const installed=installGateSatisfied();$('install-banner').classList.toggle('hidden',!!installed);
       if(installed)return;
       $('install-action').textContent=installPrompt?'アプリをインストール':'画面にアプリを追加';
       $('install-state').textContent=installPrompt?'このボタンからインストールできます。':'スマホ・PCの画面にアイコンを追加できます。';
@@ -250,10 +251,10 @@
     }
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;updateInstallUI()});
     window.addEventListener('appinstalled',()=>{installPrompt=null;updateInstallUI();toast('インストール完了。ホーム画面・アプリ一覧の「鍵ノート」から起動してください')});
-    window.matchMedia?.('(display-mode: standalone)').addEventListener?.('change',()=>{updateInstallUI();if(installedMode()&&!$('install-required').classList.contains('hidden')){showView(root?'unlock':'setup');}else if(!installedMode()){lock();}});
+    window.matchMedia?.('(display-mode: standalone)').addEventListener?.('change',()=>{updateInstallUI();if(installGateSatisfied()&&!$('install-required').classList.contains('hidden')){showView(root?'unlock':'setup');}else if(!installGateSatisfied()){lock();}});
     $('install-first-action').addEventListener('click',()=>{$('install-action').click()});
     $('install-action').addEventListener('click',async()=>{
-      if(installedMode())return;
+      if(installGateSatisfied())return;
       if(!installPrompt){showInstallHelp();return;}
       const pending=installPrompt;installPrompt=null;updateInstallUI();
       try{
@@ -268,7 +269,7 @@
     function setBusy(flag,ids){busy=flag;for(const id of ids)$(id).disabled=flag;}
     $('setup-form').addEventListener('submit',async e=>{
       e.preventDefault();if(busy)return;
-      if(!installedMode()){showView('install-required');toast('先にアプリをインストールして、アイコンから開いてください');return;}
+      if(!installGateSatisfied()){showView('install-required');toast('先にアプリをホーム画面に追加してください');return;}
       const pass=$('setup-pw').value;
       if(pass.length<12||pass.length>256){toast('12〜256文字で設定してください');return;}
       if(pass!==$('setup-pw2').value){toast('確認用パスワードが一致しません');return;}
@@ -287,7 +288,7 @@
     });
     $('unlock-form').addEventListener('submit',async e=>{
       e.preventDefault();if(busy)return;
-      if(!installedMode()){showView('install-required');toast('インストールしたアプリから開いてください');return;}
+      if(!installGateSatisfied()){showView('install-required');toast('最初にインストール手順を完了してください');return;}
       if(!biometricApiAvailable()){toast('端末本人確認が利用できないため開けません');return;}
       setBusy(true,['unlock-submit']);let raw=null;
       try{

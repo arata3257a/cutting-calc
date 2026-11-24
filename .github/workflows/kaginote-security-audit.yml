@@ -1,0 +1,18 @@
+name: KagiNote Security Smoke Tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kaginote/**"
+      - ".github/security-tests/kaginote-check.cjs"
+      - ".github/workflows/kaginote-security-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run KagiNote security smoke tests with Node Web Crypto
+        run: node .github/security-tests/kaginote-check.cjs

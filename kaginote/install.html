@@ -23,7 +23,7 @@ p{color:#b8c8da;line-height:1.85;margin:0 0 18px}
 .steps{display:grid;gap:12px;margin:22px 0}
 .step{display:flex;align-items:center;gap:13px;border:1px solid #405168;background:#122139;border-radius:13px;padding:14px}
 .num{display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:#31645c;color:#b7ffeb;font-weight:800;flex:none}
-button{display:block;width:100%;border:0;background:#57dfb7;color:#08201b;font-weight:850;font-size:17px;padding:17px 15px;border-radius:14px;cursor:pointer}button.secondary{margin-top:12px;background:#223a52;color:#f4f7fe;border:1px solid #4f728e}.url-box{background:#0d182a;border:1px solid #496075;border-radius:10px;padding:12px;margin:12px 0;font-size:12px;overflow-wrap:anywhere;color:#d1e5ff}
+button{display:block;width:100%;border:0;background:#57dfb7;color:#08201b;font-weight:850;font-size:17px;padding:17px 15px;border-radius:14px;cursor:pointer}button.secondary{margin-top:12px;background:#223a52;color:#f4f7fe;border:1px solid #4f728e}
 button:active{transform:scale(.99)}
 .note{font-size:13px;line-height:1.8;color:#b8c8da;margin-top:16px}
 .help{margin-top:22px;border-top:1px solid #3a4b64;padding-top:20px}
@@ -38,47 +38,37 @@ button:active{transform:scale(.99)}
 <div class="steps"><div class="step"><span class="num">1</span><strong>アプリをホーム画面に追加する</strong></div><div class="step"><span class="num">2</span><strong>追加した「鍵ノート」のアイコンから起動</strong></div><div class="step"><span class="num">3</span><strong>マスターパスワードを設定（初回のみ）</strong></div><div class="step"><span class="num">4</span><strong>端末本人確認を登録する（必須）</strong></div></div>
 <button id="open-chrome" type="button">🌐 Chromeで開く（Android）</button>
 <button id="install-btn" type="button" class="secondary">📲 アプリをインストール</button>
-<button id="copy-url" type="button" class="secondary">🔗 URLをコピーしてChromeで開く</button>
-<button id="already-installed" type="button" class="secondary">✅ ホーム画面に追加できたので先へ進む</button>
-<p id="install-status" class="note">追加した後はホーム画面の鍵ノートを起動してください。ショートカットがこの画面に戻る場合は「追加できたので先へ進む」を押してください。</p>
-<div class="url-box" id="install-url">https://arata3257a.github.io/cutting-calc/kaginote/install.html</div>
+<p id="install-status" class="note">インストール後は、ホーム画面の「鍵ノート」アイコンから起動してください。初回はマスターパスワードの設定画面に進みます。</p>
 <div class="help"><h2>追加できない場合</h2><p id="instructions">AndroidはChromeで開き、右上「︙」から「アプリをインストール」を選択してください。</p></div>
 <div class="alert">※ 現在は試作版です。セキュリティ監査が完了するまで、重要なログイン情報は登録しないでください。</div>
 </section>
 </main><script>
 (()=>{'use strict';
 let promptEvent=null;
-const btn=document.getElementById('install-btn'),openChrome=document.getElementById('open-chrome'),copyBtn=document.getElementById('copy-url'),continueBtn=document.getElementById('already-installed'),status=document.getElementById('install-status'),instructions=document.getElementById('instructions');
+const btn=document.getElementById('install-btn'),openChrome=document.getElementById('open-chrome'),status=document.getElementById('install-status'),instructions=document.getElementById('instructions');
 const installUrl='https://arata3257a.github.io/cutting-calc/kaginote/install.html';
 const ua=navigator.userAgent||'';
 const android=/Android/i.test(ua);
 openChrome.hidden=!android;
 if(android){
- instructions.textContent='① この画面がChatGPTなどのアプリ内ブラウザーなら、右上「︙」→「Chromeで開く」または「ブラウザで開く」を選択\n② Chromeの右上「︙」をタップ\n③「アプリをインストール」または「ホーム画面に追加」を選択\n④ ホーム画面の「鍵ノート」から起動\n\nChromeで開けない場合は「URLをコピー」からChromeのアドレス欄へ貼り付けてください。';
+ instructions.textContent='① この画面がChatGPTなどのアプリ内ブラウザーなら、右上「︙」→「Chromeで開く」または「ブラウザで開く」を選択\n② Chromeの右上「︙」をタップ\n③「アプリをインストール」または「ホーム画面に追加」を選択\n④ ホーム画面の「鍵ノート」から起動\n\nChromeで開けない場合は、右上「︙」の「ブラウザで開く」を選ぶか、Chromeのアドレス欄に鍵ノートのURLを入力してください。';
 }else if(/iPhone|iPad|iPod/i.test(ua)){
  instructions.textContent='① Safariで鍵ノートを開く\n② 共有メニューから「ホーム画面に追加」\n③「追加」を選択\n④ 追加された鍵ノートから起動';
 }else{
  instructions.textContent='① ChromeまたはEdgeで開く\n② アドレスバーのインストールアイコンかメニューの「アプリをインストール」を選択\n③ インストールした鍵ノートをアプリ一覧から起動';
 }
-continueBtn.addEventListener('click',()=>{try{localStorage.setItem('kaginote.install-confirmed.v1','yes');location.assign('./index.html?from=home-screen')}catch{status.textContent='保存設定が利用できません。Chromeの通常モードで開いてください。'}});
 if(window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true){location.replace('./index.html?from=installed-app')}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;btn.textContent='📲 アプリをインストール';status.textContent='このブラウザーから直接インストールできます。';});
-window.addEventListener('appinstalled',()=>{promptEvent=null;status.textContent='追加完了。ホーム画面の「鍵ノート」アイコンから起動してください。';});
+window.addEventListener('appinstalled',()=>{promptEvent=null;try{localStorage.setItem('kaginote.install-confirmed.v1','yes')}catch{}status.textContent='インストール完了。ホーム画面の「鍵ノート」アイコンから起動してください。';});
 btn.addEventListener('click',async()=>{
  if(!promptEvent){instructions.scrollIntoView({behavior:'smooth',block:'center'});status.textContent='Chromeの「︙」メニューから「ホーム画面に追加」または「アプリをインストール」を選んでください。';return;}
  const e=promptEvent;promptEvent=null;
  try{await e.prompt();const c=await e.userChoice;status.textContent=c?.outcome==='accepted'?'インストール後、ホーム画面の鍵ノートから起動してください。':'ブラウザーのメニューから追加できます。';}catch{status.textContent='ブラウザーのメニューから追加してください。'}
 });
-copyBtn.addEventListener('click',async()=>{
- try{await navigator.clipboard.writeText(installUrl);status.textContent='URLをコピーしました。Chromeを開き、アドレス欄に貼り付けてください。';}
- catch{
-  const t=document.createElement('textarea');t.value=installUrl;t.style.position='fixed';t.style.top='0';t.style.opacity='0';document.body.append(t);t.select();const ok=document.execCommand('copy');t.remove();status.textContent=ok?'URLをコピーしました。Chromeのアドレス欄に貼り付けてください。':'下のURLを長押ししてコピーし、Chromeで開いてください。';
- }
-});
 openChrome.addEventListener('click',()=>{
  // Android intent routing may be blocked by in-app browsers; URL copy is a fallback.
  const intent='intent://arata3257a.github.io/cutting-calc/kaginote/install.html#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(installUrl)+';end';
- status.textContent='Chromeが開かない場合は「URLをコピー」を押してChromeに貼り付けてください。';
+ status.textContent='Chromeが開かない場合は右上「︙」から「ブラウザで開く」を選んでください。';
  window.location.href=intent;
 });
 if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));

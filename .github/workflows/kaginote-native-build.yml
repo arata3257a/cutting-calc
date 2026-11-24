@@ -18,14 +18,18 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install Android SDK tools
-        uses: android-actions/setup-android@v3
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
-      - name: Install Android API 36
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Use Android SDK preinstalled on GitHub Ubuntu runner
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          if ! command -v sdkmanager >/dev/null; then
+            echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+            export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          fi
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Extract vetted Android project archive
         run: |
           xz -dc kaginote-native-build-src.zip.xz > /tmp/kaginote-source.zip

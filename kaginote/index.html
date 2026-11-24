@@ -168,7 +168,7 @@
     function lock(){clearPending();vault=null;key=null;editingId=null;$('unlock-pw').value='';$('search').value='';$('entries').replaceChildren();$('entry-form').reset();$('master-form').reset();$('entry-dialog').close?.();$('master-dialog').close?.();updateBiometricUI();showView(root?'unlock':'setup');}
     function activity(){if(vault||pendingAuth)lastActivity=Date.now();}
     function checkIdle(){if((vault||pendingAuth)&&Date.now()-lastActivity>LOCK_MS){lock();toast('一定時間操作がなかったためロックしました');}}
-    function start(){if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
+    function start(){if(!installedMode()){location.replace('./install.html?revision=20261124b');return;}if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
     function biometricApiAvailable(){return !!(window.isSecureContext&&window.PublicKeyCredential&&navigator.credentials?.create&&navigator.credentials?.get);}
     function updateBiometricUI(){$('bio-state').textContent=root?.biometric?'端末認証登録済み：このブラウザー・公開先に対応':'端末認証は未登録';}
     function beginSecondFactor(rawMaster,derivedKey,openedVault,stagedRoot=null){clearPending();pendingAuth={rawMaster,key:derivedKey,data:openedVault,stagedRoot};lastActivity=Date.now();showView(root?.biometric?'bio-verify':'bio-enroll');}

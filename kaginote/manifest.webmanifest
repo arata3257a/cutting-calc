@@ -3,7 +3,7 @@
   "short_name": "鍵ノート",
   "description": "ネット不要。端末内で暗号化するパスワード帳。",
   "lang": "ja",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

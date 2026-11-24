@@ -8,10 +8,12 @@ const html=readFileSync('kaginote/index.html','utf8');
 const installer=readFileSync('kaginote/install.html','utf8');
 const worker=readFileSync('kaginote/sw.js','utf8');
 const manifest=JSON.parse(readFileSync('kaginote/manifest.webmanifest','utf8'));
-const script=(html.match(/<script>\s*([\s\S]*?)\s*<\/script>/)||[])[1];
-assert.ok(script,'app script exists');
-new vm.Script(script,{filename:'kaginote/index.html'});
-new vm.Script(installer.match(/<script>\s*([\s\S]*?)\s*<\/script>/)[1],{filename:'kaginote/install.html'});
+const script=readFileSync('kaginote/app.js','utf8');
+const installScript=readFileSync('kaginote/install.js','utf8');
+new vm.Script(script,{filename:'kaginote/app.js'});
+new vm.Script(installScript,{filename:'kaginote/install.js'});
+assert.ok(!html.includes('<script>')&&!installer.includes('<script>'),'inline executable scripts removed');
+assert.ok(html.includes("script-src 'self'")&&installer.includes("script-src 'self'"),'CSP restricts to same-origin scripts');
 assert.match(html,/AES-256-GCM/);
 assert.match(html,/PBKDF2-SHA-256/);
 assert.match(html,/ITERATIONS=600000/);
@@ -21,7 +23,7 @@ assert.ok(!html.includes('randomPassword')&&!html.includes('id="generate"'),'pas
 assert.ok(!installer.includes('type="password"'),'install page has no master-password input');
 assert.equal(manifest.display,'standalone');
 assert.equal(manifest.start_url,'./index.html');
-for(const url of ['./index.html','./install.html','./manifest.webmanifest'])assert.ok(worker.includes("'"+url+"'"),'offline cache includes '+url);
+for(const url of ['./index.html','./install.html','./app.js','./install.js','./manifest.webmanifest'])assert.ok(worker.includes("'"+url+"'"),'offline cache includes '+url);
 console.log('PASS: static crypto configuration, CSP, install screen and offline assets');
 const store=new Map();
 const storage={getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)};
@@ -84,6 +86,21 @@ const visible=(id)=>!element(id).classList.contains('hidden');
  const stored=store.get('kaginote.encrypted.v1');
  assert.ok(!stored.includes('SECRET-TEST-PASSWORD-DO-NOT-USE'),'password not stored in plaintext');
  assert.ok(!stored.includes('test@example.invalid'),'account not stored in plaintext');
+ // Demonstrate the backup-security limitation: master passphrase alone decrypts the local vault.
+ // The mock hardware authenticator is NOT involved in the following independent decryption.
+ const rootFromDisk=JSON.parse(stored);
+ const baseKey=await webcrypto.subtle.importKey('raw',new TextEncoder().encode('TEST-MASTER-Password@32'),'PBKDF2',false,['deriveBits']);
+ const raw=await webcrypto.subtle.deriveBits({name:'PBKDF2',salt:Buffer.from(rootFromDisk.kdf.salt,'base64'),iterations:rootFromDisk.kdf.iterations,hash:'SHA-256'},baseKey,256);
+ const aes=await webcrypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
+ const iv=Buffer.from(rootFromDisk.encryption.iv,'base64');
+ const ciphertext=Buffer.from(rootFromDisk.encryption.ciphertext,'base64');
+ const plaintext=await webcrypto.subtle.decrypt({name:'AES-GCM',iv},aes,ciphertext);
+ assert.equal(JSON.parse(new TextDecoder().decode(plaintext)).entries[0].password,'SECRET-TEST-PASSWORD-DO-NOT-USE','master-only offline decrypt works');
+ const tampered=Buffer.from(ciphertext);tampered[0]^=1;
+ await assert.rejects(()=>webcrypto.subtle.decrypt({name:'AES-GCM',iv},aes,tampered),'tampered data must fail authentication');
+ console.log('PASS: AES-GCM detects ciphertext tampering');
+ console.log('RISK CONFIRMED: stolen encrypted vault + master password can decrypt WITHOUT biometrics');
+
  click('lock-now');
  assert.ok(visible('unlock')&&!visible('dashboard'),'lock closes vault');
  element('unlock-pw').value='wrong-password1234';

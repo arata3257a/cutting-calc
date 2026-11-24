@@ -74,7 +74,7 @@
         <div class="info"><strong>登録・起動時の本人確認は必須です。</strong><div class="fine">指紋・顔認証に対応する端末で利用できます。ただしWebアプリでは端末のPINが代わりに使われることがあり、認証方法を指紋・顔だけに限定することはできません。</div></div>
         <button id="bio-enroll-action" type="button" class="btn primary wide">🔐 端末認証を登録して開始</button>
         <button id="bio-enroll-cancel" type="button" class="btn wide" style="margin-top:10px">中止してロック</button>
-        <p class="hint">WebAuthn PRF非対応端末では登録できません。登録データは消えませんが、このアプリを開くこともできません。機種変更時は暗号化バックアップから復元してください。</p>
+        <p class="hint">WebAuthn PRF非対応端末では登録できません。初回設定は完了せず、既存の記録がある場合は変更せず保持します。機種変更時は暗号化バックアップから復元してください。</p>
       </section>
 
       <section id="bio-verify" class="panel auth hidden">
@@ -162,7 +162,7 @@
     function start(){if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
     function biometricApiAvailable(){return !!(window.isSecureContext&&window.PublicKeyCredential&&navigator.credentials?.create&&navigator.credentials?.get);}
     function updateBiometricUI(){$('bio-state').textContent=root?.biometric?'端末認証登録済み：このブラウザー・公開先に対応':'端末認証は未登録';}
-    function beginSecondFactor(rawMaster,derivedKey,openedVault){clearPending();pendingAuth={rawMaster,key:derivedKey,data:openedVault};lastActivity=Date.now();showView(root?.biometric?'bio-verify':'bio-enroll');}
+    function beginSecondFactor(rawMaster,derivedKey,openedVault,stagedRoot=null){clearPending();pendingAuth={rawMaster,key:derivedKey,data:openedVault,stagedRoot};lastActivity=Date.now();showView(root?.biometric?'bio-verify':'bio-enroll');}
     function finishSecondFactor(){if(!pendingAuth)throw Error('認証が中断されました');vault=pendingAuth.data;key=pendingAuth.key;clearPending();lastActivity=Date.now();render();showView('dashboard');toast('2段階の確認が完了しました');}
     // WebAuthn PRF is used as a device-gated key-encryption key. No secret or passphrase is sent off-device.
     async function prfWrapKey(prfOutput){
@@ -191,7 +191,7 @@
         const iv=randomBytes(12);
         const wrapped=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},wrapKey,pendingAuth.rawMaster));
         if(!pendingAuth)throw Error('認証が中断されました');
-        writeRoot({...root,biometric:{type:'webauthn-prf-v1',credentialId,salt:bytesToB64(salt),iv:bytesToB64(iv),wrapped:bytesToB64(wrapped)}});
+        writeRoot({...(pendingAuth.stagedRoot||root),biometric:{type:'webauthn-prf-v1',credentialId,salt:bytesToB64(salt),iv:bytesToB64(iv),wrapped:bytesToB64(wrapped)}});
         finishSecondFactor();
       }catch(err){toast(err?.name==='NotAllowedError'?'端末認証が中止されました。登録は必須です':'登録できません。端末とブラウザーのWebAuthn PRF対応をご確認ください');}
       finally{setBusy(false,['bio-enroll-action']);}
@@ -267,10 +267,10 @@
         const salt=randomBytes(16);raw=await deriveBytes(pass,salt,ITERATIONS);
         const k=await importVaultKey(raw);
         const r={app:'KagiNote',version:1,kdf:{name:'PBKDF2-SHA-256',iterations:ITERATIONS,salt:bytesToB64(salt)}};
-        const v={entries:[]};writeRoot(await encryptVault(v,k,r));
-        beginSecondFactor(raw,k,v);raw=null;
+        const v={entries:[]};const stagedRoot=await encryptVault(v,k,r);
+        beginSecondFactor(raw,k,v,stagedRoot);raw=null;
         $('setup-pw').value=$('setup-pw2').value='';
-        toast('続いて端末本人確認を登録してください');
+        toast('端末本人確認の登録が完了するまでアプリは作成されません');
       }catch(err){toast('作成できませんでした。ブラウザーの設定・保存容量をご確認ください');}
       finally{raw?.fill(0);setBusy(false,['setup-submit']);}
     });

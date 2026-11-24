@@ -21,6 +21,8 @@ assert.match(html,/connect-src 'none'/);
 assert.match(html,/default-src 'none'/);
 assert.ok(!script.includes('randomPassword')&&!html.includes('id="generate"'),'password generator removed');
 assert.ok(!installer.includes('type="password"'),'install page has no master-password input');
+assert.ok(html.includes('id="restore-pass" type="password"'),'backup restore uses masked password field');
+assert.ok(!script.includes('pass=prompt('),'backup restore no longer uses an unmasked browser prompt');
 assert.equal(manifest.display,'standalone');
 assert.equal(manifest.start_url,'./index.html');
 for(const url of ['./index.html','./install.html','./app.js','./install.js','./manifest.webmanifest'])assert.ok(worker.includes("'"+url+"'"),'offline cache includes '+url);

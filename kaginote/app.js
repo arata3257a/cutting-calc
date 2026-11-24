@@ -22,7 +22,7 @@
     async function decryptVault(r,aesKey){const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(r.encryption.iv)},aesKey,b64ToBytes(r.encryption.ciphertext));const v=JSON.parse(decoder.decode(bytes));if(!v||!Array.isArray(v.entries)||v.entries.length>10000||!v.entries.every(e=>e&&typeof e.id==='string'&&typeof e.site==='string'&&typeof e.account==='string'&&typeof e.password==='string'&&typeof e.note==='string'))throw Error('バックアップの内容が不正です');return v;}
     async function save(){if(!vault||!key||!root)throw Error('ロックされています');writeRoot(await encryptVault(vault,key,root));lastActivity=Date.now();}
     function clearPending(){if(pendingAuth?.rawMaster)pendingAuth.rawMaster.fill(0);pendingAuth=null;}
-    function lock(){clearPending();vault=null;key=null;editingId=null;$('unlock-pw').value='';$('search').value='';$('entries').replaceChildren();$('entry-form').reset();$('master-form').reset();$('entry-dialog').close?.();$('master-dialog').close?.();updateBiometricUI();showView(root?'unlock':'setup');}
+    function lock(){clearPending();vault=null;key=null;editingId=null;$('unlock-pw').value='';$('search').value='';$('entries').replaceChildren();$('entry-form').reset();$('master-form').reset();$('entry-dialog').close?.();$('master-dialog').close?.();$('restore-pass-dialog').close?.();updateBiometricUI();showView(root?'unlock':'setup');}
     function activity(){if(vault||pendingAuth)lastActivity=Date.now();}
     function checkIdle(){if((vault||pendingAuth)&&Date.now()-lastActivity>LOCK_MS){lock();toast('一定時間操作がなかったためロックしました');}}
     function start(){if(!installGateSatisfied()){location.replace('./install.html?revision=20261124d');return;}if(!crypto?.subtle||!crypto.getRandomValues||!window.localStorage){showView('unsupported');return}try{root=readRoot();updateBiometricUI();showView(root?'unlock':'setup')}catch(e){showView('unsupported');$('unsupported').querySelector('p').textContent='保存データの読み取りに失敗しました。ブラウザーの保存設定をご確認ください。'}}
@@ -182,7 +182,24 @@
       }catch{toast('バックアップを作成できませんでした')}
     });
     $('backup-import').addEventListener('click',()=>{$('import-input').click()});$('import-locked').addEventListener('click',()=>{$('import-input').click()});$('import-new').addEventListener('click',()=>{$('import-input').click()});
-    $('import-input').addEventListener('change',async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(f.size>6000000){toast('バックアップが大きすぎます');return}let backup;try{backup=JSON.parse(await f.text());if(!isValidRoot(backup))throw Error('format')}catch{toast('鍵ノートの正しいバックアップではありません');return}const pass=prompt('復元するバックアップのマスターパスワードを入力してください。');if(pass===null)return;try{const k=await derive(pass,b64ToBytes(backup.kdf.salt),backup.kdf.iterations);await decryptVault(backup,k);}catch{toast('バックアップを開けません。パスワードまたはデータを確認してください');return}if(!confirm('現在の保存データをすべて置き換えます。\n必要なら先に暗号化バックアップを保存してください。\n本当に復元しますか？'))return;try{writeRoot({app:backup.app,version:backup.version,kdf:backup.kdf,encryption:backup.encryption});lock();toast('バックアップを復元しました。バックアップのマスターパスワードで解除してください')}catch{toast('復元できませんでした。保存容量をご確認ください')}});
+    function askBackupPassword(){
+      const dialog=$('restore-pass-dialog'),input=$('restore-pass');
+      dialog.returnValue='';
+      input.value='';
+      return new Promise(resolve=>{
+        const done=()=>{
+          dialog.removeEventListener('close',done);
+          const pass=dialog.returnValue==='confirm'?input.value:null;
+          input.value='';
+          resolve(pass);
+        };
+        dialog.addEventListener('close',done);
+        dialog.showModal();
+        input.focus();
+      });
+    }
+    $('restore-pass-cancel').addEventListener('click',()=>$('restore-pass-dialog').close('cancel'));
+    $('import-input').addEventListener('change',async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(f.size>6000000){toast('バックアップが大きすぎます');return}let backup;try{backup=JSON.parse(await f.text());if(!isValidRoot(backup))throw Error('format')}catch{toast('鍵ノートの正しいバックアップではありません');return}const pass=await askBackupPassword();if(pass===null)return;try{const k=await derive(pass,b64ToBytes(backup.kdf.salt),backup.kdf.iterations);await decryptVault(backup,k);}catch{toast('バックアップを開けません。パスワードまたはデータを確認してください');return}if(!confirm('現在の保存データをすべて置き換えます。\n必要なら先に暗号化バックアップを保存してください。\n本当に復元しますか？'))return;try{writeRoot({app:backup.app,version:backup.version,kdf:backup.kdf,encryption:backup.encryption});lock();toast('バックアップを復元しました。バックアップのマスターパスワードで解除してください')}catch{toast('復元できませんでした。保存容量をご確認ください')}});
     $('change-master').addEventListener('click',()=>{if(!vault)return;$('master-form').reset();$('master-dialog').showModal()});$('master-close').addEventListener('click',()=>$('master-dialog').close());$('master-cancel').addEventListener('click',()=>$('master-dialog').close());
     $('master-form').addEventListener('submit',async e=>{e.preventDefault();if(!vault||busy)return;const old=$('master-old').value,newPass=$('master-new').value;if(newPass.length<12||newPass.length>256){toast('新しいマスターパスワードは12〜256文字にしてください');return}if(newPass!==$('master-confirm').value){toast('確認用パスワードが一致しません');return}setBusy(true,['master-save']);try{const k=await derive(old,b64ToBytes(root.kdf.salt),root.kdf.iterations);await decryptVault(root,k);const salt=randomBytes(16),newKey=await derive(newPass,salt,ITERATIONS);const newRoot=await encryptVault(vault,newKey,{app:'KagiNote',version:1,kdf:{name:'PBKDF2-SHA-256',iterations:ITERATIONS,salt:bytesToB64(salt)}});writeRoot(newRoot);key=newKey;$('master-dialog').close();$('master-form').reset();lock();toast('パスワードを変更しました。次回の解除時に端末認証を再登録してください')}catch{toast('現在のパスワードが違うか、変更を保存できませんでした')}finally{setBusy(false,['master-save'])}});
     document.addEventListener('pointerdown',activity,{passive:true});document.addEventListener('keydown',activity);document.addEventListener('visibilitychange',()=>{if(document.hidden&&(vault||pendingAuth)&&!busy)lock()});window.addEventListener('pagehide',()=>{if(vault||pendingAuth)lock()});setInterval(checkIdle,15000);

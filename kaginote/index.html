@@ -138,6 +138,19 @@
       </form>
     </div>
   </dialog>
+  <dialog id="restore-pass-dialog" aria-labelledby="restore-pass-title">
+    <div class="modal-inner">
+      <div class="modal-header"><h2 id="restore-pass-title">バックアップ復元の本人確認</h2></div>
+      <p class="muted fine">暗号化バックアップに設定されているマスターパスワードを入力してください。入力内容は伏せ字で表示されます。</p>
+      <form id="restore-pass-form" method="dialog" class="formgrid">
+        <div><label for="restore-pass">バックアップのマスターパスワード</label><input id="restore-pass" type="password" required autocomplete="off" maxlength="256"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="restore-pass-cancel">キャンセル</button>
+          <button type="submit" class="btn primary" value="confirm">復元を確認</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
   <input id="import-input" type="file" accept="application/json,.json" class="sr">
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 

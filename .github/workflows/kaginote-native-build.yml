@@ -1,0 +1,53 @@
+name: KagiNote Native Android APK Build (Testing Only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kaginote-native-build-src.zip.xz"
+      - ".github/workflows/kaginote-native-build.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android SDK tools
+        uses: android-actions/setup-android@v3
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Install Android API 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Extract vetted Android project archive
+        run: |
+          xz -dc kaginote-native-build-src.zip.xz > /tmp/kaginote-source.zip
+          unzip -q /tmp/kaginote-source.zip -d kaginote-native
+          find kaginote-native -maxdepth 3 -type f | sort
+      - name: Run independent JDK cryptography tests
+        run: |
+          mkdir -p /tmp/kaginote-classes
+          javac -encoding UTF-8 -d /tmp/kaginote-classes kaginote-native/app/src/main/java/jp/kaginote/secure/VaultCrypto.java kaginote-native/tests/CryptoSelfTest.java
+          java -cp /tmp/kaginote-classes CryptoSelfTest
+          python3 kaginote-native/tests/security_check.py
+      - name: Build installable debug APK (no real passwords)
+        working-directory: kaginote-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Save APK hash
+        run: sha256sum kaginote-native/app/build/outputs/apk/debug/app-debug.apk > kaginote-native/app/build/outputs/apk/debug/SHA256SUMS.txt
+      - name: Export Android APK for safety testing ONLY
+        uses: actions/upload-artifact@v4
+        with:
+          name: KagiNote-Android-Security-PREVIEW-DEBUG-NOT-FOR-PASSWORDS
+          path: |
+            kaginote-native/app/build/outputs/apk/debug/app-debug.apk
+            kaginote-native/app/build/outputs/apk/debug/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

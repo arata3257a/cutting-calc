@@ -44,6 +44,16 @@ jobs:
       - name: Build installable debug APK (no real passwords)
         working-directory: kaginote-native
         run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Check signed APK and reject network permission
+        run: |
+          APK=kaginote-native/app/build/outputs/apk/debug/app-debug.apk
+          SDK_BIN="$ANDROID_HOME/build-tools/36.0.0"
+          "$SDK_BIN/apksigner" verify --verbose "$APK"
+          "$SDK_BIN/aapt" dump permissions "$APK" | tee /tmp/kaginote-permissions.txt
+          if grep -q 'android.permission.INTERNET' /tmp/kaginote-permissions.txt; then
+            echo "SECURITY FAILURE: INTERNET permission found"; exit 1
+          fi
+          "$SDK_BIN/aapt" dump badging "$APK" | head -8
       - name: Save APK hash
         run: sha256sum kaginote-native/app/build/outputs/apk/debug/app-debug.apk > kaginote-native/app/build/outputs/apk/debug/SHA256SUMS.txt
       - name: Export Android APK for safety testing ONLY

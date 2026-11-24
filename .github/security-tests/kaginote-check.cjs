@@ -16,10 +16,10 @@ assert.ok(!html.includes('<script>')&&!installer.includes('<script>'),'inline ex
 assert.ok(html.includes("script-src 'self'")&&installer.includes("script-src 'self'"),'CSP restricts to same-origin scripts');
 assert.match(html,/AES-256-GCM/);
 assert.match(html,/PBKDF2-SHA-256/);
-assert.match(html,/ITERATIONS=600000/);
+assert.match(script,/ITERATIONS=600000/);
 assert.match(html,/connect-src 'none'/);
 assert.match(html,/default-src 'none'/);
-assert.ok(!html.includes('randomPassword')&&!html.includes('id="generate"'),'password generator removed');
+assert.ok(!script.includes('randomPassword')&&!html.includes('id="generate"'),'password generator removed');
 assert.ok(!installer.includes('type="password"'),'install page has no master-password input');
 assert.equal(manifest.display,'standalone');
 assert.equal(manifest.start_url,'./index.html');

@@ -1,0 +1,63 @@
+name: KagiNote Native v0.2 Unlock Recovery Test APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/kaginote-qa-v02.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Android SDK
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Extract baseline source
+        run: |
+          xz -dc kaginote-native-build-src.zip.xz > /tmp/kaginote-source.zip
+          unzip -q /tmp/kaginote-source.zip -d kaginote-native
+      - name: Apply audited v0.2 regression patch (side-by-side QA app)
+        run: |
+          printf '%s' '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' | base64 -d | xz -dc > /tmp/kaginote-qa-patch.py
+          python3 /tmp/kaginote-qa-patch.py kaginote-native
+          grep -q "applicationId 'jp.kaginote.secure.qa02'" kaginote-native/app/build.gradle
+          grep -q 'private boolean unlockPending = false' kaginote-native/app/src/main/java/jp/kaginote/secure/MainActivity.java
+          grep -q 'BIOMETRIC_ERROR_LOCKOUT_PERMANENT' kaginote-native/app/src/main/java/jp/kaginote/secure/MainActivity.java
+      - name: Cryptography and manifest checks
+        run: |
+          mkdir -p /tmp/kaginote-test-classes
+          javac -encoding UTF-8 -d /tmp/kaginote-test-classes kaginote-native/app/src/main/java/jp/kaginote/secure/VaultCrypto.java kaginote-native/tests/CryptoSelfTest.java
+          java -cp /tmp/kaginote-test-classes CryptoSelfTest
+          python3 kaginote-native/tests/security_check.py
+      - name: Build Android QA APK
+        working-directory: kaginote-native
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify signature, package and no network permissions
+        run: |
+          APK=kaginote-native/app/build/outputs/apk/debug/app-debug.apk
+          SDK_BIN="$ANDROID_HOME/build-tools/36.0.0"
+          "$SDK_BIN/apksigner" verify --verbose "$APK"
+          "$SDK_BIN/aapt" dump badging "$APK" | head -6
+          "$SDK_BIN/aapt" dump badging "$APK" | grep -q "package: name='jp.kaginote.secure.qa02'"
+          "$SDK_BIN/aapt" dump permissions "$APK" | tee /tmp/kaginote-permissions.txt
+          if grep -q 'android.permission.INTERNET' /tmp/kaginote-permissions.txt; then echo "Security failure: INTERNET permission"; exit 1; fi
+          sha256sum "$APK"
+      - name: Archive installable QA APK (not for real passwords)
+        uses: actions/upload-artifact@v4
+        with:
+          name: KagiNote-Android-v0.2-QA-Debug-SideBySide-NotForSecrets
+          path: kaginote-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
